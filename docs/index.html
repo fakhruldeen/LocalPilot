@@ -624,19 +624,32 @@
     </aside>
 
     <!-- Footer -->
+        <!-- Footer -->
     <footer class="mt-auto border-t border-white/5 py-10 bg-dark-900">
-        <div class="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-300">
-            <div class="flex items-center gap-3">
-                <img src="img/logo.png" alt="LocalPilot" class="w-6 h-6 rounded-md object-contain opacity-75">
-                <span>&copy; 2026 LocalPilot &bull; Licensed under GNU GPLv3</span>
+        <div class="max-w-7xl mx-auto px-6 space-y-6">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-300">
+                <div class="flex items-center gap-3">
+                    <img src="img/logo.png" alt="LocalPilot" class="w-6 h-6 rounded-md object-contain opacity-75">
+                    <span>&copy; 2026 LocalPilot &bull; Licensed under GNU GPLv3</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-6">
+                    <a href="index.html" class="hover:text-brand transition-colors">Home</a>
+                    <a href="guide.html" class="hover:text-brand transition-colors">Guide</a>
+                    <a href="install.html" class="hover:text-brand transition-colors">Install</a>
+                    <a href="models.html" class="hover:text-brand transition-colors">Models</a>
+                    <a href="faq.html" class="hover:text-brand transition-colors">FAQ</a>
+                    <a href="architecture.html" class="hover:text-brand transition-colors">Technical</a>
+                    <a href="https://github.com/fakhruldeen/LocalPilot" target="_blank" class="hover:text-brand transition-colors">GitHub</a>
+                </div>
             </div>
-            <div class="flex items-center gap-6">
-                <a href="guide.html" class="hover:text-brand transition-colors">Guide</a>
-                <a href="install.html" class="hover:text-brand transition-colors">Install</a>
-                <a href="models.html" class="hover:text-brand transition-colors">Models</a>
-                <a href="faq.html" class="hover:text-brand transition-colors">FAQ</a>
-                <a href="architecture.html" class="hover:text-brand transition-colors">Technical</a>
-                <a href="https://github.com/fakhruldeen/LocalPilot" target="_blank" class="hover:text-brand transition-colors">GitHub</a>
+            <div class="pt-4 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-3 text-[11px] text-slate-400">
+                <div class="flex items-center gap-2">
+                    <span class="px-2 py-0.5 rounded bg-white/5 border border-white/10 font-mono text-[10px] text-brand">DOI</span>
+                    <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="hover:text-brand transition-colors underline font-mono text-slate-300">10.5281/zenodo.23424540</a>
+                </div>
+                <div class="text-center md:text-right leading-relaxed">
+                    Mohamed (Fouad) Fakhruldeen. (2026). <em class="text-slate-300">fakhruldeen/LocalPilot: v0.1.1</em> (Version v0.1.1) [Computer software]. Zenodo. <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="text-brand hover:underline font-mono">https://doi.org/10.5281/zenodo.23424540</a>
+                </div>
             </div>
         </div>
     </footer>

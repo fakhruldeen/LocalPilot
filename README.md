@@ -9,12 +9,13 @@
 [![PyPI Version](https://img.shields.io/pypi/v/localpilot.svg?style=flat-square&color=blue)](https://pypi.org/project/localpilot/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/localpilot.svg?style=flat-square&color=3776AB)](https://pypi.org/project/localpilot/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=flat-square)](https://www.gnu.org/licenses/gpl-3.0)
-[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS-lightgrey.svg?style=flat-square)](https://fakhruldeen.github.io/LocalPilot/)
-[![Documentation](https://img.shields.io/badge/Docs-GitHub%20Pages-success.svg?style=flat-square)](https://fakhruldeen.github.io/LocalPilot/)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23424540.svg)](https://doi.org/10.5281/zenodo.23424540)
+[![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS-lightgrey.svg?style=flat-square)](https://fakhr.me/LocalPilot/)
+[![Documentation](https://img.shields.io/badge/Docs-GitHub%20Pages-success.svg?style=flat-square)](https://fakhr.me/LocalPilot/)
 
 *Find an AI that fits your computer, set it up safely, and help you use it.*
 
-[Website](https://fakhruldeen.github.io/LocalPilot/) • [Documentation](docs/SUPPORT_MATRIX.md) • [PyPI](https://pypi.org/project/localpilot/) • [Report Bug](https://github.com/fakhruldeen/LocalPilot/issues)
+[Website](https://fakhr.me/LocalPilot/) • [Documentation](docs/SUPPORT_MATRIX.md) • [PyPI](https://pypi.org/project/localpilot/) • [DOI](https://doi.org/10.5281/zenodo.23424540) • [Report Bug](https://github.com/fakhruldeen/LocalPilot/issues)
 
 </div>
 
@@ -187,6 +188,28 @@ For full details on platform compatibility and supported backend/service combina
 > **Personal Use & Testing Only**: LocalPilot is intended for non-professional and hobbyist exploration. Local model execution involves fast-moving, cutting-edge technologies that typically require specialized knowledge and ongoing training to configure and operate reliably.
 >
 > This project is provided strictly on an **"AS-IS"** basis for personal evaluation, experimentation, and research purposes. It is **NOT** designed, validated, or certified for production environments, mission-critical infrastructure, or commercial deployments. The creator and maintainer assume **no liabilities, warranties, or legal responsibilities** whatsoever for any data loss, system instability, hardware stress, service disruptions, or issues arising from the use or misuse of this software in production or any other context.
+
+---
+
+## 📚 Citation
+
+If you use LocalPilot in your research, academic study, or open-source projects, please cite it as:
+
+```bibtex
+@software{fakhruldeen_2026_localpilot,
+  author       = {Mohamed (Fouad) Fakhruldeen},
+  title        = {fakhruldeen/LocalPilot: v0.1.1},
+  month        = oct,
+  year         = 2026,
+  publisher    = {Zenodo},
+  version      = {v0.1.1},
+  doi          = {10.5281/zenodo.23424540},
+  url          = {https://doi.org/10.5281/zenodo.23424540}
+}
+```
+
+**Text / APA Citation:**
+> Mohamed (Fouad) Fakhruldeen. (2026). fakhruldeen/LocalPilot: v0.1.1 (Version v0.1.1) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23424540
 
 ---
 
