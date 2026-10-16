@@ -7,6 +7,7 @@ import psutil
 from textual import work
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, Vertical, VerticalScroll
+from textual.screen import ModalScreen
 from textual.timer import Timer
 from textual.widgets import (
     Button,
@@ -15,6 +16,7 @@ from textual.widgets import (
     Header,
     Input,
     Label,
+    Markdown,
     Rule,
     Select,
     Static,
@@ -22,13 +24,73 @@ from textual.widgets import (
     TabPane,
 )
 
+from localpilot.application.runtime_service import RuntimeLifecycleService
+from localpilot.application.setup_workflow import SetupWorkflow
 from localpilot.cli.formatting import HOME_ASCII_BANNER
+from localpilot.domain.documentation import DOCUMENTATION_TOPICS
 from localpilot.domain.models import TaskCategory
 from localpilot.hardware.inspector import SystemInspector
 from localpilot.observability.activity import ActivityService
 from localpilot.sources.catalog_service import CatalogService, RankedCandidate
 from localpilot.storage.db import get_db
 from localpilot.storage.inventory import StorageManager
+
+
+class HelpModal(ModalScreen[None]):
+    """Comprehensive documentation modal for beginners and technical users."""
+
+    BINDINGS = [
+        ("escape", "dismiss", "Close"),
+        ("q", "dismiss", "Close"),
+        ("?", "dismiss", "Close"),
+        ("h", "dismiss", "Close"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="help-dialog"):
+            yield Label("[bold cyan]LocalPilot Help & Documentation Manual[/bold cyan]", id="help-title")
+            with TabbedContent(initial="help-novice"):
+                with TabPane("Beginner Guide", id="help-novice"):
+                    with VerticalScroll(id="help-scroll-novice"):
+                        yield Markdown(DOCUMENTATION_TOPICS["novice"]["content"])
+                with TabPane("Technical Architecture", id="help-technical"):
+                    with VerticalScroll(id="help-scroll-tech"):
+                        yield Markdown(DOCUMENTATION_TOPICS["technical"]["content"])
+                with TabPane("FAQ & Troubleshooting", id="help-faq"):
+                    with VerticalScroll(id="help-scroll-faq"):
+                        yield Markdown(DOCUMENTATION_TOPICS["faq"]["content"])
+                with TabPane("Commands & Keys", id="help-cmd"):
+                    with VerticalScroll(id="help-scroll-cmd"):
+                        yield Markdown(DOCUMENTATION_TOPICS["commands"]["content"])
+            with Horizontal(id="help-buttons"):
+                yield Button("Close (Esc)", variant="primary", id="close-help-btn")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "close-help-btn":
+            self.dismiss(None)
+
+
+class ConfirmModal(ModalScreen[bool]):
+    """Modal dialog for confirming an action."""
+
+    def __init__(self, title: str, message: str) -> None:
+        super().__init__()
+        self._dialog_title = title
+        self._dialog_message = message
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="confirm-dialog"):
+            yield Label(f"[bold]{self._dialog_title}[/bold]", id="confirm-title")
+            yield Label(self._dialog_message, id="confirm-message")
+            with Horizontal(id="confirm-buttons"):
+                yield Button("Confirm", variant="primary", id="confirm-btn")
+                yield Button("Cancel", variant="default", id="cancel-btn")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "confirm-btn":
+            self.dismiss(True)
+        else:
+            self.dismiss(False)
 
 
 class LocalPilotTUI(App):
@@ -67,6 +129,57 @@ class LocalPilotTUI(App):
         height: 5;
         margin-top: 1;
     }
+    ConfirmModal {
+        align: center middle;
+    }
+    #confirm-dialog {
+        padding: 1 2;
+        width: 60;
+        height: auto;
+        border: solid #00e5ff;
+        background: #1e1e1e;
+    }
+    #confirm-title {
+        margin-bottom: 1;
+        color: #00e5ff;
+    }
+    #confirm-message {
+        margin-bottom: 1;
+    }
+    #confirm-buttons {
+        align: right middle;
+        height: 3;
+    }
+    #confirm-buttons Button {
+        margin-left: 1;
+    }
+    HelpModal {
+        align: center middle;
+    }
+    #help-dialog {
+        padding: 1 2;
+        width: 90%;
+        height: 88%;
+        border: solid #00e5ff;
+        background: #1a1a1a;
+    }
+    #help-title {
+        text-align: center;
+        margin-bottom: 1;
+        color: #00e5ff;
+    }
+    #help-scroll-novice, #help-scroll-tech, #help-scroll-faq, #help-scroll-cmd {
+        height: 1fr;
+        padding: 1;
+    }
+    #help-buttons {
+        align: right middle;
+        height: 3;
+        margin-top: 1;
+    }
+    #help-buttons Button {
+        margin-left: 1;
+    }
     """
 
     BINDINGS = [
@@ -80,6 +193,7 @@ class LocalPilotTUI(App):
         ("x", "stop_action", "Stop"),
         ("delete", "remove_action", "Remove"),
         ("?", "show_help", "Help"),
+        ("h", "show_help", "Guide"),
     ]
 
     def __init__(self) -> None:
@@ -88,9 +202,11 @@ class LocalPilotTUI(App):
         self.cat_svc = CatalogService()
         self.storage_mgr = StorageManager()
         self.activity_svc = ActivityService()
+        self.runtime_svc = RuntimeLifecycleService()
         self._ranked_candidates: List[RankedCandidate] = []
         self._search_timer: Optional[Timer] = None
         self._pending_query: str = ""
+        self._search_seq: int = 0
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -101,6 +217,7 @@ class LocalPilotTUI(App):
                     with Container(id="welcome-box"):
                         yield Label("[bold cyan]LOCAL AI, MADE SIMPLE[/bold cyan]")
                         yield Label("Discover, run, monitor, and update local AI models safely.")
+                        yield Label("[dim]Press [bold cyan]?[/bold cyan] or [bold cyan]H[/bold cyan] anytime for complete beginner & technical documentation.[/dim]")
                     with Horizontal():
                         with Vertical(classes="panel"):
                             yield Label("[bold]Computer Health[/bold]")
@@ -166,13 +283,28 @@ class LocalPilotTUI(App):
         table = self.query_one("#discover-table", DataTable)
         table.cursor_type = "row"
         table.add_columns("Score", "Model Name", "Source", "Size", "Context", "Fit Status")
-        self._refresh_discover_table()
+        try:
+            initial_results = self.cat_svc.discover(query="")
+            self._update_discover_table(initial_results, self._search_seq)
+        except Exception:
+            pass
 
     def _refresh_discover_table(self, query: str = "") -> None:
+        self._search_seq += 1
+        self._run_discover_worker(query, self._search_seq)
+
+    @work(exclusive=True, thread=True)
+    def _run_discover_worker(self, query: str, seq: int) -> None:
+        results = self.cat_svc.discover(query=query)
+        self.call_from_thread(self._update_discover_table, results, seq)
+
+    def _update_discover_table(self, results: List[RankedCandidate], seq: int) -> None:
+        if seq < self._search_seq:
+            return  # Discard out-of-order search results
+        self._ranked_candidates = results
         table = self.query_one("#discover-table", DataTable)
         table.clear()
-        self._ranked_candidates = self.cat_svc.discover(query=query)
-        for r in self._ranked_candidates:
+        for r in results:
             cand = r.candidate
             sz_mb = cand.total_bytes / (1024 * 1024)
             table.add_row(
@@ -216,8 +348,12 @@ class LocalPilotTUI(App):
         table = self.query_one("#installed-table", DataTable)
         table.cursor_type = "row"
         table.add_columns("Model Name", "Runtime", "Stage", "Installation ID")
-        db = get_db()
-        conn = db.get_connection()
+        self._refresh_installed_table()
+
+    def _refresh_installed_table(self) -> None:
+        table = self.query_one("#installed-table", DataTable)
+        table.clear()
+        conn = get_db().get_connection()
         rows = conn.execute("SELECT * FROM installations ORDER BY created_at DESC").fetchall()
         for r in rows:
             table.add_row(r["name"], r["runtime_name"], r["readiness_stage"], r["installation_id"], key=r["installation_id"])
@@ -228,48 +364,25 @@ class LocalPilotTUI(App):
         table.add_columns("Model ID", "PID", "Status", "Endpoint", "Instance ID")
         self._reconcile_and_populate_running(table)
 
-    def _reconcile_and_populate_running(self, table: DataTable) -> None:
-        """Reconciles database records against live OS processes."""
+    def _reconcile_and_populate_running(self, table: Optional[DataTable] = None) -> None:
+        """Reconciles database records against live OS processes using RuntimeLifecycleService."""
+        if table is None:
+            table = self.query_one("#running-table", DataTable)
         table.clear()
-        db = get_db()
-        conn = db.get_connection()
-        rows = conn.execute("SELECT * FROM running_instances").fetchall()
+        active = self.runtime_svc.reconcile_running_instances()
 
-        active_count = 0
-        for r in rows:
-            pid = r["pid"]
-            endpoint = r["endpoint_url"]
-            instance_id = r["instance_id"]
-            model_id = r["model_id"]
-
-            is_alive = False
-            status_text = "Unknown"
-
-            if pid is not None:
-                if psutil.pid_exists(pid):
-                    is_alive = True
-                    status_text = "Running (Active)"
-                else:
-                    status_text = "Stopped (Stale)"
-            elif endpoint:
-                # API service without host PID
-                is_alive = True
-                status_text = "Running (Service)"
-
-            if is_alive:
-                active_count += 1
-
+        for r in active:
             table.add_row(
-                model_id,
-                str(pid) if pid is not None else "Service",
-                status_text,
-                endpoint or "N/A",
-                instance_id,
-                key=instance_id,
+                r.get("model_id", ""),
+                str(r.get("pid", "Service")),
+                "Running (Verified)",
+                r.get("endpoint_url", "N/A"),
+                r.get("instance_id", ""),
+                key=r.get("instance_id", ""),
             )
 
         self.query_one("#home-running-status", Label).update(
-            f"{active_count} active instance(s)"
+            f"{len(active)} active instance(s)"
         )
 
     def _setup_activity_table(self) -> None:
@@ -316,18 +429,107 @@ class LocalPilotTUI(App):
             row_idx = table.cursor_row
             if 0 <= row_idx < len(self._ranked_candidates):
                 item = self._ranked_candidates[row_idx]
-                self.notify(f"Selected: {item.candidate.name}. Run 'localpilot setup {item.candidate.candidate_id}' in terminal.", title="Setup Model")
+
+                def _on_confirm(confirmed: bool) -> None:
+                    if confirmed:
+                        self.notify(f"Starting setup for {item.candidate.name}...", title="Setup Started")
+                        self._run_setup_worker(item.candidate, item.recommended_plan, item.alternative_plans)
+
+                self.push_screen(
+                    ConfirmModal("Setup Model", f"Begin setup and download for {item.candidate.name}?"),
+                    _on_confirm,
+                )
+
+    @work(exclusive=True, thread=True)
+    def _run_setup_worker(self, candidate, plan, alternatives) -> None:
+        workflow = SetupWorkflow()
+        built_plan = workflow.build_plan(candidate, execution_plan=plan, alternative_plans=alternatives)
+        try:
+            res = asyncio.run(workflow.execute_setup(candidate, built_plan))
+            self.call_from_thread(self._on_setup_completed, res["installation_id"], candidate.name)
+        except Exception as e:
+            self.call_from_thread(self.notify, f"Setup failed: {e}", title="Error", severity="error")
+
+    def _on_setup_completed(self, inst_id: str, name: str) -> None:
+        self.notify(f"Successfully set up {name} (ID: {inst_id})", title="Setup Finished")
+        self._refresh_installed_table()
+        self._refresh_storage()
 
     def action_stop_action(self) -> None:
         current_tab = self.query_one("#main-tabs", TabbedContent).active
         if current_tab == "running-tab":
             table = self.query_one("#running-table", DataTable)
-            self.notify("To safely stop a model instance, use: localpilot stop <instance-id>", title="Stop Model")
+            if table.row_count == 0 or table.cursor_row < 0:
+                self.notify("No running instance selected.", title="Stop Instance")
+                return
+            row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
+            instance_id = str(row_key.value) if row_key else ""
+            if not instance_id:
+                return
+
+            def _on_confirm(confirmed: bool) -> None:
+                if confirmed:
+                    self.notify(f"Stopping instance {instance_id}...", title="Stopping")
+                    self._run_stop_worker(instance_id)
+
+            self.push_screen(
+                ConfirmModal("Stop Instance", f"Stop running model instance {instance_id}?"),
+                _on_confirm,
+            )
+
+    @work(exclusive=True, thread=True)
+    def _run_stop_worker(self, instance_id: str) -> None:
+        try:
+            stopped = asyncio.run(self.runtime_svc.stop_running_instance(instance_id))
+            self.call_from_thread(self._on_stop_completed, instance_id, stopped)
+        except Exception as e:
+            self.call_from_thread(self.notify, f"Failed to stop: {e}", title="Error", severity="error")
+
+    def _on_stop_completed(self, instance_id: str, stopped: bool) -> None:
+        if stopped:
+            self.notify(f"Instance {instance_id} stopped.", title="Stopped")
+        else:
+            self.notify(f"Instance {instance_id} was already inactive.", title="Status")
+        self._reconcile_and_populate_running()
 
     def action_remove_action(self) -> None:
         current_tab = self.query_one("#main-tabs", TabbedContent).active
         if current_tab == "installed-tab":
-            self.notify("To safely remove an installed model, use: localpilot remove <installation-id>", title="Remove Model")
+            table = self.query_one("#installed-table", DataTable)
+            if table.row_count == 0 or table.cursor_row < 0:
+                self.notify("No installation selected.", title="Remove Model")
+                return
+            row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
+            installation_id = str(row_key.value) if row_key else ""
+            if not installation_id:
+                return
+
+            def _on_confirm(confirmed: bool) -> None:
+                if confirmed:
+                    self.notify(f"Removing {installation_id}...", title="Removing")
+                    self._run_remove_worker(installation_id)
+
+            self.push_screen(
+                ConfirmModal("Remove Model", f"Safely remove installation {installation_id} and free disk space?"),
+                _on_confirm,
+            )
+
+    @work(exclusive=True, thread=True)
+    def _run_remove_worker(self, installation_id: str) -> None:
+        try:
+            res = self.storage_mgr.safe_remove_installation(installation_id)
+            self.call_from_thread(self._on_remove_completed, installation_id, res)
+        except Exception as e:
+            self.call_from_thread(self.notify, f"Removal failed: {e}", title="Error", severity="error")
+
+    def _on_remove_completed(self, installation_id: str, res: dict) -> None:
+        if res.get("success"):
+            freed_mb = res.get("bytes_freed", 0) / (1024 * 1024)
+            self.notify(f"Removed {installation_id}. Freed: {freed_mb:.1f} MB.", title="Removed")
+        else:
+            self.notify(res.get("error", "Removal failed."), title="Error", severity="error")
+        self._refresh_installed_table()
+        self._refresh_storage()
 
     def action_show_help(self) -> None:
-        self.notify("Keys: D (Discover), I (Installed), R (Running), S (Storage), A (Activity), Q (Quit)")
+        self.push_screen(HelpModal())

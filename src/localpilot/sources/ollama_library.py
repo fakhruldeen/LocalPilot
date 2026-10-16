@@ -9,6 +9,7 @@ from localpilot.domain.models import (
     ConfidenceLevel,
     ExecutionMode,
     NormalizedCandidate,
+    ResolvedArtifact,
     TaskCategory,
     VerificationStage,
 )
@@ -32,6 +33,20 @@ class OllamaLibrarySourceAdapter(BaseSourceAdapter):
             exact_version_identity=True,
             update_checks=True,
             integrity_verification=True,
+        )
+
+    def resolve_artifact(self, candidate: NormalizedCandidate) -> ResolvedArtifact:
+        """Resolves artifact acquisition as a service-managed pull."""
+        return ResolvedArtifact(
+            source="ollama",
+            model_id=candidate.model_id,
+            artifact_id=candidate.artifact_id,
+            revision=candidate.revision or "latest",
+            filename=f"{candidate.model_id.replace(':', '_')}.json",
+            download_url=None,
+            expected_bytes=candidate.total_bytes,
+            expected_sha256=candidate.sha256,
+            acquisition_mode="service_pull",
         )
 
     async def search(

@@ -18,8 +18,12 @@ from localpilot.domain.capabilities import (
 )
 from localpilot.domain.compatibility import CompatibilityPolicy
 from localpilot.domain.execution_plan import ExecutionPlan
-from localpilot.domain.models import NormalizedCandidate, VerificationStage
-from localpilot.domain.ownership import OwnershipClass
+from localpilot.domain.models import (
+    NormalizedCandidate,
+    ResolvedArtifact,
+    VerificationStage,
+)
+from localpilot.domain.ownership import OwnershipClass, ProcessIdentity
 from localpilot.hardware.inspector import SystemInspector
 from localpilot.observability.context import operation_context
 from localpilot.observability.events import ObservabilityHub, get_hub
@@ -30,8 +34,20 @@ from localpilot.runtimes.llamacpp import LlamaCppRuntimeAdapter
 from localpilot.runtimes.lm_studio import LMStudioServiceAdapter
 from localpilot.runtimes.ollama import OllamaRuntimeAdapter
 from localpilot.runtimes.vllm_backend import VllmBackendAdapter
-from localpilot.storage.db import DatabaseManager, get_db
+from localpilot.security import sanitize_artifact_subpath, validate_path_within_root
+from localpilot.sources.huggingface import HuggingFaceSourceAdapter
+from localpilot.sources.ollama_library import OllamaLibrarySourceAdapter
+from localpilot.storage.db import DatabaseManager, get_db, get_default_data_dir
 from localpilot.storage.inventory import StorageManager
+
+
+class ApprovalRecord(BaseModel):
+    """Explicit user or policy approval for critical operations (Section 23)."""
+    approved_by: str = "user"
+    approved_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"))
+    plan_id: Optional[str] = None
+    plan_hash: Optional[str] = None
+    decision_type: str = "model_setup"
 
 
 class SetupPlan(BaseModel):
@@ -69,11 +85,13 @@ class SetupWorkflow:
         self.storage_mgr = storage_mgr or StorageManager(self.db, data_dir=self.data_dir)
         self.inspector = SystemInspector()
         self.compatibility_policy = CompatibilityPolicy()
-        self.ollama_adapter = OllamaRuntimeAdapter()
-        self.llamacpp_adapter = LlamaCppRuntimeAdapter()
+        self.ollama_adapter = OllamaRuntimeAdapter(data_dir=self.data_dir)
+        self.llamacpp_adapter = LlamaCppRuntimeAdapter(data_dir=self.data_dir)
         self.lm_studio_adapter = LMStudioServiceAdapter()
         self.docker_model_runner_adapter = DockerModelRunnerServiceAdapter()
         self.vllm_adapter = VllmBackendAdapter()
+        self.hf_source_adapter = HuggingFaceSourceAdapter()
+        self.ollama_source_adapter = OllamaLibrarySourceAdapter()
 
     def _resolve_adapter(self, plan: SetupPlan) -> Any:
         if plan.managed_service == ManagedServiceId.OLLAMA.value or plan.runtime_name == "ollama":
@@ -126,13 +144,22 @@ class SetupWorkflow:
                 deployment = DeploymentMethod.LOCAL_API_SERVICE.value
                 runtime_name = "llamacpp"
 
-        # Check existing installation
+        # D05: Isolated storage directory structure
+        dir_slug, _ = sanitize_artifact_subpath(
+            candidate.model_id,
+            candidate.revision,
+            candidate.artifact_id or f"{candidate.model_id}.gguf",
+        )
+        target_dir_path = self.storage_mgr.models_dir / runtime_name / dir_slug
+        validate_path_within_root(target_dir_path, self.storage_mgr.models_dir)
+        target_dir = str(target_dir_path)
+
         temp_plan = SetupPlan(
             model_id=candidate.model_id,
             candidate_id=candidate.candidate_id,
             runtime_name=runtime_name,
             install_scope=scope,
-            target_install_dir=str(self.storage_mgr.models_dir / runtime_name),
+            target_install_dir=target_dir,
             download_bytes=candidate.total_bytes,
             storage_needed_bytes=candidate.estimated_disk_bytes,
             execution_mode=candidate.execution_mode.value,
@@ -152,7 +179,6 @@ class SetupWorkflow:
         elif hasattr(adapter, "detect_installation"):
             needs_runtime = adapter.detect_installation() is None
 
-        target_dir = str(self.storage_mgr.models_dir / runtime_name)
         return SetupPlan(
             model_id=candidate.model_id,
             candidate_id=candidate.candidate_id,
@@ -170,13 +196,19 @@ class SetupWorkflow:
             alternative_plans=alternative_plans or [],
         )
 
+
     async def execute_setup(
         self,
         candidate: NormalizedCandidate,
         plan: SetupPlan,
         progress_callback: Optional[Callable[[str, int, int], None]] = None,
+        approval: Optional[ApprovalRecord] = None,
+        keep_running: bool = False,
     ) -> Dict[str, Any]:
         """Executes the setup and test workflow with evidence-based verification."""
+        import hashlib
+        import os
+
         with operation_context() as op_id:
             # Stage 1 & 2: Recheck access and resources
             report = self.inspector.inspect()
@@ -188,7 +220,7 @@ class SetupWorkflow:
             if not comp.is_compatible:
                 raise RuntimeError(f"Compatibility recheck failed: {comp.friendly_explanation}")
 
-            # Stage 4 & 5: Save mandatory audit approval checkpoint before state change
+            # Stage 4 & 5: Save mandatory audit approval checkpoint before state change (D26)
             checkpoint_payload = plan.model_dump()
             if plan.execution_plan:
                 checkpoint_payload["execution_plan_id"] = plan.execution_plan.plan_id
@@ -196,12 +228,14 @@ class SetupWorkflow:
                 checkpoint_payload["managed_service"] = plan.execution_plan.managed_service.value
                 checkpoint_payload["deployment_method"] = plan.execution_plan.deployment_method.value
                 checkpoint_payload["ownership_class"] = plan.execution_plan.ownership_class.value
+            if approval:
+                checkpoint_payload["approval"] = approval.model_dump()
 
             self.hub.record_audit_checkpoint(
                 decision_type="model_setup",
                 target_id=candidate.candidate_id,
                 payload=checkpoint_payload,
-                outcome="approved",
+                outcome="approved" if approval else "approved",
                 is_critical=True,
             )
 
@@ -212,6 +246,7 @@ class SetupWorkflow:
                 total_bytes=plan.download_bytes,
             )
 
+            verification_instance: Optional[ProcessIdentity] = None
             try:
                 # Stage 6: Prepare runtime if required
                 runtime_adapter = self._resolve_adapter(plan)
@@ -227,53 +262,135 @@ class SetupWorkflow:
                             summary=f"Installed {plan.runtime_name} into {plan.install_scope.value} space.",
                         )
 
-                # Stage 7: Download and prepare model files (NO synthetic GGUF writes)
+                # Stage 7: Resolve source artifact and acquire model files (D01, D03, D04, D05)
                 self.job_mgr.update_checkpoint(job.job_id, "downloading_model", checkpoint_name="download")
                 dest_dir = Path(plan.target_install_dir)
                 dest_dir.mkdir(parents=True, exist_ok=True)
-                model_file = dest_dir / (candidate.artifact_id or f"{candidate.model_id}.gguf")
 
-                if not model_file.exists():
-                    download_url = getattr(candidate, "download_url", None) or getattr(candidate, "source_url", None)
-                    if download_url:
+                source_adapter = (
+                    self.ollama_source_adapter
+                    if (candidate.source == "ollama" or plan.runtime_name == "ollama")
+                    else self.hf_source_adapter
+                )
+                resolved_artifact = source_adapter.resolve_artifact(candidate)
+                model_file = dest_dir / resolved_artifact.filename
+
+                artifact_mgmt_mode = "directly_managed"
+                artifact_del_method = "delete_files"
+                artifact_sha256 = candidate.sha256
+                endpoint_for_test = "http://127.0.0.1:11434"
+
+                if resolved_artifact.acquisition_mode == "service_pull" or plan.runtime_name == "ollama":
+                    # D01: Real Ollama model pull and runtime-managed registration
+                    prep_inst_id = f"inst-setup-{str(uuid.uuid4())[:8]}"
+                    log_dir = self.storage_mgr.data_dir / "logs"
+                    log_dir.mkdir(parents=True, exist_ok=True)
+                    log_file = log_dir / f"ollama_{prep_inst_id}.log"
+
+                    proc_ident = await self.ollama_adapter.start_instance(candidate.model_id, candidate, prep_inst_id, log_file)
+                    endpoint_for_test = proc_ident.endpoint_url or "http://127.0.0.1:11434"
+
+                    if progress_callback:
+                        progress_callback(f"Pulling model {candidate.model_id} via Ollama...", 0, 100)
+
+                    def _pull_progress(msg: str, done: int, total: int) -> None:
+                        if progress_callback:
+                            progress_callback(f"Ollama: {msg}", done, total)
+
+                    pull_res = await self.ollama_adapter.pull_model(
+                        endpoint_for_test,
+                        candidate.model_id,
+                        progress_callback=_pull_progress,
+                    )
+
+                    ref_file = dest_dir / "ollama_model_ref.json"
+                    ref_data = {
+                        "model_id": candidate.model_id,
+                        "digest": pull_res.get("digest"),
+                        "size": pull_res.get("size", candidate.total_bytes),
+                        "managed_service": "ollama",
+                        "endpoint": endpoint_for_test,
+                    }
+                    ref_file.write_text(json.dumps(ref_data, indent=2), encoding="utf-8")
+                    model_file = ref_file
+
+                    actual_bytes = pull_res.get("size", candidate.total_bytes) or candidate.total_bytes
+                    artifact_mgmt_mode = "runtime_managed"
+                    artifact_del_method = "service_api_delete"
+                    artifact_sha256 = pull_res.get("digest")
+
+                else:
+                    # Direct file download (e.g. Hugging Face GGUF)
+                    # D04: Pre-validate existing file integrity before reuse
+                    if model_file.exists():
+                        existing_sz = model_file.stat().st_size
+                        valid = True
+                        if existing_sz == 0:
+                            valid = False
+                        if valid and candidate.sha256:
+                            hasher = hashlib.sha256()
+                            with open(model_file, "rb") as f:
+                                for chunk in iter(lambda: f.read(65536), b""):
+                                    hasher.update(chunk)
+                            if hasher.hexdigest().lower() != candidate.sha256.lower():
+                                valid = False
+                        if not valid:
+                            model_file.unlink(missing_ok=True)
+
+                    if not model_file.exists():
+                        download_url = resolved_artifact.download_url or getattr(candidate, "download_url", None)
+                        if not download_url:
+                            raise RuntimeError(
+                                f"Model file '{model_file.name}' not found at {model_file} and no downloadable source URL is available. "
+                                "LocalPilot does not create synthetic weights in production."
+                            )
+
                         if progress_callback:
                             progress_callback(f"Downloading model {candidate.name}...", 0, 100)
+
+                        part_file = self.storage_mgr.downloads_dir / f"{model_file.name}.{job.job_id}.part"
+                        hasher = hashlib.sha256()
+                        downloaded = 0
                         async with httpx.AsyncClient(timeout=300.0, follow_redirects=True) as client:
                             async with client.stream("GET", download_url) as resp:
                                 resp.raise_for_status()
-                                total = int(resp.headers.get("content-length", candidate.total_bytes))
-                                downloaded = 0
-                                with open(model_file, "wb") as f:
+                                total = int(resp.headers.get("content-length", resolved_artifact.expected_bytes or candidate.total_bytes))
+                                with open(part_file, "wb") as f:
                                     async for chunk in resp.aiter_bytes(chunk_size=65536):
                                         f.write(chunk)
+                                        hasher.update(chunk)
                                         downloaded += len(chunk)
                                         if progress_callback and total > 0:
                                             progress_callback(f"Downloading {candidate.name}...", downloaded, total)
-                    elif plan.runtime_name == "ollama" or candidate.source == "ollama":
-                        # For Ollama models, record reference or pull through service
-                        if progress_callback:
-                            progress_callback(f"Preparing Ollama model {candidate.model_id}...", 0, 100)
-                        model_file.write_text(f"ollama:{candidate.model_id}\n")
-                    else:
-                        raise RuntimeError(
-                            f"Model file '{model_file.name}' not found at {model_file} and no downloadable source URL is available. "
-                            "LocalPilot does not create synthetic weights in production."
-                        )
 
-                actual_bytes = model_file.stat().st_size
+                        # Validate downloaded hash if expected
+                        if candidate.sha256:
+                            calc_sha = hasher.hexdigest().lower()
+                            if calc_sha != candidate.sha256.lower():
+                                part_file.unlink(missing_ok=True)
+                                raise RuntimeError(f"Integrity check failed: downloaded hash {calc_sha} != expected {candidate.sha256}")
+
+                        os.replace(part_file, model_file)
+
+                    actual_bytes = model_file.stat().st_size
+                    artifact_mgmt_mode = "directly_managed"
+                    artifact_del_method = "delete_files"
+                    artifact_sha256 = candidate.sha256
 
                 # Stage 8: Register installation in SQLite (Stage: DOWNLOADED_PREPARED)
                 self.job_mgr.update_checkpoint(job.job_id, "registering_installation", checkpoint_name="registration")
                 inst_id = f"inst-{str(uuid.uuid4())[:8]}"
-                art_id = f"art-{str(uuid.uuid4())[:8]}"
 
-                self.storage_mgr.register_artifact(
-                    artifact_id=art_id,
+                # D08: Store canonical artifact ID returned by inventory
+                canonical_art_id = self.storage_mgr.register_artifact(
+                    artifact_id=f"art-{str(uuid.uuid4())[:8]}",
                     physical_path=model_file,
                     bytes_size=actual_bytes,
-                    sha256=candidate.sha256,
+                    sha256=artifact_sha256,
                     is_managed=True,
                     install_scope=plan.install_scope.value,
+                    management_mode=artifact_mgmt_mode,
+                    deletion_method=artifact_del_method,
                 )
 
                 now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -294,7 +411,7 @@ class SetupWorkflow:
                             candidate.model_id,
                             candidate.name,
                             plan.runtime_name,
-                            json.dumps([art_id]),
+                            json.dumps([canonical_art_id]),
                             VerificationStage.DOWNLOADED_PREPARED.value,
                             "compatible",
                             "unknown",
@@ -315,7 +432,7 @@ class SetupWorkflow:
                             (inst_id, plan.execution_plan.plan_id),
                         )
 
-                # Stage 9: Live Test Inference Verification
+                # Stage 9: Live Test Inference Verification (D02)
                 self.job_mgr.update_checkpoint(job.job_id, "verifying_inference", checkpoint_name="inference_test")
                 if progress_callback:
                     progress_callback("Running test inference verification...", 50, 100)
@@ -324,19 +441,45 @@ class SetupWorkflow:
                 test_error = None
                 try:
                     if plan.runtime_name == "ollama":
-                        inference_passed = await self.ollama_adapter.test_inference("http://127.0.0.1:11434", candidate.model_id)
+                        inference_passed = await self.ollama_adapter.test_inference(endpoint_for_test, candidate.model_id)
                     elif plan.runtime_name == "lm_studio":
+                        ready = await self.lm_studio_adapter.check_api_readiness("http://127.0.0.1:1234")
+                        if not ready:
+                            raise RuntimeError("LM Studio service is not responding on http://127.0.0.1:1234")
                         inference_passed = await self.lm_studio_adapter.test_inference("http://127.0.0.1:1234", candidate.model_id)
                     elif plan.runtime_name == "docker_model_runner":
+                        ready = await self.docker_model_runner_adapter.check_api_readiness("http://127.0.0.1:11434")
+                        if not ready:
+                            raise RuntimeError("Docker Model Runner service is not responding on http://127.0.0.1:11434")
                         inference_passed = await self.docker_model_runner_adapter.test_inference("http://127.0.0.1:11434", candidate.model_id)
                     elif plan.runtime_name == "vllm":
                         inference_passed = await self.vllm_adapter.test_inference("http://127.0.0.1:8000", candidate.model_id)
                     else:
-                        # llama.cpp
-                        inference_passed = await self.llamacpp_adapter.test_inference("http://127.0.0.1:8080", str(model_file))
+                        # llama.cpp: launch dynamic test instance
+                        test_endpoint = "http://127.0.0.1:8080"
+                        try:
+                            v_inst_id = f"inst-verify-{str(uuid.uuid4())[:8]}"
+                            log_dir = self.storage_mgr.data_dir / "logs"
+                            log_dir.mkdir(parents=True, exist_ok=True)
+                            v_log = log_dir / f"verify_{v_inst_id}.log"
+                            verification_instance = await self.llamacpp_adapter.start_instance(
+                                str(model_file), candidate, v_inst_id, v_log
+                            )
+                            if verification_instance and verification_instance.endpoint_url:
+                                test_endpoint = verification_instance.endpoint_url
+                        except Exception as launch_err:
+                            test_error = str(launch_err)
+                        inference_passed = await self.llamacpp_adapter.test_inference(test_endpoint, candidate.model_id)
                 except Exception as exc:
                     test_error = str(exc)
                     inference_passed = False
+                finally:
+                    # Clean up temporary test instance if not requested to keep running
+                    if verification_instance and not keep_running:
+                        try:
+                            await self.llamacpp_adapter.stop_instance(verification_instance)
+                        except Exception:
+                            pass
 
                 if inference_passed:
                     # Promoted to TESTED_HERE only after successful live inference

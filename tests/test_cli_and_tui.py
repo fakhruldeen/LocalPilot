@@ -49,6 +49,42 @@ def test_cli_storage_and_activity() -> None:
     assert res_activity.exit_code == 0
 
 
+def test_cli_guide_and_docs() -> None:
+    res_guide = runner.invoke(app, ["guide"])
+    assert res_guide.exit_code == 0
+    assert "LocalPilot Guide" in res_guide.stdout
+
+    res_novice = runner.invoke(app, ["guide", "novice"])
+    assert res_novice.exit_code == 0
+    assert "Beginner's Guide to Local AI" in res_novice.stdout
+
+    res_technical = runner.invoke(app, ["guide", "technical"])
+    assert res_technical.exit_code == 0
+    assert "Technical Architecture" in res_technical.stdout
+
+    res_docs_alias = runner.invoke(app, ["docs", "faq"])
+    assert res_docs_alias.exit_code == 0
+    assert "Frequently Asked Questions" in res_docs_alias.stdout
+
+
+def test_cli_help_descriptions() -> None:
+    res_help = runner.invoke(app, ["--help"])
+    assert res_help.exit_code == 0
+    assert "guide" in res_help.stdout
+    assert "tui" in res_help.stdout
+
+    res_doctor_help = runner.invoke(app, ["doctor", "--help"])
+    assert res_doctor_help.exit_code == 0
+    assert "Non-technical:" in res_doctor_help.stdout
+    assert "Technical:" in res_doctor_help.stdout
+    assert "Examples:" in res_doctor_help.stdout
+
+    res_setup_help = runner.invoke(app, ["setup", "--help"])
+    assert res_setup_help.exit_code == 0
+    assert "Non-technical:" in res_setup_help.stdout
+    assert "Technical:" in res_setup_help.stdout
+
+
 @pytest.mark.asyncio
 async def test_tui_app_smoke() -> None:
     tui = LocalPilotTUI()
@@ -67,3 +103,8 @@ async def test_tui_app_smoke() -> None:
         # Switch to activity tab
         await pilot.press("a")
         assert tui.query_one("#main-tabs").active == "activity-tab"
+
+        # Open help modal via ? keybinding
+        await pilot.press("question_mark")
+        # Pop screen
+        await pilot.press("escape")

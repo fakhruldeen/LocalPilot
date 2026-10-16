@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, List, Optional
 from pydantic import BaseModel
 
-from localpilot.domain.models import NormalizedCandidate, TaskCategory
+from localpilot.domain.models import NormalizedCandidate, ResolvedArtifact, TaskCategory
 
 
 class SourceCapabilities(BaseModel):
@@ -41,4 +41,8 @@ class BaseSourceAdapter(ABC):
 
     @abstractmethod
     async def get_candidate_details(self, model_id: str, revision: Optional[str] = None) -> Optional[NormalizedCandidate]:
+        pass
+
+    @abstractmethod
+    def resolve_artifact(self, candidate: NormalizedCandidate) -> ResolvedArtifact:
         pass

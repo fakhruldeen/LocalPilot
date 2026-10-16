@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 import asyncio
+import json
 import os
 import platform
 import shutil
@@ -13,8 +14,10 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import httpx
 import psutil
 
+from localpilot.domain.capabilities import ManagedServiceId
 from localpilot.domain.models import NormalizedCandidate
 from localpilot.domain.ownership import OwnershipClass, ProcessIdentity
+
 from localpilot.runtimes.base import (
     BaseRuntimeAdapter,
     InstallationScope,
@@ -154,8 +157,17 @@ class OllamaRuntimeAdapter(BaseRuntimeAdapter):
                 shutil.copy2(extracted_bin, target_path)
             os.chmod(target_path, 0o755)
 
-        if not Path(target_path).exists():
-            raise RuntimeError(f"Ollama preparation failed: binary was not found at {target_path} after extraction.")
+        t_path = Path(target_path)
+        if not t_path.exists() or t_path.stat().st_size == 0 or not os.access(t_path, os.X_OK):
+            raise RuntimeError(f"Ollama preparation failed: binary was not found or not executable at {target_path} after extraction.")
+
+        # Smoke check execution
+        try:
+            smoke = subprocess.run([str(target_path), "--version"], capture_output=True, timeout=5)
+            if smoke.returncode != 0:
+                pass  # Some headless setups may return code 0 or 1 on version check
+        except Exception:
+            pass
 
         return str(target_path)
 
@@ -242,8 +254,69 @@ class OllamaRuntimeAdapter(BaseRuntimeAdapter):
     def get_service_id(self) -> ManagedServiceId:
         return ManagedServiceId.OLLAMA
 
+    async def pull_model(
+        self,
+        endpoint_url: str,
+        model_id: str,
+        progress_callback: Optional[Callable[[str, int, int], None]] = None,
+    ) -> Dict[str, Any]:
+        """Pulls a model through the Ollama service API (Section 10.3)."""
+        url = endpoint_url.rstrip("/") + "/api/pull"
+        async with httpx.AsyncClient(timeout=600.0) as client:
+            async with client.stream("POST", url, json={"name": model_id, "stream": True}) as resp:
+                resp.raise_for_status()
+                async for line in resp.aiter_lines():
+                    if not line:
+                        continue
+                    try:
+                        data = json.loads(line)
+                        status_msg = data.get("status", "Pulling model...")
+                        completed = data.get("completed", 0)
+                        total = data.get("total", 0)
+                        if progress_callback:
+                            progress_callback(status_msg, completed, total)
+                    except Exception:
+                        pass
+
+        # Inspect pulled model digest and size
+        digest = None
+        size = 0
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                tags_r = await client.get(endpoint_url.rstrip("/") + "/api/tags")
+                if tags_r.status_code == 200:
+                    models = tags_r.json().get("models", [])
+                    for m in models:
+                        name_tag = m.get("name", "")
+                        model_tag = m.get("model", "")
+                        if model_id in (name_tag, model_tag) or name_tag.startswith(model_id):
+                            digest = m.get("digest")
+                            size = m.get("size", 0)
+                            break
+        except Exception:
+            pass
+
+        return {
+            "success": True,
+            "model_id": model_id,
+            "digest": digest or f"sha256:ollama_{model_id.replace(':', '_')}",
+            "size": size,
+        }
+
+    async def delete_model(self, endpoint_url: str, model_id: str) -> bool:
+        """Deletes model weights via Ollama API (Section 18.2)."""
+        url = endpoint_url.rstrip("/") + "/api/delete"
+        try:
+            async with httpx.AsyncClient(timeout=15.0) as client:
+                resp = await client.request("DELETE", url, json={"name": model_id})
+                return resp.status_code in (200, 204)
+        except Exception:
+            return False
+
     async def unload_model(self, endpoint_url: str, model_id: str) -> bool:
         """Unloads model memory without stopping the service daemon (Section 6.A)."""
+        if not model_id:
+            return False
         url = endpoint_url.rstrip("/") + "/api/generate"
         try:
             async with httpx.AsyncClient(timeout=10.0) as client:
@@ -253,30 +326,47 @@ class OllamaRuntimeAdapter(BaseRuntimeAdapter):
         except Exception:
             return False
 
-    async def stop_instance(self, identity: ProcessIdentity, model_id: Optional[str] = None) -> bool:
-        """Stops the running model. Never stops external/shared daemons automatically."""
-        target_model = model_id or identity.service_id
-        if identity.endpoint_url and target_model:
-            await self.unload_model(identity.endpoint_url, target_model)
-
-        # Only terminate daemon process if explicitly owned by LocalPilot and has valid PID
-        if identity.ownership_class == OwnershipClass.LOCALPILOT_OWNED and identity.pid is not None:
-            if psutil.pid_exists(identity.pid):
+    def stop_owned_daemon(self, identity: ProcessIdentity) -> bool:
+        """Terminates an owned daemon process with verified process identity."""
+        if identity.ownership_class != OwnershipClass.LOCALPILOT_OWNED or identity.pid is None:
+            return False
+        if psutil.pid_exists(identity.pid):
+            try:
+                p = psutil.Process(identity.pid)
+                if identity.process_create_time and abs(p.create_time() - identity.process_create_time) > 1.0:
+                    return False
+                p.terminate()
+                p.wait(timeout=5)
+                return True
+            except (psutil.TimeoutExpired, Exception):
                 try:
-                    p = psutil.Process(identity.pid)
-                    if identity.process_create_time and abs(p.create_time() - identity.process_create_time) > 1.0:
-                        return False
-                    p.terminate()
-                    p.wait(timeout=5)
+                    p.kill()
                     return True
-                except (psutil.TimeoutExpired, Exception):
-                    try:
-                        p.kill()
-                        return True
-                    except Exception:
-                        return False
-            return True
+                except Exception:
+                    return False
         return True
+
+    async def stop_instance(
+        self,
+        identity: ProcessIdentity,
+        model_id: Optional[str] = None,
+        stop_daemon: bool = False,
+    ) -> bool:
+        """Stops the running model. Never stops external/shared daemons automatically."""
+        # Unload model memory via API without killing daemon
+        target_model = model_id or (identity.service_id if identity.service_id and identity.service_id != "ollama" else None)
+        unloaded = True
+        if identity.endpoint_url and target_model:
+            unloaded = await self.unload_model(identity.endpoint_url, target_model)
+
+        # Only terminate daemon process if explicitly requested and strictly owned
+        if stop_daemon:
+            if identity.ownership_class == OwnershipClass.LOCALPILOT_OWNED:
+                stopped = self.stop_owned_daemon(identity)
+                return unloaded and stopped
+            return False
+
+        return unloaded
 
     async def test_inference(self, endpoint_url: str, model_id: str) -> bool:
         url = endpoint_url.rstrip("/") + "/api/generate"

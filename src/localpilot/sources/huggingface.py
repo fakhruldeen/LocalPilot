@@ -10,6 +10,7 @@ from localpilot.domain.models import (
     ConfidenceLevel,
     ExecutionMode,
     NormalizedCandidate,
+    ResolvedArtifact,
     TaskCategory,
     VerificationStage,
 )
@@ -38,11 +39,28 @@ class HuggingFaceSourceAdapter(BaseSourceAdapter):
         )
 
     def _get_headers(self) -> Dict[str, str]:
-        headers = {"User-Agent": "LocalPilot/0.1.1"}
+        headers = {"User-Agent": "LocalPilot/0.1.5"}
         token = get_stored_secret("localpilot", "hf_token")
         if token:
             headers["Authorization"] = f"Bearer {token}"
         return headers
+
+    def resolve_artifact(self, candidate: NormalizedCandidate) -> ResolvedArtifact:
+        """Resolves the download URL and artifact metadata for a candidate."""
+        rev = candidate.revision or "main"
+        filename = candidate.artifact_id or (candidate.files[0] if candidate.files else f"{candidate.model_id.split('/')[-1]}.gguf")
+        download_url = candidate.download_url
+        return ResolvedArtifact(
+            source="huggingface",
+            model_id=candidate.model_id,
+            artifact_id=candidate.artifact_id,
+            revision=rev,
+            filename=filename,
+            download_url=download_url,
+            expected_bytes=candidate.total_bytes,
+            expected_sha256=candidate.sha256,
+            acquisition_mode="direct_download",
+        )
 
     async def search(
         self,
@@ -102,12 +120,13 @@ class HuggingFaceSourceAdapter(BaseSourceAdapter):
 
                         # Approximate size if sibling size is not provided
                         total_bytes = 2 * 1024 * 1024 * 1024  # fallback 2GB
+                        rev = item.get("sha") or "main"
                         candidate = NormalizedCandidate(
                             candidate_id=f"hf-{model_id.replace('/', '-')}-{selected_file}",
                             model_id=model_id,
                             name=f"{model_id.split('/')[-1]} ({selected_file})",
                             source="huggingface",
-                            revision=item.get("sha") or "main",
+                            revision=rev,
                             artifact_id=selected_file,
                             equivalence_group=model_id,
                             architecture="transformer",
@@ -117,6 +136,8 @@ class HuggingFaceSourceAdapter(BaseSourceAdapter):
                             format="gguf",
                             total_bytes=total_bytes,
                             files=[selected_file],
+                            download_url=f"https://huggingface.co/{model_id}/resolve/{rev}/{selected_file}",
+                            source_url=f"https://huggingface.co/{model_id}",
                             runtime="llamacpp",
                             execution_mode=ExecutionMode.AUTO,
                             advertised_max_context=8192,

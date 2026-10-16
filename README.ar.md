@@ -1,6 +1,10 @@
 <div align="center">
 
-<img src="docs/img/banner-readme.jpeg" alt="LocalPilot Banner" width="100%" />
+<img src="https://raw.githubusercontent.com/fakhruldeen/LocalPilot/main/docs/img/banner-readme.jpeg" alt="LocalPilot Banner" width="100%" />
+
+<br/><br/>
+
+<img src="https://raw.githubusercontent.com/fakhruldeen/LocalPilot/main/docs/img/logo.png" alt="LocalPilot Logo" width="120" />
 
 # LocalPilot 🦙
 ### الذكاء الاصطناعي المحلي.. بكل بساطة وأمان
@@ -204,18 +208,18 @@ vLLM             LM Studio       local_api_service
 ```bibtex
 @software{fakhruldeen_2026_localpilot,
   author       = {Mohamed (Fouad) Fakhruldeen},
-  title        = {fakhruldeen/LocalPilot: v0.1.1},
+  title        = {fakhruldeen/LocalPilot: v0.1.5},
   month        = oct,
   year         = 2026,
   publisher    = {Zenodo},
-  version      = {v0.1.1},
+  version      = {v0.1.5},
   doi          = {10.5281/zenodo.23424540},
   url          = {https://doi.org/10.5281/zenodo.23424540}
 }
 ```
 
 **صيغة التوثيق النصية (APA):**
-> Mohamed (Fouad) Fakhruldeen. (2026). fakhruldeen/LocalPilot: v0.1.1 (Version v0.1.1) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23424540
+> Mohamed (Fouad) Fakhruldeen. (2026). fakhruldeen/LocalPilot: v0.1.5 (Version v0.1.5) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23424540
 
 ---
 

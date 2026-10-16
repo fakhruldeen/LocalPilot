@@ -6,9 +6,11 @@ import re
 from typing import Any, Dict, List, Union
 
 # Pattern for Hugging Face tokens
-_HF_TOKEN_RE = re.compile(r"(hf_[a-zA-Z0-9]{34,})", re.IGNORECASE)
+_HF_TOKEN_RE = re.compile(r"(hf_[a-zA-Z0-9_]{20,})", re.IGNORECASE)
 # Generic bearer/API tokens
 _BEARER_RE = re.compile(r"(bearer\s+)([a-zA-Z0-9_\-\.]{16,})", re.IGNORECASE)
+# Key-value assignment secrets
+_KEY_VALUE_SECRET_RE = re.compile(r"((?:api_key|token|secret|password)\s*=\s*)([^\s,;&]+)", re.IGNORECASE)
 # Key/secret field names
 _SENSITIVE_KEYS = {
     "password", "secret", "token", "api_key", "authorization", "auth",
@@ -25,6 +27,8 @@ def redact_string(val: str) -> str:
     val = _HF_TOKEN_RE.sub("hf_***[REDACTED]***", val)
     # Redact Bearer tokens
     val = _BEARER_RE.sub(r"\1***[REDACTED]***", val)
+    # Redact key-value secrets
+    val = _KEY_VALUE_SECRET_RE.sub(r"\1***[REDACTED]***", val)
 
     # Redact home path
     home = os.path.expanduser("~")

@@ -36,7 +36,7 @@ class StorageManager:
 
     def __init__(self, db: Optional[DatabaseManager] = None, data_dir: Optional[Path] = None) -> None:
         self.db = db or get_db()
-        self.data_dir = data_dir or get_default_data_dir()
+        self.data_dir = data_dir or (self.db.db_path.parent if hasattr(self.db, "db_path") and self.db.db_path else get_default_data_dir())
         self.models_dir = self.data_dir / "models"
         self.runtimes_dir = self.data_dir / "runtimes"
         self.downloads_dir = self.data_dir / "downloads"
@@ -80,18 +80,19 @@ class StorageManager:
         install_scope: str = "isolated",
         management_mode: str = "directly_managed",
         deletion_method: str = "delete_files",
-    ) -> None:
+    ) -> str:
         path_str = str(Path(physical_path).resolve())
         conn = self.db.get_connection()
         now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         with conn:
-            # Check if artifact already registered
-            row = conn.execute("SELECT ref_count FROM storage_artifacts WHERE physical_path = ?", (path_str,)).fetchone()
+            # Check if artifact already registered (D08: return canonical artifact_id)
+            row = conn.execute("SELECT artifact_id, ref_count FROM storage_artifacts WHERE physical_path = ?", (path_str,)).fetchone()
             if row:
                 conn.execute(
                     "UPDATE storage_artifacts SET ref_count = ref_count + 1 WHERE physical_path = ?",
                     (path_str,),
                 )
+                return str(row["artifact_id"])
             else:
                 conn.execute(
                     """
@@ -112,78 +113,147 @@ class StorageManager:
                         now,
                     ),
                 )
+                return artifact_id
 
     def safe_remove_installation(
         self,
         installation_id: str,
         delete_files: bool = True,
+        hub: Optional[Any] = None,
+        ollama_adapter: Optional[Any] = None,
     ) -> Dict[str, Any]:
-        """Removes an installation record safely, preventing removal during active conflicting runs."""
+        """Removes an installation record safely, preventing removal during active conflicting runs (D09, D10)."""
+        from localpilot.observability.events import ObservabilityHub, get_hub
+        from localpilot.security import validate_path_within_root
+        import asyncio
+
         conn = self.db.get_connection()
-        with conn:
-            inst = conn.execute("SELECT * FROM installations WHERE installation_id = ?", (installation_id,)).fetchone()
-            if not inst:
-                return {"success": False, "error": f"Installation {installation_id} not found."}
+        inst = conn.execute("SELECT * FROM installations WHERE installation_id = ?", (installation_id,)).fetchone()
+        if not inst:
+            return {"success": False, "error": f"Installation {installation_id} not found."}
 
-            # 1. Prevent removal during active running instances
-            running = conn.execute(
-                "SELECT * FROM running_instances WHERE installation_id = ? OR model_id = ?",
-                (installation_id, inst["model_id"]),
-            ).fetchall()
-            if running:
-                return {
-                    "success": False,
-                    "error": f"Cannot remove installation {installation_id}: model is currently running. Stop the instance first.",
-                }
+        # 1. Prevent removal during active running instances
+        running = conn.execute(
+            "SELECT * FROM running_instances WHERE installation_id = ? OR model_id = ?",
+            (installation_id, inst["model_id"]),
+        ).fetchall()
+        if running:
+            return {
+                "success": False,
+                "error": f"Cannot remove installation {installation_id}: model is currently running. Stop the instance first.",
+            }
 
-            # 2. Prevent removal during active conflicting jobs
-            active_jobs = conn.execute(
-                "SELECT * FROM jobs WHERE target_id = ? AND status IN ('pending', 'running')",
-                (installation_id,),
-            ).fetchall()
-            if active_jobs:
-                return {
-                    "success": False,
-                    "error": f"Cannot remove installation {installation_id}: active workflow job is in progress.",
-                }
+        # 2. Prevent removal during active conflicting jobs
+        active_jobs = conn.execute(
+            "SELECT * FROM jobs WHERE target_id = ? AND status IN ('pending', 'running')",
+            (installation_id,),
+        ).fetchall()
+        if active_jobs:
+            return {
+                "success": False,
+                "error": f"Cannot remove installation {installation_id}: active workflow job is in progress.",
+            }
 
-            artifact_ids = json.loads(inst["artifact_ids_json"]) if inst["artifact_ids_json"] else []
-            files_deleted = []
-            files_preserved = []
-            bytes_freed = 0
+        # D10: Save mandatory audit checkpoint before state changes
+        active_hub = hub or ObservabilityHub(db=self.db)
+        active_hub.record_audit_checkpoint(
+            decision_type="model_removal",
+            target_id=installation_id,
+            payload={"installation_id": installation_id, "delete_files": delete_files, "model_id": inst["model_id"]},
+            outcome="approved",
+            is_critical=True,
+        )
 
-            for art_id in artifact_ids:
-                art = conn.execute("SELECT * FROM storage_artifacts WHERE artifact_id = ?", (art_id,)).fetchone()
-                if not art:
-                    continue
+        artifact_ids = json.loads(inst["artifact_ids_json"]) if inst["artifact_ids_json"] else []
+        files_deleted = []
+        files_preserved = []
+        bytes_freed = 0
 
-                new_ref = max(0, art["ref_count"] - 1)
-                p = Path(art["physical_path"])
-                is_owned = inst["ownership_class"] == OwnershipClass.LOCALPILOT_OWNED.value
-                is_imported = art["management_mode"] == "imported_reference" or not art["is_managed"]
+        # Plan removal actions per artifact
+        for art_id in artifact_ids:
+            art = conn.execute("SELECT * FROM storage_artifacts WHERE artifact_id = ?", (art_id,)).fetchone()
+            if not art:
+                continue
 
-                if delete_files and new_ref == 0 and p.exists() and art["is_managed"] and is_owned and not is_imported:
-                    if p.is_file():
-                        sz = p.stat().st_size
-                        p.unlink()
-                        bytes_freed += sz
-                        files_deleted.append(str(p))
+            new_ref = max(0, art["ref_count"] - 1)
+            p = Path(art["physical_path"])
+            is_owned = inst["ownership_class"] == OwnershipClass.LOCALPILOT_OWNED.value
+            mgmt_mode = art["management_mode"]
+            del_method = art["deletion_method"]
+            is_imported = mgmt_mode == "imported_reference" or not art["is_managed"]
+
+            if delete_files and new_ref == 0 and is_owned and not is_imported:
+                if mgmt_mode == "runtime_managed" or del_method == "service_api_delete":
+                    # Service-managed model (e.g. Ollama)
+                    adapter = ollama_adapter
+                    if not adapter:
+                        from localpilot.runtimes.ollama import OllamaRuntimeAdapter
+                        adapter = OllamaRuntimeAdapter(data_dir=self.data_dir)
+
+                    endpoint = "http://127.0.0.1:11434"
+                    model_target = inst["model_id"]
+                    if p.exists() and p.is_file():
+                        try:
+                            meta = json.loads(p.read_text(encoding="utf-8"))
+                            endpoint = meta.get("endpoint", endpoint)
+                            model_target = meta.get("model_id", model_target)
+                        except Exception:
+                            pass
+
+                    try:
+                        loop = asyncio.get_event_loop()
+                        if loop.is_running():
+                            # If called in an existing loop, run via new task or thread
+                            import concurrent.futures
+                            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                                deleted_service = pool.submit(asyncio.run, adapter.delete_model(endpoint, model_target)).result()
+                        else:
+                            deleted_service = asyncio.run(adapter.delete_model(endpoint, model_target))
+                    except Exception as e:
+                        return {"success": False, "error": f"Failed deleting model from service {endpoint}: {e}"}
+
+                    if p.exists() and p.is_file():
+                        p.unlink(missing_ok=True)
+                    bytes_freed += art["bytes"]
+                    files_deleted.append(f"service:{endpoint}/{model_target}")
+
+                elif mgmt_mode == "directly_managed" or del_method == "delete_files":
+                    if p.exists() and p.is_file():
+                        try:
+                            validate_path_within_root(p, self.data_dir)
+                            sz = p.stat().st_size
+                            p.unlink()
+                            bytes_freed += sz
+                            files_deleted.append(str(p))
+                        except Exception as e:
+                            files_preserved.append(str(p))
                     else:
                         files_preserved.append(str(p))
-                    conn.execute("DELETE FROM storage_artifacts WHERE artifact_id = ?", (art_id,))
                 else:
                     files_preserved.append(str(p))
-                    if new_ref > 0:
-                        conn.execute("UPDATE storage_artifacts SET ref_count = ? WHERE artifact_id = ?", (new_ref, art_id))
-                    else:
-                        conn.execute("DELETE FROM storage_artifacts WHERE artifact_id = ?", (art_id,))
+            else:
+                files_preserved.append(str(p))
 
+            with conn:
+                if new_ref > 0:
+                    conn.execute("UPDATE storage_artifacts SET ref_count = ? WHERE artifact_id = ?", (new_ref, art_id))
+                else:
+                    conn.execute("DELETE FROM storage_artifacts WHERE artifact_id = ?", (art_id,))
+
+        with conn:
             conn.execute("DELETE FROM installations WHERE installation_id = ?", (installation_id,))
 
-            return {
-                "success": True,
-                "installation_id": installation_id,
-                "bytes_freed": bytes_freed,
-                "files_deleted": files_deleted,
-                "files_preserved": files_preserved,
-            }
+        active_hub.record_activity(
+            category="storage",
+            title="Model Removed",
+            summary=f"Safely removed model installation {inst['name']}. Freed: {bytes_freed / (1024*1024):.1f} MB.",
+            details={"installation_id": installation_id, "bytes_freed": bytes_freed},
+        )
+
+        return {
+            "success": True,
+            "installation_id": installation_id,
+            "bytes_freed": bytes_freed,
+            "files_deleted": files_deleted,
+            "files_preserved": files_preserved,
+        }

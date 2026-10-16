@@ -20,7 +20,7 @@ from localpilot.observability.context import (
     get_operation_id,
     get_session_id,
 )
-from localpilot.observability.redaction import redact_data
+from localpilot.observability.redaction import redact_data, redact_string
 from localpilot.observability.schema import (
     ActivityRecord,
     EventCategory,
@@ -33,6 +33,18 @@ from localpilot.storage.db import DatabaseManager, get_db, get_default_log_dir
 class AuditCheckpointFailureError(RuntimeError):
     """Raised when an essential audit checkpoint fails to persist, blocking destructive actions."""
     pass
+
+
+_FILE_LOCKS: Dict[Path, threading.Lock] = {}
+_LOCKS_GUARD = threading.Lock()
+
+
+def _get_file_lock(file_path: Path) -> threading.Lock:
+    resolved = file_path.resolve()
+    with _LOCKS_GUARD:
+        if resolved not in _FILE_LOCKS:
+            _FILE_LOCKS[resolved] = threading.Lock()
+        return _FILE_LOCKS[resolved]
 
 
 class ObservabilityHub:
@@ -51,7 +63,8 @@ class ObservabilityHub:
         self.max_log_size_bytes = max_log_size_bytes
         self.max_log_files = max_log_files
         self.events_file = self.log_dir / "events.jsonl"
-        self._lock = threading.Lock()
+        self._lock = _get_file_lock(self.events_file)
+        self.degraded_logging: bool = False
 
     def _rotate_if_needed(self) -> None:
         if not self.events_file.exists():
@@ -120,7 +133,9 @@ class ObservabilityHub:
                 self._rotate_if_needed()
                 with open(self.events_file, "a", encoding="utf-8") as f:
                     f.write(line)
+                self.degraded_logging = False
             except Exception as e:
+                self.degraded_logging = True
                 # Fallback to standard logging without crashing normal execution
                 logging.getLogger("localpilot").error("Failed writing event log: %s", e)
 
@@ -135,11 +150,11 @@ class ObservabilityHub:
         outcome: str = "success",
         operation_id: Optional[str] = None,
     ) -> ActivityRecord:
-        """Records a user-facing activity item into the database."""
+        """Records a user-facing activity item into the database with redacted fields."""
         record = ActivityRecord(
             category=category,
-            title=title,
-            summary=summary,
+            title=redact_string(title),
+            summary=redact_string(summary),
             details=redact_data(details or {}),
             operation_id=operation_id or get_operation_id(),
             outcome=outcome,

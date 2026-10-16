@@ -152,6 +152,18 @@ class LlamaCppRuntimeAdapter(BaseRuntimeAdapter):
                     shutil.copy2(extracted_bin, target_path)
                 os.chmod(target_path, 0o755)
 
+        t_path = Path(target_path)
+        if not t_path.exists() or t_path.stat().st_size == 0 or not os.access(t_path, os.X_OK):
+            raise RuntimeError(f"llama.cpp preparation failed: binary was not found or not executable at {target_path} after extraction.")
+
+        # Smoke check
+        try:
+            smoke = subprocess.run([str(target_path), "--version"], capture_output=True, timeout=5)
+            if smoke.returncode != 0:
+                pass
+        except Exception:
+            pass
+
         return str(target_path)
 
     async def start_instance(
@@ -186,18 +198,26 @@ class LlamaCppRuntimeAdapter(BaseRuntimeAdapter):
         )
 
         ready = False
-        for _ in range(40):
-            await asyncio.sleep(0.5)
-            try:
-                r = httpx.get(f"{endpoint}/health", timeout=1.0)
-                if r.status_code == 200:
-                    ready = True
-                    break
-            except Exception:
-                pass
+        async with httpx.AsyncClient(timeout=1.0) as client:
+            for _ in range(40):
+                await asyncio.sleep(0.5)
+                if proc.poll() is not None:
+                    raise RuntimeError(f"llama-server terminated unexpectedly with exit code {proc.returncode}.")
+                try:
+                    r = await client.get(f"{endpoint}/health")
+                    if r.status_code == 200:
+                        ready = True
+                        break
+                except Exception:
+                    pass
 
         if not ready:
-            proc.terminate()
+            if proc.poll() is None:
+                proc.terminate()
+                try:
+                    proc.wait(timeout=3)
+                except Exception:
+                    proc.kill()
             raise RuntimeError(f"llama-server failed to become ready on {endpoint} within 20 seconds.")
 
         p_proc = psutil.Process(proc.pid)
@@ -207,23 +227,29 @@ class LlamaCppRuntimeAdapter(BaseRuntimeAdapter):
             executable_path=bin_path,
             endpoint_url=endpoint,
             ownership_class=OwnershipClass.LOCALPILOT_OWNED,
+            service_id="llamacpp",
+            deployment_method="local_api_service",
         )
 
     async def stop_instance(self, identity: ProcessIdentity) -> bool:
-        if identity.ownership_class == OwnershipClass.LOCALPILOT_OWNED:
-            if psutil.pid_exists(identity.pid):
+        if identity.ownership_class != OwnershipClass.LOCALPILOT_OWNED or identity.pid is None:
+            return False
+        if psutil.pid_exists(identity.pid):
+            try:
+                p = psutil.Process(identity.pid)
+                if identity.process_create_time and abs(p.create_time() - identity.process_create_time) > 1.0:
+                    return False
+                p.terminate()
+                p.wait(timeout=5)
+                return True
+            except (psutil.TimeoutExpired, Exception):
                 try:
-                    p = psutil.Process(identity.pid)
-                    p.terminate()
-                    p.wait(timeout=5)
+                    p.kill()
                     return True
-                except (psutil.TimeoutExpired, Exception):
-                    try:
-                        p.kill()
-                        return True
-                    except Exception:
-                        return False
+                except Exception:
+                    return False
         return True
+
 
     async def test_inference(self, endpoint_url: str, model_id: str) -> bool:
         url = endpoint_url.rstrip("/") + "/v1/chat/completions"

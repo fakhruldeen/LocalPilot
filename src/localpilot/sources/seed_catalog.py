@@ -31,6 +31,8 @@ SEED_MODELS: List[NormalizedCandidate] = [
         total_bytes=986 * 1024 * 1024,  # ~986 MB
         files=["qwen2.5-coder-1.5b-instruct-q4_k_m.gguf"],
         sha256="e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        download_url="https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF/resolve/main/qwen2.5-coder-1.5b-instruct-q4_k_m.gguf",
+        source_url="https://huggingface.co/Qwen/Qwen2.5-Coder-1.5B-Instruct-GGUF",
         runtime="llamacpp",
         execution_mode=ExecutionMode.AUTO,
         advertised_max_context=32768,
@@ -64,6 +66,8 @@ SEED_MODELS: List[NormalizedCandidate] = [
         total_bytes=2020 * 1024 * 1024,  # ~2.0 GB
         files=["llama-3.2-3b-instruct-q4_k_m.gguf"],
         sha256="a1b2c3d4e5f60718293a4b5c6d7e8f90123456789abcdef0123456789abcdef0",
+        download_url="https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct-GGUF/resolve/main/llama-3.2-3b-instruct-q4_k_m.gguf",
+        source_url="https://huggingface.co/meta-llama/Llama-3.2-3B-Instruct-GGUF",
         runtime="llamacpp",
         execution_mode=ExecutionMode.AUTO,
         advertised_max_context=131072,
@@ -97,6 +101,8 @@ SEED_MODELS: List[NormalizedCandidate] = [
         total_bytes=2000 * 1024 * 1024,
         files=["manifest", "blobs"],
         sha256=None,
+        download_url=None,
+        source_url="https://ollama.com/library/llama3.2",
         runtime="ollama",
         execution_mode=ExecutionMode.AUTO,
         advertised_max_context=131072,
@@ -130,6 +136,8 @@ SEED_MODELS: List[NormalizedCandidate] = [
         total_bytes=2480 * 1024 * 1024,  # ~2.48 GB
         files=["phi-4-mini-instruct-q4_k_m.gguf"],
         sha256="c0ffee1234567890abcdef1234567890abcdef1234567890abcdef1234567890",
+        download_url="https://huggingface.co/microsoft/Phi-4-mini-instruct-GGUF/resolve/main/phi-4-mini-instruct-q4_k_m.gguf",
+        source_url="https://huggingface.co/microsoft/Phi-4-mini-instruct-GGUF",
         runtime="llamacpp",
         execution_mode=ExecutionMode.AUTO,
         advertised_max_context=128000,
@@ -163,6 +171,8 @@ SEED_MODELS: List[NormalizedCandidate] = [
         total_bytes=4680 * 1024 * 1024,  # ~4.68 GB
         files=["qwen2.5-coder-7b-instruct-q4_k_m.gguf"],
         sha256="fedcba0987654321fedcba0987654321fedcba0987654321fedcba0987654321",
+        download_url="https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF/resolve/main/qwen2.5-coder-7b-instruct-q4_k_m.gguf",
+        source_url="https://huggingface.co/Qwen/Qwen2.5-Coder-7B-Instruct-GGUF",
         runtime="llamacpp",
         execution_mode=ExecutionMode.AUTO,
         advertised_max_context=32768,
@@ -179,6 +189,7 @@ SEED_MODELS: List[NormalizedCandidate] = [
         verification_stage=VerificationStage.SUPPORTED,
         provenance={"catalog": "seed", "publisher": "Qwen Team"},
     ),
+
 ]
 
 

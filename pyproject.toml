@@ -4,8 +4,8 @@ build-backend = "hatchling.build"
 
 [project]
 name = "localpilot"
-version = "0.1.1"
-description = "A friendly application that helps you discover, install, run, monitor, update and remove local AI models."
+version = "0.1.5"
+description = "Local AI, Made Simple. Discover, install, run, chat with, and manage 100% private, offline LLMs on your computer with automatic hardware detection and a friendly TUI/CLI."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "GPL-3.0-only" }
@@ -17,9 +17,17 @@ maintainers = [
 ]
 
 keywords = [
+    "ai",
+    "artificial-intelligence",
+    "chat",
+    "chatbot",
+    "cli",
+    "deepseek",
+    "gguf",
+    "hardware-aware",
     "huggingface",
-    "linux",
-    "macos",
+    "llama",
+    "llama-cpp",
     "llm",
     "llm-tools",
     "llmops",
@@ -27,36 +35,47 @@ keywords = [
     "local-ai",
     "local-first",
     "local-llm",
+    "mistral",
+    "model-manager",
     "novice",
     "novice-friendly",
     "novice-guide",
-    "ollama",
-    "vllm",
-    "llama-cpp",
-    "gguf",
-    "model-manager",
-    "tui",
-    "cli",
-    "textual",
     "offline-first",
-    "ai-models",
+    "ollama",
+    "private-ai",
+    "qwen",
+    "terminal",
+    "textual",
+    "tui",
+    "vllm",
 ]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Environment :: Console",
-    "Intended Audience :: End Users/Desktop",
+    "Environment :: Console :: Curses",
     "Intended Audience :: Developers",
+    "Intended Audience :: End Users/Desktop",
+    "Intended Audience :: Information Technology",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: System Administrators",
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
-    "Operating System :: POSIX :: Linux",
+    "Natural Language :: Arabic",
+    "Natural Language :: English",
     "Operating System :: MacOS",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: POSIX :: Linux",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3 :: Only",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3.14",
+    "Topic :: Communications :: Chat",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
+    "Topic :: Software Development",
     "Topic :: System :: Systems Administration",
     "Topic :: Terminals",
+    "Topic :: Utilities",
 ]
 
 dependencies = [
@@ -76,7 +95,9 @@ Documentation = "https://fakhruldeen.github.io/LocalPilot/"
 Repository = "https://github.com/fakhruldeen/LocalPilot"
 "Author Website" = "https://fakhr.me"
 Issues = "https://github.com/fakhruldeen/LocalPilot/issues"
+Discussions = "https://github.com/fakhruldeen/LocalPilot/discussions"
 Changelog = "https://github.com/fakhruldeen/LocalPilot/releases"
+Zenodo = "https://doi.org/10.5281/zenodo.23424540"
 
 [project.optional-dependencies]
 dev = [

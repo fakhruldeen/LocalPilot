@@ -11,6 +11,7 @@ from typing import Optional
 import typer
 from rich.table import Table
 
+from localpilot.application.runtime_service import RuntimeLifecycleService
 from localpilot.application.setup_workflow import SetupWorkflow
 from localpilot.application.update_workflow import UpdateWorkflow
 from localpilot.cli.formatting import console, render_banner, render_error_box, render_message_box
@@ -27,7 +28,13 @@ from localpilot.storage.inventory import StorageManager
 
 app = typer.Typer(
     name="localpilot",
-    help="Local AI, made simple.",
+    help="""Local AI, Made Simple.
+
+Discover, install, run, monitor, update, and safely manage local AI models on your own computer.
+Private, offline-first, hardware-aware, and novice-friendly.
+
+Run 'localpilot guide' for step-by-step documentation for beginners and technical users.
+Run 'localpilot tui' to launch the visual full-screen dashboard.""",
     no_args_is_help=False,
 )
 
@@ -35,62 +42,7 @@ self_app = typer.Typer(help="Manage the LocalPilot application itself.")
 app.add_typer(self_app, name="self")
 
 
-@app.callback(invoke_without_command=True)
-def main_menu(ctx: typer.Context) -> None:
-    """Default entry point: opens interactive home menu if no subcommand provided."""
-    if ctx.invoked_subcommand is None:
-        render_banner()
-        if sys.stdin.isatty() and sys.stdout.isatty():
-            console.print("[bold]Select an option to begin:[/bold]")
-            console.print("  [bold cyan]1[/bold cyan]) Open Visual Dashboard (TUI)")
-            console.print("  [bold cyan]2[/bold cyan]) Discover Compatible Models")
-            console.print("  [bold cyan]3[/bold cyan]) View Installed Models")
-            console.print("  [bold cyan]4[/bold cyan]) Run Computer Diagnostics (Doctor)")
-            console.print("  [bold cyan]5[/bold cyan]) View Storage Breakdown")
-            console.print("  [bold cyan]q[/bold cyan]) Exit\n")
-            try:
-                choice = typer.prompt("Enter choice", default="1").strip().lower()
-                if choice in ("1", "tui"):
-                    from localpilot.tui.app import LocalPilotTUI
-                    LocalPilotTUI().run()
-                elif choice in ("2", "discover"):
-                    discover_models()
-                elif choice in ("3", "installed"):
-                    list_installed()
-                elif choice in ("4", "doctor"):
-                    run_doctor()
-                elif choice in ("5", "storage"):
-                    show_storage()
-                else:
-                    return
-            except (KeyboardInterrupt, EOFError):
-                return
-        else:
-            console.print("[bold]Welcome to LocalPilot![/bold]\n")
-            console.print("Common commands:")
-            console.print("  [cyan]localpilot tui[/cyan]         Open the complete visual dashboard")
-            console.print("  [cyan]localpilot discover[/cyan]    Find compatible models")
-            console.print("  [cyan]localpilot installed[/cyan]   View your installed models")
-            console.print("  [cyan]localpilot doctor[/cyan]      Check computer capabilities")
-            console.print("  [cyan]localpilot setup[/cyan]       Set up a new model")
-            console.print("  [cyan]localpilot storage[/cyan]     View storage breakdown\n")
-            console.print("Run [cyan]localpilot --help[/cyan] to see all available commands.")
-
-
-@app.command("tui")
-def launch_tui() -> None:
-    """Open the complete full-screen terminal dashboard."""
-    from localpilot.tui.app import LocalPilotTUI
-    tui_app = LocalPilotTUI()
-    tui_app.run()
-
-
-@app.command("doctor")
-def run_doctor(
-    plain: bool = typer.Option(False, "--plain", help="Print in plain text format"),
-    json_output: bool = typer.Option(False, "--json", help="Output JSON data"),
-) -> None:
-    """Check the computer hardware and diagnose potential problems."""
+def _do_doctor(plain: bool = False, json_output: bool = False) -> None:
     inspector = SystemInspector()
     report = inspector.inspect()
 
@@ -134,14 +86,12 @@ def run_doctor(
     console.print(table)
 
 
-@app.command("discover")
-def discover_models(
-    task: Optional[str] = typer.Option(None, "--task", help="Filter by task: chat, coding"),
-    query: str = typer.Option("", "--query", "-q", help="Search text"),
-    plain: bool = typer.Option(False, "--plain", help="Plain text output"),
-    json_output: bool = typer.Option(False, "--json", help="JSON output"),
+def _do_discover(
+    task: Optional[str] = None,
+    query: str = "",
+    plain: bool = False,
+    json_output: bool = False,
 ) -> None:
-    """Find models compatible with this computer."""
     cat_svc = CatalogService()
     task_cat = TaskCategory(task.lower()) if task else None
     results = cat_svc.discover(task=task_cat, query=query)
@@ -183,12 +133,7 @@ def discover_models(
     console.print("\nTo set up a model, run: [cyan]localpilot setup <candidate-id>[/cyan]")
 
 
-@app.command("installed")
-def list_installed(
-    plain: bool = typer.Option(False, "--plain", help="Plain text output"),
-    json_output: bool = typer.Option(False, "--json", help="JSON output"),
-) -> None:
-    """View installed models on this computer."""
+def _do_installed(plain: bool = False, json_output: bool = False) -> None:
     db = get_db()
     conn = db.get_connection()
     rows = conn.execute("SELECT * FROM installations ORDER BY created_at DESC").fetchall()
@@ -213,25 +158,19 @@ def list_installed(
     console.print(table)
 
 
-@app.command("running")
-def list_running(
-    plain: bool = typer.Option(False, "--plain", help="Plain text output"),
-    json_output: bool = typer.Option(False, "--json", help="JSON output"),
-) -> None:
-    """View active running models."""
-    db = get_db()
-    conn = db.get_connection()
-    rows = conn.execute("SELECT * FROM running_instances").fetchall()
+def _do_running(plain: bool = False, json_output: bool = False) -> None:
+    svc = RuntimeLifecycleService()
+    rows = svc.reconcile_running_instances()
 
     if json_output:
-        typer.echo(json.dumps([dict(r) for r in rows], indent=2))
+        typer.echo(json.dumps(rows, indent=2))
         return
 
     if not rows:
         console.print("[dim]No models are currently running.[/dim]")
         return
 
-    table = Table(title="Running Models", border_style="cyan")
+    table = Table(title="Running Models (Reconciled)", border_style="cyan")
     table.add_column("Model ID", style="bold")
     table.add_column("PID")
     table.add_column("Endpoint")
@@ -243,12 +182,7 @@ def list_running(
     console.print(table)
 
 
-@app.command("storage")
-def show_storage(
-    plain: bool = typer.Option(False, "--plain", help="Plain text output"),
-    json_output: bool = typer.Option(False, "--json", help="JSON output"),
-) -> None:
-    """Review storage use and managed directories."""
+def _do_storage(plain: bool = False, json_output: bool = False) -> None:
     mgr = StorageManager()
     summary = mgr.inspect_storage_categories()
 
@@ -270,13 +204,429 @@ def show_storage(
     console.print(table)
 
 
+def _do_run(installation_id: str) -> None:
+    svc = RuntimeLifecycleService()
+
+    async def _async_run():
+        return await svc.start_installed_model(installation_id)
+
+    try:
+        with console.status(f"Starting model instance for {installation_id}..."):
+            res = asyncio.run(_async_run())
+        console.print(f"[bold green]Model started successfully![/bold green]")
+        console.print(f"Instance ID: [cyan]{res['instance_id']}[/cyan]")
+        console.print(f"Endpoint: [cyan]{res['endpoint_url']}[/cyan] (PID: {res['pid']})")
+        console.print(f"To chat: [cyan]localpilot chat {installation_id}[/cyan]")
+        console.print(f"To stop: [cyan]localpilot stop {res['instance_id']}[/cyan]")
+    except Exception as e:
+        render_error_box(f"Failed to start model: {e}")
+
+
+def _do_stop(instance_id: str, force: bool = False) -> None:
+    svc = RuntimeLifecycleService()
+
+    async def _async_stop():
+        return await svc.stop_running_instance(instance_id, force=force)
+
+    try:
+        success = asyncio.run(_async_stop())
+        if success:
+            console.print(f"[bold green]Instance {instance_id} stopped successfully.[/bold green]")
+        else:
+            console.print(f"[yellow]Instance {instance_id} was not active or already stopped.[/yellow]")
+    except Exception as e:
+        render_error_box(f"Failed to stop instance: {e}")
+
+
+def _do_chat(target: str) -> None:
+    from localpilot.application.chat_service import ChatService
+    svc = RuntimeLifecycleService()
+    conn = get_db().get_connection()
+
+    run_row = conn.execute(
+        "SELECT * FROM running_instances WHERE instance_id = ? OR installation_id = ? OR model_id = ?",
+        (target, target, target),
+    ).fetchone()
+
+    if not run_row:
+        inst_row = conn.execute(
+            "SELECT * FROM installations WHERE installation_id = ? OR model_id = ?",
+            (target, target),
+        ).fetchone()
+        if not inst_row:
+            render_error_box(f"No running instance or installation found matching '{target}'.")
+            return
+        console.print(f"Model is not running yet. Starting {inst_row['name']}...")
+        _do_run(inst_row["installation_id"])
+        run_row = conn.execute(
+            "SELECT * FROM running_instances WHERE installation_id = ?",
+            (inst_row["installation_id"],),
+        ).fetchone()
+        if not run_row:
+            render_error_box("Failed to find running instance after startup.")
+            return
+
+    endpoint = run_row["endpoint_url"]
+    model_id = run_row["model_id"]
+    runtime = "ollama" if "ollama" in (run_row["executable_path"] or "").lower() or endpoint.endswith("11434") else "llamacpp"
+
+    console.print(f"[bold green]Connected to {model_id}[/bold green] at {endpoint}. Type 'exit' to quit.\n")
+    messages: List[Dict[str, str]] = []
+
+    while True:
+        try:
+            user_input = typer.prompt("You").strip()
+            if not user_input:
+                continue
+            if user_input.lower() in ("exit", "quit"):
+                console.print("Exiting chat.")
+                break
+            messages.append({"role": "user", "content": user_input})
+
+            async def _send():
+                return await ChatService.send_message(endpoint, runtime, model_id, messages)
+
+            with console.status("Thinking..."):
+                reply = asyncio.run(_send())
+            messages.append({"role": "assistant", "content": reply})
+            console.print(f"[bold cyan]Assistant:[/bold cyan] {reply}\n")
+        except (KeyboardInterrupt, EOFError):
+            console.print("\nChat ended.")
+            break
+        except Exception as e:
+            render_error_box(f"Chat request failed: {e}")
+            break
+
+
+def _do_update(installation_id: str, yes: bool = False) -> None:
+    workflow = UpdateWorkflow()
+
+    async def _async_check():
+        return await workflow.check_for_updates(installation_id)
+
+    with console.status("Checking for model updates..."):
+        status = asyncio.run(_async_check())
+
+    if not status.is_update_available:
+        console.print(f"Installation {installation_id} is up to date ({status.details}).")
+        return
+
+    console.print(f"[bold green]Update available![/bold green] {status.details}")
+    if not yes:
+        confirm = typer.confirm("Apply update now?", default=True)
+        if not confirm:
+            console.print("Update cancelled.")
+            return
+
+    async def _async_apply():
+        return await workflow.apply_update(installation_id)
+
+    with console.status("Applying update..."):
+        res = asyncio.run(_async_apply())
+
+    if res.get("status") == "updated":
+        console.print(f"[bold green]Update applied successfully![/bold green]")
+    else:
+        render_error_box(f"Update failed: {res.get('details', 'Unknown error')}")
+
+
+def _do_guide(topic: Optional[str] = None) -> None:
+    from rich.markdown import Markdown
+    from rich.panel import Panel
+    from localpilot.domain.documentation import DOCUMENTATION_TOPICS, get_documentation_markdown
+
+    if not topic:
+        console.print(Panel(
+            "[bold cyan]LocalPilot: Comprehensive Guide & Documentation[/bold cyan]\n\n"
+            "Learn how to use local AI safely, whether you are a beginner or a power user.\n\n"
+            "[bold]Available Guides & Topics:[/bold]\n"
+            "  [bold cyan]•[/bold cyan] [bold]novice[/bold]     - Step-by-step beginner walkthrough from zero to chat\n"
+            "  [bold cyan]•[/bold cyan] [bold]technical[/bold]  - 3-Axis execution, memory offload math & process safety\n"
+            "  [bold cyan]•[/bold cyan] [bold]faq[/bold]        - Answers to common questions for all steps\n"
+            "  [bold cyan]•[/bold cyan] [bold]commands[/bold]   - Full CLI command and flag reference\n"
+            "  [bold cyan]•[/bold cyan] [bold]overview[/bold]   - Privacy principles, local-only architecture\n"
+            "  [bold cyan]•[/bold cyan] [bold]all[/bold]        - Read the complete documentation manual\n\n"
+            "[dim]Usage: localpilot guide <topic> (e.g. localpilot guide novice)[/dim]",
+            title="LocalPilot Guide",
+            border_style="cyan",
+        ))
+        return
+
+    md_text = get_documentation_markdown(topic)
+    console.print(Markdown(md_text))
+
+
+@app.callback(invoke_without_command=True)
+def main_menu(ctx: typer.Context) -> None:
+    """Default entry point: opens interactive home menu if no subcommand provided."""
+    if ctx.invoked_subcommand is None:
+        render_banner()
+        if sys.stdin.isatty() and sys.stdout.isatty():
+            console.print("[bold]Select an option to begin:[/bold]")
+            console.print("  [bold cyan]1[/bold cyan]) Open Visual Dashboard (TUI)")
+            console.print("  [bold cyan]2[/bold cyan]) Discover Compatible Models")
+            console.print("  [bold cyan]3[/bold cyan]) View Installed Models")
+            console.print("  [bold cyan]4[/bold cyan]) Run Computer Diagnostics (Doctor)")
+            console.print("  [bold cyan]5[/bold cyan]) View Storage Breakdown")
+            console.print("  [bold cyan]6[/bold cyan]) Read User Guide & Documentation")
+            console.print("  [bold cyan]q[/bold cyan]) Exit\n")
+            try:
+                choice = typer.prompt("Enter choice", default="1").strip().lower()
+                if choice in ("1", "tui"):
+                    from localpilot.tui.app import LocalPilotTUI
+                    LocalPilotTUI().run()
+                elif choice in ("2", "discover"):
+                    _do_discover()
+                elif choice in ("3", "installed"):
+                    _do_installed()
+                elif choice in ("4", "doctor"):
+                    _do_doctor()
+                elif choice in ("5", "storage"):
+                    _do_storage()
+                elif choice in ("6", "guide", "docs", "help"):
+                    _do_guide()
+                else:
+                    return
+            except (KeyboardInterrupt, EOFError):
+                return
+        else:
+            console.print("[bold]Welcome to LocalPilot![/bold]\n")
+            console.print("Common commands:")
+            console.print("  [cyan]localpilot tui[/cyan]         Open the complete visual dashboard")
+            console.print("  [cyan]localpilot discover[/cyan]    Find compatible models")
+            console.print("  [cyan]localpilot installed[/cyan]   View your installed models")
+            console.print("  [cyan]localpilot doctor[/cyan]      Check computer capabilities")
+            console.print("  [cyan]localpilot run[/cyan]         Start an installed model")
+            console.print("  [cyan]localpilot chat[/cyan]        Chat with a running model")
+            console.print("  [cyan]localpilot stop[/cyan]        Stop an active model instance")
+            console.print("  [cyan]localpilot setup[/cyan]       Set up a new model")
+            console.print("  [cyan]localpilot update[/cyan]      Check and apply model updates")
+            console.print("  [cyan]localpilot storage[/cyan]     View storage breakdown")
+            console.print("  [cyan]localpilot guide[/cyan]       Read step-by-step documentation\n")
+            console.print("Run [cyan]localpilot --help[/cyan] to see all available commands.")
+
+
+@app.command("guide")
+def guide_command(
+    topic: Optional[str] = typer.Argument(None, help="Documentation topic: novice, technical, faq, commands, overview, all"),
+) -> None:
+    """Read comprehensive guides, architecture manuals, and FAQ.
+
+    Non-technical: Step-by-step beginner instructions from hardware check to chat.
+    Technical: 3-Axis execution planning, memory budgets, process isolation, and security.
+
+    Examples:
+      localpilot guide
+      localpilot guide novice
+      localpilot guide technical
+      localpilot guide faq
+      localpilot guide commands
+    """
+    _do_guide(topic)
+
+
+@app.command("docs")
+def docs_command(
+    topic: Optional[str] = typer.Argument(None, help="Documentation topic: novice, technical, faq, commands, overview, all"),
+) -> None:
+    """Read comprehensive guides, architecture manuals, and FAQ (alias for guide).
+
+    Non-technical: Step-by-step beginner instructions from hardware check to chat.
+    Technical: 3-Axis execution planning, memory budgets, process isolation, and security.
+
+    Examples:
+      localpilot docs
+      localpilot docs novice
+      localpilot docs technical
+    """
+    _do_guide(topic)
+
+
+@app.command("tui")
+def launch_tui() -> None:
+    """Open the visual full-screen terminal dashboard (Textual TUI).
+
+    Non-technical: Complete visual mouse- and keyboard-friendly dashboard with real-time hardware gauges, tabs, logs, and interactive chat.
+    Technical: Built with Textual; runs fully locally inside your current terminal session. Press '?' or 'h' anywhere for inline help tabs.
+
+    Examples:
+      localpilot tui
+    """
+    from localpilot.tui.app import LocalPilotTUI
+    tui_app = LocalPilotTUI()
+    tui_app.run()
+
+
+@app.command("doctor")
+def run_doctor(
+    plain: bool = typer.Option(False, "--plain", help="Print in plain text format without colors or borders"),
+    json_output: bool = typer.Option(False, "--json", help="Output machine-readable JSON diagnostic data"),
+) -> None:
+    """Check computer hardware, available memory budget, GPUs, and runtimes.
+
+    Non-technical: Tells you immediately what your computer is capable of running safely without freezing or crashing.
+    Technical: Probes OS, CPU architectures/AVX flags, physical/logical cores, unified vs discrete RAM budgets, CUDA/Metal GPUs, and existing runtime processes/binaries.
+
+    Examples:
+      localpilot doctor
+      localpilot doctor --plain
+      localpilot doctor --json
+    """
+    _do_doctor(plain=plain, json_output=json_output)
+
+
+@app.command("discover")
+def discover_models(
+    task: Optional[str] = typer.Option(None, "--task", help="Filter by task category: chat, coding"),
+    query: str = typer.Option("", "--query", "-q", help="Search text matching name, family, or tags"),
+    plain: bool = typer.Option(False, "--plain", help="Print plain tabular text without rich styling"),
+    json_output: bool = typer.Option(False, "--json", help="Output machine-readable JSON candidate models"),
+) -> None:
+    """Find and score models that are 100% compatible with your computer.
+
+    Non-technical: Lists models you can actually run. Red/incompatible models are filtered out so you never waste bandwidth or download something that won't work.
+    Technical: Evaluates 3-axis matrix (CPU/GPU/RAM) against catalog candidates, computes memory fit (Exact Fit, Comfortable, Tight, Partial GPU Offload), and scores candidates based on your hardware profile and task.
+
+    Examples:
+      localpilot discover
+      localpilot discover --task coding
+      localpilot discover -q "qwen"
+      localpilot discover --plain
+    """
+    _do_discover(task=task, query=query, plain=plain, json_output=json_output)
+
+
+@app.command("installed")
+def list_installed(
+    plain: bool = typer.Option(False, "--plain", help="Print plain text without styling"),
+    json_output: bool = typer.Option(False, "--json", help="Output machine-readable JSON installations"),
+) -> None:
+    """View models already downloaded and registered on your computer.
+
+    Non-technical: Shows your personal library of ready-to-run models, their file sizes, and current status.
+    Technical: Queries the local SQLite installation registry for readiness stage (untested, verified_tested, active), runtime adapters, and installation IDs.
+
+    Examples:
+      localpilot installed
+      localpilot installed --json
+    """
+    _do_installed(plain=plain, json_output=json_output)
+
+
+@app.command("running")
+def list_running(
+    plain: bool = typer.Option(False, "--plain", help="Print plain text without styling"),
+    json_output: bool = typer.Option(False, "--json", help="Output machine-readable JSON running instances"),
+) -> None:
+    """View active running models and reconciled local processes.
+
+    Non-technical: See which models are currently consuming memory and active in the background.
+    Technical: Reconciles live OS process IDs (PIDs) with SQLite instance records, verifies HTTP health endpoints, and cleans up dead/zombie references safely.
+
+    Examples:
+      localpilot running
+      localpilot running --json
+    """
+    _do_running(plain=plain, json_output=json_output)
+
+
+@app.command("run")
+def run_model(
+    installation_id: str = typer.Argument(..., help="Installation ID to start (from 'localpilot installed')"),
+) -> None:
+    """Start an installed model and make it ready for local inference.
+
+    Non-technical: Wakes up the model so you can talk to it via the chat command or web API.
+    Technical: Executes the selected runtime adapter (Ollama or llama.cpp), assigns an isolated port, tracks PID ownership, and verifies real readiness via inference probe before returning.
+
+    Examples:
+      localpilot run inst_llama3_8b
+    """
+    _do_run(installation_id)
+
+
+@app.command("stop")
+def stop_model(
+    instance_id: str = typer.Argument(..., help="Instance ID to stop (from 'localpilot running')"),
+    force: bool = typer.Option(False, "--force", "-f", help="Force stop immediately (SIGKILL) if graceful stop times out"),
+) -> None:
+    """Stop an active model instance and free up system memory.
+
+    Non-technical: Closes the model process cleanly so your RAM and GPU are fully freed for other applications.
+    Technical: Sends SIGTERM for graceful shutdown, verifies child process termination, updates SQLite status to 'stopped', and protects external/system-managed processes from accidental termination.
+
+    Examples:
+      localpilot stop inst_llama3_8b
+      localpilot stop inst_llama3_8b --force
+    """
+    _do_stop(instance_id, force=force)
+
+
+@app.command("chat")
+def chat_model(
+    target: str = typer.Argument(..., help="Installation ID or Model ID to chat with"),
+) -> None:
+    """Open an interactive conversation with a model in your terminal.
+
+    Non-technical: Chat directly with your local AI, just like online chat bots, but 100% private and offline on your computer.
+    Technical: Connects to the local HTTP inference endpoint (streaming OpenAI-compatible or Ollama chat endpoint) and streams tokens directly to the terminal. Type '/exit' or '/quit' to leave.
+
+    Examples:
+      localpilot chat inst_llama3_8b
+    """
+    _do_chat(target)
+
+
+@app.command("update")
+def update_model(
+    installation_id: str = typer.Argument(..., help="Installation ID to check/update"),
+    yes: bool = typer.Option(False, "-y", "--yes", help="Skip confirmation prompt and apply updates immediately"),
+) -> None:
+    """Check for model updates or upstream weight refreshes.
+
+    Non-technical: Checks if the model author published a fix or newer revision of the weights and updates safely.
+    Technical: Queries HuggingFace or Ollama registry for updated manifests/hashes; reports honest status (up-to-date, update-available, or service-managed).
+
+    Examples:
+      localpilot update inst_qwen25_coder
+      localpilot update inst_qwen25_coder -y
+    """
+    _do_update(installation_id, yes=yes)
+
+
+@app.command("storage")
+def show_storage(
+    plain: bool = typer.Option(False, "--plain", help="Print plain text without styling"),
+    json_output: bool = typer.Option(False, "--json", help="Output machine-readable JSON storage breakdown"),
+) -> None:
+    """Review disk usage, model weight files, and cache breakdown.
+
+    Non-technical: Clearly shows how much storage LocalPilot and your models are using on your drive.
+    Technical: Scans LocalPilot managed directories (~/.local/share/localpilot), categorizes bytes by weights, cache, logs, and database, and reports free disk capacity.
+
+    Examples:
+      localpilot storage
+      localpilot storage --json
+    """
+    _do_storage(plain=plain, json_output=json_output)
+
+
 @app.command("activity")
 def show_activity(
     limit: int = typer.Option(20, "--limit", "-n", help="Number of records to show"),
-    plain: bool = typer.Option(False, "--plain", help="Plain text output"),
-    json_output: bool = typer.Option(False, "--json", help="JSON output"),
+    plain: bool = typer.Option(False, "--plain", help="Print plain text without styling"),
+    json_output: bool = typer.Option(False, "--json", help="Output machine-readable JSON activity log"),
 ) -> None:
-    """View recent friendly activity history."""
+    """View recent friendly activity history and completed tasks.
+
+    Non-technical: A clear, human-readable timeline of what LocalPilot has done on your computer.
+    Technical: Reads from SQLite activity log containing event timestamps, action titles, summaries, and success/failure flags.
+
+    Examples:
+      localpilot activity
+      localpilot activity -n 50
+      localpilot activity --json
+    """
     svc = ActivityService()
     activities = svc.get_activities(limit=limit)
 
@@ -301,10 +651,19 @@ def show_activity(
 
 @app.command("logs")
 def view_logs(
-    level: Optional[str] = typer.Option(None, "--level", help="Filter by level: debug, info, warning, error"),
+    level: Optional[str] = typer.Option(None, "--level", help="Filter by severity level: debug, info, warning, error"),
     limit: int = typer.Option(50, "--limit", "-n", help="Max lines to show"),
 ) -> None:
-    """View structured diagnostic event logs."""
+    """View structured diagnostic event logs for troubleshooting.
+
+    Non-technical: Useful when asking for help or checking what happened behind the scenes.
+    Technical: Reads and filters events.jsonl with timestamp, severity level (DEBUG, INFO, WARNING, ERROR), category, and message payload.
+
+    Examples:
+      localpilot logs
+      localpilot logs --level error
+      localpilot logs -n 100
+    """
     log_file = get_default_log_dir() / "events.jsonl"
     if not log_file.exists():
         console.print("[dim]No log events recorded yet.[/dim]")
@@ -327,11 +686,20 @@ def view_logs(
 
 @app.command("setup")
 def setup_model(
-    candidate_id: Optional[str] = typer.Argument(None, help="Candidate ID to install"),
+    candidate_id: Optional[str] = typer.Argument(None, help="Candidate ID to install (from 'localpilot discover')"),
     scope: str = typer.Option("isolated", "--scope", help="Installation scope: isolated, user, system"),
-    yes: bool = typer.Option(False, "-y", "--yes", help="Accept plan without confirmation prompt"),
+    yes: bool = typer.Option(False, "-y", "--yes", help="Accept execution plan without confirmation prompt"),
 ) -> None:
-    """Start guided setup for a model."""
+    """Guided, verified installation of a model onto your computer.
+
+    Non-technical: Downloads the real model weights, verifies the download checksum, starts the engine, and performs an actual test question before declaring success.
+    Technical: Generates an execution plan, provisions required runtime binaries into isolated or user scope, pulls GGUF or Ollama models, executes probe inference, and registers verified state.
+
+    Examples:
+      localpilot setup
+      localpilot setup cand_qwen25_coder
+      localpilot setup cand_llama32_3b --yes
+    """
     cat_svc = CatalogService()
     if not candidate_id:
         # Pick top recommended model
@@ -395,11 +763,19 @@ def setup_model(
 
 @app.command("remove")
 def remove_model(
-    installation_id: str = typer.Argument(..., help="Installation ID to remove"),
+    installation_id: str = typer.Argument(..., help="Installation ID to remove (from 'localpilot installed')"),
     yes: bool = typer.Option(False, "-y", "--yes", help="Skip confirmation prompt"),
-    delete_files: bool = typer.Option(True, "--delete-files/--keep-files", help="Delete model weight files"),
+    delete_files: bool = typer.Option(True, "--delete-files/--keep-files", help="Delete model weight files from disk (default: delete)"),
 ) -> None:
-    """Safely remove an installed model."""
+    """Safely remove an installed model and free disk space.
+
+    Non-technical: Deletes the model from your library and removes downloaded files to free up disk space.
+    Technical: Stops any running instance, removes local GGUF weights or invokes model deletion in the runtime, unregisters database entry, and protects shared files.
+
+    Examples:
+      localpilot remove inst_qwen25_coder
+      localpilot remove inst_qwen25_coder -y
+    """
     mgr = StorageManager()
     if not yes:
         confirm = typer.confirm(f"Are you sure you want to remove installation '{installation_id}'?", default=False)
@@ -417,9 +793,17 @@ def remove_model(
 
 @app.command("support")
 def prepare_support(
-    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Output file path"),
+    output: Optional[Path] = typer.Option(None, "--output", "-o", help="Custom output file path (default: localpilot-support.json)"),
 ) -> None:
-    """Prepare a reviewed, redacted diagnostic report for troubleshooting."""
+    """Prepare a reviewed, redacted diagnostic report for troubleshooting.
+
+    Non-technical: Creates a single file you can share when reporting issues or asking for help.
+    Technical: Collects hardware specs, OS info, sanitized logs, installation states, and runtime configs. Strictly redacts sensitive tokens, API keys, paths, and user prompts.
+
+    Examples:
+      localpilot support
+      localpilot support -o ./debug-report.json
+    """
     out_path = output or Path("localpilot-support.json")
     export_support_bundle(out_path)
     console.print(f"[bold green]Diagnostic report exported to:[/bold green] [cyan]{out_path.resolve()}[/cyan]")
@@ -428,10 +812,17 @@ def prepare_support(
 
 @self_app.command("update")
 def self_update() -> None:
-    """Check PyPI and update LocalPilot application."""
+    """Check PyPI and update LocalPilot application to latest version.
+
+    Non-technical: Checks if a newer version of LocalPilot exists and gives the exact 1-line command to upgrade.
+    Technical: Queries the official PyPI JSON API (https://pypi.org/pypi/localpilot/json) and detects pipx vs virtualenv/pip installation.
+
+    Examples:
+      localpilot self update
+    """
     import httpx
     import localpilot
-    current = getattr(localpilot, "__version__", "0.1.1")
+    current = getattr(localpilot, "__version__", "0.1.5")
     console.print(f"[bold cyan]Checking for LocalPilot updates (current: v{current})...[/bold cyan]")
     try:
         resp = httpx.get("https://pypi.org/pypi/localpilot/json", timeout=4.0)
@@ -456,10 +847,18 @@ def self_update() -> None:
 
 @self_app.command("uninstall")
 def self_uninstall(
-    yes: bool = typer.Option(False, "-y", "--yes", help="Confirm uninstallation"),
+    yes: bool = typer.Option(False, "-y", "--yes", help="Confirm uninstallation without prompt"),
     purge_models: bool = typer.Option(False, "--purge-models", help="Also delete downloaded models and database"),
 ) -> None:
-    """Uninstall LocalPilot application and optionally purge stored models."""
+    """Uninstall LocalPilot application and optionally purge stored models.
+
+    Non-technical: Removes LocalPilot from your system with complete transparency.
+    Technical: Optionally purges ~/.local/share/localpilot, unlinks ~/.local/bin/localpilot, and runs pipx uninstall or provides pip commands.
+
+    Examples:
+      localpilot self uninstall
+      localpilot self uninstall --purge-models
+    """
     from localpilot.storage.db import get_default_data_dir
     import subprocess
     data_dir = get_default_data_dir()

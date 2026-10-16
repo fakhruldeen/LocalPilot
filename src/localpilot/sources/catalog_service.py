@@ -7,7 +7,7 @@ from pydantic import BaseModel, Field
 
 from localpilot.domain.compatibility import CompatibilityCheckResult, CompatibilityPolicy
 from localpilot.domain.execution_plan import ExecutionPlan, ExecutionPlanGenerator
-from localpilot.domain.models import NormalizedCandidate, TaskCategory
+from localpilot.domain.models import NormalizedCandidate, TaskCategory, VerificationStage
 from localpilot.domain.scoring import ScoreResult, ScoringPolicy
 from localpilot.hardware.inspector import SystemInspector
 from localpilot.platforms.base import HardwareSnapshot
@@ -38,11 +38,13 @@ class CatalogService:
         self._ensure_seed_cached()
 
     def _ensure_seed_cached(self) -> None:
+        from datetime import datetime, timezone
+        now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         conn = self.db.get_connection()
         count = conn.execute("SELECT COUNT(*) as cnt FROM catalog_models").fetchone()["cnt"]
-        if count == 0:
-            seeds = get_seed_candidates()
-            with conn:
+        with conn:
+            if count == 0:
+                seeds = get_seed_candidates()
                 for s in seeds:
                     conn.execute(
                         """
@@ -65,6 +67,151 @@ class CatalogService:
                             s.metadata_fetched_at,
                         ),
                     )
+            # Ensure catalog_sources has seed entry
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO catalog_sources (source_id, name, last_refreshed_at, status, details_json)
+                VALUES ('seed', 'Bundled Seed Catalog', ?, 'healthy', ?)
+                """,
+                (now_iso, json.dumps({"description": "Built-in curated model candidates"})),
+            )
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO catalog_sources (source_id, name, last_refreshed_at, status, details_json)
+                VALUES ('huggingface', 'Hugging Face Hub', NULL, 'ready', '{}')
+                """
+            )
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO catalog_sources (source_id, name, last_refreshed_at, status, details_json)
+                VALUES ('ollama_library', 'Ollama Library', NULL, 'ready', '{}')
+                """
+            )
+
+    async def refresh_catalog_async(self, sources: Optional[List[str]] = None) -> Dict[str, Any]:
+        """Refreshes catalog models from active sources and updates catalog_sources status."""
+        from datetime import datetime, timezone
+        now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        target_sources = sources or ["seed", "huggingface", "ollama_library"]
+        results: Dict[str, Any] = {}
+        conn = self.db.get_connection()
+
+        for src in target_sources:
+            if src == "seed":
+                seeds = get_seed_candidates()
+                with conn:
+                    for s in seeds:
+                        conn.execute(
+                            """
+                            INSERT OR REPLACE INTO catalog_models (
+                                candidate_id, model_id, source, revision, payload_json,
+                                verified_release_at, repo_created_at, repo_modified_at,
+                                artifact_published_at, metadata_fetched_at
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """,
+                            (
+                                s.candidate_id,
+                                s.model_id,
+                                s.source,
+                                s.revision,
+                                s.model_dump_json(),
+                                s.verified_release_at,
+                                s.repo_created_at,
+                                s.repo_modified_at,
+                                s.artifact_published_at,
+                                s.metadata_fetched_at,
+                            ),
+                        )
+                    conn.execute(
+                        "UPDATE catalog_sources SET last_refreshed_at = ?, status = 'healthy', details_json = ? WHERE source_id = 'seed'",
+                        (now_iso, json.dumps({"count": len(seeds)})),
+                    )
+                results["seed"] = {"status": "healthy", "count": len(seeds)}
+
+            elif src == "huggingface":
+                try:
+                    candidates = await self.hf_adapter.search(limit=25)
+                    with conn:
+                        for c in candidates:
+                            conn.execute(
+                                """
+                                INSERT OR REPLACE INTO catalog_models (
+                                    candidate_id, model_id, source, revision, payload_json,
+                                    verified_release_at, repo_created_at, repo_modified_at,
+                                    artifact_published_at, metadata_fetched_at
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                """,
+                                (
+                                    c.candidate_id,
+                                    c.model_id,
+                                    c.source,
+                                    c.revision,
+                                    c.model_dump_json(),
+                                    c.verified_release_at,
+                                    c.repo_created_at,
+                                    c.repo_modified_at,
+                                    c.artifact_published_at,
+                                    c.metadata_fetched_at,
+                                ),
+                            )
+                        conn.execute(
+                            "UPDATE catalog_sources SET last_refreshed_at = ?, status = 'healthy', details_json = ? WHERE source_id = 'huggingface'",
+                            (now_iso, json.dumps({"count": len(candidates)})),
+                        )
+                    results["huggingface"] = {"status": "healthy", "count": len(candidates)}
+                except Exception as e:
+                    with conn:
+                        conn.execute(
+                            "UPDATE catalog_sources SET status = 'degraded', details_json = ? WHERE source_id = 'huggingface'",
+                            (json.dumps({"error": str(e)}),),
+                        )
+                    results["huggingface"] = {"status": "degraded", "error": str(e)}
+
+            elif src == "ollama_library":
+                try:
+                    candidates = await self.ollama_adapter.search(limit=25)
+                    with conn:
+                        for c in candidates:
+                            conn.execute(
+                                """
+                                INSERT OR REPLACE INTO catalog_models (
+                                    candidate_id, model_id, source, revision, payload_json,
+                                    verified_release_at, repo_created_at, repo_modified_at,
+                                    artifact_published_at, metadata_fetched_at
+                                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                """,
+                                (
+                                    c.candidate_id,
+                                    c.model_id,
+                                    c.source,
+                                    c.revision,
+                                    c.model_dump_json(),
+                                    c.verified_release_at,
+                                    c.repo_created_at,
+                                    c.repo_modified_at,
+                                    c.artifact_published_at,
+                                    c.metadata_fetched_at,
+                                ),
+                            )
+                        conn.execute(
+                            "UPDATE catalog_sources SET last_refreshed_at = ?, status = 'healthy', details_json = ? WHERE source_id = 'ollama_library'",
+                            (now_iso, json.dumps({"count": len(candidates)})),
+                        )
+                    results["ollama_library"] = {"status": "healthy", "count": len(candidates)}
+                except Exception as e:
+                    with conn:
+                        conn.execute(
+                            "UPDATE catalog_sources SET status = 'degraded', details_json = ? WHERE source_id = 'ollama_library'",
+                            (json.dumps({"error": str(e)}),),
+                        )
+                    results["ollama_library"] = {"status": "degraded", "error": str(e)}
+
+        return {"status": "completed", "sources": results}
+
+    def refresh_catalog(self, sources: Optional[List[str]] = None) -> Dict[str, Any]:
+        """Synchronous wrapper for refresh_catalog_async."""
+        import asyncio
+        return asyncio.run(self.refresh_catalog_async(sources=sources))
 
     def get_cached_candidates(self) -> List[NormalizedCandidate]:
         conn = self.db.get_connection()
