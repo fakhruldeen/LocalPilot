@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Model Catalog &amp; Sizing Guide — LocalPilot</title>
+    <meta name="description" content="Discover popular local AI models (Llama 3.2, Mistral, Phi-3, Qwen) and find out exactly which one fits your computer's RAM and processor.">
+    
+    <!-- Open Graph / Social -->
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://fakhr.me/LocalPilot/models.html">
+    <meta property="og:title" content="LocalPilot Model Catalog &amp; Hardware Sizing">
+    <meta property="og:description" content="Find the perfect local AI model for your computer's memory and speed.">
+    <meta property="og:image" content="https://raw.githubusercontent.com/fakhruldeen/LocalPilot/main/docs/img/banner-social.jpeg">
+
+    <link rel="icon" type="image/png" href="img/logo.png">
+    
+    <!-- Google Fonts & Tailwind CDN -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            400: '#2dd4bf',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            DEFAULT: '#00D2B4',
+                        },
+                        dark: {
+                            950: '#070A0F',
+                            900: '#0B0F17',
+                            850: '#0E1420',
+                            800: '#111827',
+                            700: '#1F2937',
+                            600: '#374151',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .hero-bg {
+            background-image: linear-gradient(to bottom, rgba(11, 15, 23, 0.88), rgba(7, 10, 15, 0.98)), url('img/bg.jpeg');
+            background-size: cover;
+            background-position: center;
+        }
+    </style>
+</head>
+<body class="bg-dark-950 text-slate-100 font-sans antialiased selection:bg-brand selection:text-dark-900 min-h-screen flex flex-col">
+
+    <!-- Header Navigation -->
+    <header class="sticky top-0 z-50 backdrop-blur-md bg-dark-900/85 border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-3 group">
+                <img src="img/logo.png" alt="LocalPilot Logo" class="w-10 h-10 rounded-xl object-contain border border-white/10 group-hover:scale-105 transition-transform duration-300">
+                <span class="font-bold text-xl tracking-tight text-white flex items-center gap-2">
+                    LocalPilot
+                    <span class="text-xs bg-brand/10 text-brand px-2 py-0.5 rounded-full border border-brand/20 font-mono font-medium">v0.1.0</span>
+                </span>
+            </a>
+
+            <nav class="hidden md:flex items-center gap-7 text-sm font-medium text-slate-300">
+                <a href="index.html" class="hover:text-brand transition-colors">Home</a>
+                <a href="guide.html" class="hover:text-brand transition-colors">Beginner Guide</a>
+                <a href="install.html" class="hover:text-brand transition-colors">Installation</a>
+                <a href="models.html" class="text-brand font-semibold">Model Catalog</a>
+                <a href="architecture.html" class="hover:text-brand transition-colors">Architecture & FAQ</a>
+            </nav>
+
+            <div class="flex items-center gap-3">
+                <a href="install.html" class="hidden sm:inline-flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 transition-colors">
+                    Install Now
+                </a>
+                <a href="https://github.com/fakhruldeen/LocalPilot" target="_blank" class="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl bg-brand text-dark-900 hover:bg-brand-400 transition-all font-bold">
+                    GitHub
+                </a>
+                <button onclick="toggleMobileMenu()" class="md:hidden p-2 text-slate-400 hover:text-white rounded-lg" aria-label="Toggle Navigation">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+            </div>
+        </div>
+        <div id="mobile-menu" class="hidden md:hidden px-6 pt-3 pb-6 border-t border-white/5 bg-dark-900/95 flex flex-col gap-3 text-sm font-medium text-slate-300">
+            <a href="index.html" class="hover:text-brand py-1">Home</a>
+            <a href="guide.html" class="hover:text-brand py-1">Beginner Guide</a>
+            <a href="install.html" class="hover:text-brand py-1">Installation</a>
+            <a href="models.html" class="text-brand font-semibold py-1">Model Catalog</a>
+            <a href="architecture.html" class="hover:text-brand py-1">Architecture & FAQ</a>
+        </div>
+    </header>
+
+    <!-- Catalog Hero with bg.jpeg texture -->
+    <section class="relative pt-16 pb-20 overflow-hidden hero-bg border-b border-white/5">
+        <div class="max-w-4xl mx-auto px-6 text-center relative z-10">
+            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand/10 border border-brand/20 text-brand text-xs font-semibold mb-6">
+                🦙 Model Catalog &amp; Sizing
+            </div>
+            <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white mb-6 leading-tight">
+                Find the AI That Fits Your Computer
+            </h1>
+            <p class="text-base sm:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
+                Different models have different strengths and memory requirements. Here is how to choose the right one for your machine.
+            </p>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="py-16 max-w-5xl mx-auto px-6 space-y-16">
+
+        <!-- Sizing Explanation -->
+        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-4">
+            <h2 class="text-2xl font-bold text-white">What Does "3B", "7B", or "8B" Mean?</h2>
+            <p class="text-slate-300 text-sm leading-relaxed">
+                The letter <strong>"B"</strong> stands for <em>Billion Parameters</em>. In simple terms, parameters are the connections in the AI's virtual neural network:
+            </p>
+            <div class="grid sm:grid-cols-2 gap-4 text-xs mt-4">
+                <div class="p-4 rounded-xl bg-dark-850 border border-white/5">
+                    <span class="text-brand font-bold text-sm block mb-1">Smaller Models (1B – 3B)</span>
+                    <p class="text-slate-400">Lightning fast, use very little RAM (2GB to 3GB), ideal for quick summaries, editing text, and older or thinner laptops.</p>
+                </div>
+                <div class="p-4 rounded-xl bg-dark-850 border border-white/5">
+                    <span class="text-brand font-bold text-sm block mb-1">Standard Models (7B – 9B)</span>
+                    <p class="text-slate-400">The "sweet spot" for reasoning, complex instructions, and creative writing. Requires about 5GB to 8GB of free memory.</p>
+                </div>
+            </div>
+        </article>
+
+        <!-- Tier 1: 4GB - 8GB RAM -->
+        <section class="space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 text-xs font-bold uppercase">Tier 1</span>
+                <h3 class="text-xl sm:text-2xl font-bold text-white">Everyday Laptops (4 GB – 8 GB RAM)</h3>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-6">
+                <!-- Model 1 -->
+                <div class="bg-dark-900 p-6 rounded-2xl border border-white/10 hover:border-brand/40 transition-all flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-mono font-semibold text-brand">Meta</span>
+                            <span class="text-[11px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">~2.0 GB RAM</span>
+                        </div>
+                        <h4 class="text-lg font-bold text-white mb-2">Llama 3.2 (3B)</h4>
+                        <p class="text-slate-400 text-xs leading-relaxed mb-4">
+                            Meta's flagship compact model. Incredibly fast, great at summarization, proofreading, and natural dialogue.
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-white/5 font-mono text-[11px] text-slate-300">
+                        <code>localpilot chat llama3.2:3b</code>
+                    </div>
+                </div>
+
+                <!-- Model 2 -->
+                <div class="bg-dark-900 p-6 rounded-2xl border border-white/10 hover:border-brand/40 transition-all flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-mono font-semibold text-brand">Alibaba</span>
+                            <span class="text-[11px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">~2.1 GB RAM</span>
+                        </div>
+                        <h4 class="text-lg font-bold text-white mb-2">Qwen 2.5 (3B)</h4>
+                        <p class="text-slate-400 text-xs leading-relaxed mb-4">
+                            Extremely smart instruction-following and strong multilingual capabilities. Perfect for non-English inquiries.
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-white/5 font-mono text-[11px] text-slate-300">
+                        <code>localpilot chat qwen2.5:3b</code>
+                    </div>
+                </div>
+
+                <!-- Model 3 -->
+                <div class="bg-dark-900 p-6 rounded-2xl border border-white/10 hover:border-brand/40 transition-all flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-mono font-semibold text-brand">Microsoft</span>
+                            <span class="text-[11px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">~2.3 GB RAM</span>
+                        </div>
+                        <h4 class="text-lg font-bold text-white mb-2">Phi-3 Mini (3.8B)</h4>
+                        <p class="text-slate-400 text-xs leading-relaxed mb-4">
+                            Microsoft's reasoning powerhouse. Trained on curated textbook-quality data for logic and academic questions.
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-white/5 font-mono text-[11px] text-slate-300">
+                        <code>localpilot chat phi3:mini</code>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tier 2: 8GB - 16GB RAM -->
+        <section class="space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="px-3 py-1 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 text-xs font-bold uppercase">Tier 2</span>
+                <h3 class="text-xl sm:text-2xl font-bold text-white">Balanced Workstations (8 GB – 16 GB RAM)</h3>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-6">
+                <!-- Model 4 -->
+                <div class="bg-dark-900 p-6 rounded-2xl border border-white/10 hover:border-brand/40 transition-all flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-mono font-semibold text-brand">Meta</span>
+                            <span class="text-[11px] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold">~4.7 GB RAM</span>
+                        </div>
+                        <h4 class="text-lg font-bold text-white mb-2">Llama 3.1 (8B)</h4>
+                        <p class="text-slate-400 text-xs leading-relaxed mb-4">
+                            The gold standard for general intelligence. Excellent storytelling, research analysis, and creative ideation.
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-white/5 font-mono text-[11px] text-slate-300">
+                        <code>localpilot chat llama3.1:8b</code>
+                    </div>
+                </div>
+
+                <!-- Model 5 -->
+                <div class="bg-dark-900 p-6 rounded-2xl border border-white/10 hover:border-brand/40 transition-all flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-mono font-semibold text-brand">Mistral AI</span>
+                            <span class="text-[11px] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold">~4.1 GB RAM</span>
+                        </div>
+                        <h4 class="text-lg font-bold text-white mb-2">Mistral (7B)</h4>
+                        <p class="text-slate-400 text-xs leading-relaxed mb-4">
+                            Renowned European model. Crisp, concise responses, excellent technical explanations and structured formatting.
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-white/5 font-mono text-[11px] text-slate-300">
+                        <code>localpilot chat mistral:7b</code>
+                    </div>
+                </div>
+
+                <!-- Model 6 -->
+                <div class="bg-dark-900 p-6 rounded-2xl border border-white/10 hover:border-brand/40 transition-all flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-mono font-semibold text-brand">Google</span>
+                            <span class="text-[11px] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold">~5.4 GB RAM</span>
+                        </div>
+                        <h4 class="text-lg font-bold text-white mb-2">Gemma 2 (9B)</h4>
+                        <p class="text-slate-400 text-xs leading-relaxed mb-4">
+                            Google's high-efficiency open model. Outstanding benchmarks for factual knowledge, reading comprehension, and math.
+                        </p>
+                    </div>
+                    <div class="pt-4 border-t border-white/5 font-mono text-[11px] text-slate-300">
+                        <code>localpilot chat gemma2:9b</code>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Safety Guarantee -->
+        <article class="bg-dark-900 p-8 rounded-3xl border border-brand/30 flex flex-col sm:flex-row items-center gap-6">
+            <div class="w-14 h-14 rounded-2xl bg-brand/10 border border-brand/20 flex items-center justify-center text-3xl shrink-0">
+                🛡️
+            </div>
+            <div>
+                <h3 class="text-lg font-bold text-white mb-1">The LocalPilot Safety Shield</h3>
+                <p class="text-slate-300 text-xs sm:text-sm leading-relaxed">
+                    You never have to calculate memory math manually. Whenever you run <code class="text-brand">localpilot recommend</code>, our hardware scanner inspects your available RAM and marks models with a safe compatibility percentage so your system never runs out of memory.
+                </p>
+            </div>
+        </article>
+
+    </main>
+
+    <!-- Prominent Disclaimer Banner -->
+    <aside class="py-12 bg-dark-950 border-t border-b border-white/5">
+        <div class="max-w-4xl mx-auto px-6">
+            <div class="rounded-2xl bg-amber-500/10 border border-amber-500/20 p-6 flex flex-col sm:flex-row items-start gap-4">
+                <span class="text-2xl">⚠️</span>
+                <div class="text-xs text-amber-200/90 leading-relaxed">
+                    <strong class="text-amber-100 font-semibold block mb-1">Disclaimer &amp; Important Notice:</strong>
+                    LocalPilot is intended for non-professional users, students, and hobbyists for personal use and testing purposes only. Local AI model inference is an edge technology that requires substantial hardware resources and domain knowledge. This project is provided "as is" without warranty of any kind. The creator and maintainers hold no liabilities or responsibilities for any misuse, data loss, performance degradation, or issues that may arise in production or improper usage.
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Footer -->
+    <footer class="mt-auto border-t border-white/5 py-10 bg-dark-900">
+        <div class="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-300">
+            <div class="flex items-center gap-3">
+                <img src="img/logo.png" alt="LocalPilot" class="w-6 h-6 rounded-md object-contain opacity-75">
+                <span>&copy; 2026 LocalPilot &bull; Licensed under GNU GPLv3</span>
+            </div>
+            <div class="flex items-center gap-6">
+                <a href="index.html" class="hover:text-brand transition-colors">Home</a>
+                <a href="guide.html" class="hover:text-brand transition-colors">Guide</a>
+                <a href="install.html" class="hover:text-brand transition-colors">Install</a>
+                <a href="models.html" class="text-brand transition-colors font-semibold">Models</a>
+                <a href="architecture.html" class="hover:text-brand transition-colors">Architecture</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        }
+    </script>
+</body>
+</html>

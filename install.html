@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Installation &amp; Setup Guide — LocalPilot</title>
+    <meta name="description" content="Step-by-step installation instructions for LocalPilot on macOS and Linux. Automated curl installer, pipx, pip, and 100% clean uninstallation.">
+    
+    <!-- Open Graph / Social -->
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://fakhr.me/LocalPilot/install.html">
+    <meta property="og:title" content="LocalPilot Installation &amp; Setup Guide">
+    <meta property="og:description" content="Learn how to install, update, and cleanly remove LocalPilot on your computer without headaches.">
+    <meta property="og:image" content="https://raw.githubusercontent.com/fakhruldeen/LocalPilot/main/docs/img/banner-social.jpeg">
+
+    <link rel="icon" type="image/png" href="docs/img/logo.png">
+    
+    <!-- Google Fonts & Tailwind CDN -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            400: '#2dd4bf',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            DEFAULT: '#00D2B4',
+                        },
+                        dark: {
+                            950: '#070A0F',
+                            900: '#0B0F17',
+                            850: '#0E1420',
+                            800: '#111827',
+                            700: '#1F2937',
+                            600: '#374151',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .hero-bg {
+            background-image: linear-gradient(to bottom, rgba(11, 15, 23, 0.88), rgba(7, 10, 15, 0.98)), url('docs/img/bg.jpeg');
+            background-size: cover;
+            background-position: center;
+        }
+    </style>
+</head>
+<body class="bg-dark-950 text-slate-100 font-sans antialiased selection:bg-brand selection:text-dark-900 min-h-screen flex flex-col">
+
+    <!-- Header Navigation -->
+    <header class="sticky top-0 z-50 backdrop-blur-md bg-dark-900/85 border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-3 group">
+                <img src="docs/img/logo.png" alt="LocalPilot Logo" class="w-10 h-10 rounded-xl object-contain border border-white/10 group-hover:scale-105 transition-transform duration-300">
+                <span class="font-bold text-xl tracking-tight text-white flex items-center gap-2">
+                    LocalPilot
+                    <span class="text-xs bg-brand/10 text-brand px-2 py-0.5 rounded-full border border-brand/20 font-mono font-medium">v0.1.0</span>
+                </span>
+            </a>
+
+            <nav class="hidden md:flex items-center gap-7 text-sm font-medium text-slate-300">
+                <a href="index.html" class="hover:text-brand transition-colors">Home</a>
+                <a href="guide.html" class="hover:text-brand transition-colors">Beginner Guide</a>
+                <a href="install.html" class="text-brand font-semibold">Installation</a>
+                <a href="models.html" class="hover:text-brand transition-colors">Model Catalog</a>
+                <a href="architecture.html" class="hover:text-brand transition-colors">Architecture & FAQ</a>
+            </nav>
+
+            <div class="flex items-center gap-3">
+                <a href="https://pypi.org/project/localpilot/" target="_blank" class="hidden sm:inline-flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 transition-colors">
+                    PyPI
+                </a>
+                <a href="https://github.com/fakhruldeen/LocalPilot" target="_blank" class="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl bg-brand text-dark-900 hover:bg-brand-400 transition-all font-bold">
+                    GitHub
+                </a>
+                <button onclick="toggleMobileMenu()" class="md:hidden p-2 text-slate-400 hover:text-white rounded-lg" aria-label="Toggle Navigation">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+            </div>
+        </div>
+        <div id="mobile-menu" class="hidden md:hidden px-6 pt-3 pb-6 border-t border-white/5 bg-dark-900/95 flex flex-col gap-3 text-sm font-medium text-slate-300">
+            <a href="index.html" class="hover:text-brand py-1">Home</a>
+            <a href="guide.html" class="hover:text-brand py-1">Beginner Guide</a>
+            <a href="install.html" class="text-brand font-semibold py-1">Installation</a>
+            <a href="models.html" class="hover:text-brand py-1">Model Catalog</a>
+            <a href="architecture.html" class="hover:text-brand py-1">Architecture & FAQ</a>
+        </div>
+    </header>
+
+    <!-- Install Hero with bg.jpeg texture -->
+    <section class="relative pt-16 pb-20 overflow-hidden hero-bg border-b border-white/5">
+        <div class="max-w-4xl mx-auto px-6 text-center relative z-10">
+            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand/10 border border-brand/20 text-brand text-xs font-semibold mb-6">
+                🚀 Setup &amp; Maintenance
+            </div>
+            <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white mb-6 leading-tight">
+                Installation &amp; Setup Guide
+            </h1>
+            <p class="text-base sm:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
+                Simple, safe, and completely reversible. Choose the installation method that suits you best.
+            </p>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="py-16 max-w-4xl mx-auto px-6 space-y-16">
+
+        <!-- Method 1: The Automated curl installer -->
+        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-brand/30 shadow-xl space-y-6">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+                <div class="flex items-center gap-3">
+                    <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">★</span>
+                    <h2 class="text-2xl font-bold text-white">Method 1: 1-Click Installer (Recommended)</h2>
+                </div>
+                <span class="text-xs bg-brand/20 text-brand px-3 py-1 rounded-full font-semibold border border-brand/30">Novice Friendly</span>
+            </div>
+            
+            <p class="text-slate-300 leading-relaxed text-sm">
+                No need to manage Python environments manually. Open your terminal (Terminal on macOS or your Linux shell) and paste this single command:
+            </p>
+
+            <div class="p-4 rounded-2xl bg-dark-950 border border-white/10 font-mono text-xs sm:text-sm text-brand flex items-center justify-between gap-4 overflow-x-auto">
+                <code class="select-all">curl -fsSL https://raw.githubusercontent.com/fakhruldeen/LocalPilot/main/install-localpilot.sh | bash</code>
+                <button onclick="copyCmd('curl -fsSL https://raw.githubusercontent.com/fakhruldeen/LocalPilot/main/install-localpilot.sh | bash', this)" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 text-xs shrink-0 transition-colors">
+                    Copy
+                </button>
+            </div>
+
+            <div class="p-4 rounded-xl bg-dark-850 border border-white/5 text-xs text-slate-400 space-y-1">
+                <p><strong>What this does:</strong></p>
+                <ul class="list-disc pl-5 space-y-1">
+                    <li>Installs LocalPilot in your user space without asking for root (<code class="text-slate-300">sudo</code>).</li>
+                    <li>Symlinks the executable to <code class="text-slate-300">~/.local/bin/localpilot</code>.</li>
+                    <li>Ensures all dependencies are isolated so your system packages remain untouched.</li>
+                </ul>
+            </div>
+        </article>
+
+        <!-- Method 2 & 3: pipx and pip -->
+        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">2</span>
+                <h2 class="text-2xl font-bold text-white">Alternative Methods (pipx or pip)</h2>
+            </div>
+            
+            <div class="grid sm:grid-cols-2 gap-6">
+                <!-- pipx -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <h3 class="font-bold text-white text-base flex items-center gap-2">
+                        📦 With pipx (Isolated App)
+                    </h3>
+                    <p class="text-slate-400 text-xs leading-relaxed">
+                        If you have <code class="text-brand">pipx</code> installed, this installs LocalPilot inside its own sandbox automatically:
+                    </p>
+                    <div class="p-3 rounded-xl bg-dark-950 border border-white/10 font-mono text-xs text-brand">
+                        <code>pipx install localpilot</code>
+                    </div>
+                </div>
+
+                <!-- pip -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <h3 class="font-bold text-white text-base flex items-center gap-2">
+                        🐍 With standard pip
+                    </h3>
+                    <p class="text-slate-400 text-xs leading-relaxed">
+                        For developers and virtual environments:
+                    </p>
+                    <div class="p-3 rounded-xl bg-dark-950 border border-white/10 font-mono text-xs text-brand">
+                        <code>pip install localpilot</code>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- Installation Scopes Explained -->
+        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">3</span>
+                <h2 class="text-2xl font-bold text-white">Installation Scopes Explained</h2>
+            </div>
+            
+            <p class="text-slate-300 leading-relaxed text-sm">
+                LocalPilot supports three clean installation scopes so you have complete control over where files reside:
+            </p>
+
+            <div class="space-y-4 text-xs sm:text-sm">
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5">
+                    <h4 class="font-bold text-white mb-1">🏠 1. User-Space (Recommended Default)</h4>
+                    <p class="text-slate-400 text-xs">
+                        Installed in your home directory (<code class="text-slate-300">~/.local/</code>). Does not require administrator privileges, cannot affect other users on the machine, and is completely isolated.
+                    </p>
+                </div>
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5">
+                    <h4 class="font-bold text-white mb-1">📦 2. Isolated Project Directory</h4>
+                    <p class="text-slate-400 text-xs">
+                        Created inside a dedicated folder or virtual environment. Ideal if you are testing or want to keep LocalPilot contained within a specific project folder.
+                    </p>
+                </div>
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5">
+                    <h4 class="font-bold text-white mb-1">🏢 3. System-Wide</h4>
+                    <p class="text-slate-400 text-xs">
+                        Available to all users on the operating system. Requires administrator permissions (<code class="text-slate-300">sudo</code>) and is typically used for shared multi-user workstations.
+                    </p>
+                </div>
+            </div>
+        </article>
+
+        <!-- Updating & Clean Uninstallation -->
+        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">4</span>
+                <h2 class="text-2xl font-bold text-white">Updating &amp; Clean Removal</h2>
+            </div>
+            
+            <div class="grid sm:grid-cols-2 gap-6">
+                <!-- Updating -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <h3 class="font-bold text-white text-base">🔄 How to Update</h3>
+                    <p class="text-slate-400 text-xs leading-relaxed">
+                        To get the newest model compatibility definitions and performance fixes:
+                    </p>
+                    <div class="p-3 rounded-xl bg-dark-950 border border-white/10 font-mono text-xs text-brand">
+                        <code>localpilot update</code>
+                    </div>
+                </div>
+
+                <!-- Clean Uninstall -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <h3 class="font-bold text-white text-base">🧹 100% Clean Uninstall</h3>
+                    <p class="text-slate-400 text-xs leading-relaxed">
+                        If you ever want to remove LocalPilot and reclaim all disk space:
+                    </p>
+                    <div class="p-3 rounded-xl bg-dark-950 border border-white/10 font-mono text-xs text-rose-300">
+                        <code>pipx uninstall localpilot<br>rm -rf ~/.local/share/localpilot</code>
+                    </div>
+                    <p class="text-[11px] text-slate-300">Zero hidden files or lingering background daemons left behind.</p>
+                </div>
+            </div>
+        </article>
+
+    </main>
+
+    <!-- Prominent Disclaimer Banner -->
+    <aside class="py-12 bg-dark-950 border-t border-b border-white/5">
+        <div class="max-w-4xl mx-auto px-6">
+            <div class="rounded-2xl bg-amber-500/10 border border-amber-500/20 p-6 flex flex-col sm:flex-row items-start gap-4">
+                <span class="text-2xl">⚠️</span>
+                <div class="text-xs text-amber-200/90 leading-relaxed">
+                    <strong class="text-amber-100 font-semibold block mb-1">Disclaimer &amp; Important Notice:</strong>
+                    LocalPilot is intended for non-professional users, students, and hobbyists for personal use and testing purposes only. Local AI model inference is an edge technology that requires substantial hardware resources and domain knowledge. This project is provided "as is" without warranty of any kind. The creator and maintainers hold no liabilities or responsibilities for any misuse, data loss, performance degradation, or issues that may arise in production or improper usage.
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Footer -->
+    <footer class="mt-auto border-t border-white/5 py-10 bg-dark-900">
+        <div class="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-300">
+            <div class="flex items-center gap-3">
+                <img src="docs/img/logo.png" alt="LocalPilot" class="w-6 h-6 rounded-md object-contain opacity-75">
+                <span>&copy; 2026 LocalPilot &bull; Licensed under GNU GPLv3</span>
+            </div>
+            <div class="flex items-center gap-6">
+                <a href="index.html" class="hover:text-brand transition-colors">Home</a>
+                <a href="guide.html" class="hover:text-brand transition-colors">Guide</a>
+                <a href="install.html" class="text-brand transition-colors font-semibold">Install</a>
+                <a href="models.html" class="hover:text-brand transition-colors">Models</a>
+                <a href="architecture.html" class="hover:text-brand transition-colors">Architecture</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        }
+
+        function copyCmd(cmd, btn) {
+            navigator.clipboard.writeText(cmd).then(() => {
+                const orig = btn.innerText;
+                btn.innerText = 'Copied!';
+                setTimeout(() => { btn.innerText = orig; }, 2000);
+            });
+        }
+    </script>
+</body>
+</html>
