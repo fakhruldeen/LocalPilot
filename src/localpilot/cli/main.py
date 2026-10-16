@@ -37,18 +37,44 @@ app.add_typer(self_app, name="self")
 
 @app.callback(invoke_without_command=True)
 def main_menu(ctx: typer.Context) -> None:
-    """Default entry point: opens home screen / menu if no subcommand provided."""
+    """Default entry point: opens interactive home menu if no subcommand provided."""
     if ctx.invoked_subcommand is None:
         render_banner()
-        console.print("[bold]Welcome to LocalPilot![/bold]\n")
-        console.print("Common commands:")
-        console.print("  [cyan]localpilot tui[/cyan]         Open the complete visual dashboard")
-        console.print("  [cyan]localpilot discover[/cyan]    Find compatible models")
-        console.print("  [cyan]localpilot installed[/cyan]   View your installed models")
-        console.print("  [cyan]localpilot doctor[/cyan]      Check computer capabilities")
-        console.print("  [cyan]localpilot setup[/cyan]       Set up a new model")
-        console.print("  [cyan]localpilot storage[/cyan]     View storage breakdown\n")
-        console.print("Run [cyan]localpilot --help[/cyan] to see all available commands.")
+        if sys.stdin.isatty() and sys.stdout.isatty():
+            console.print("[bold]Select an option to begin:[/bold]")
+            console.print("  [bold cyan]1[/bold cyan]) Open Visual Dashboard (TUI)")
+            console.print("  [bold cyan]2[/bold cyan]) Discover Compatible Models")
+            console.print("  [bold cyan]3[/bold cyan]) View Installed Models")
+            console.print("  [bold cyan]4[/bold cyan]) Run Computer Diagnostics (Doctor)")
+            console.print("  [bold cyan]5[/bold cyan]) View Storage Breakdown")
+            console.print("  [bold cyan]q[/bold cyan]) Exit\n")
+            try:
+                choice = typer.prompt("Enter choice", default="1").strip().lower()
+                if choice in ("1", "tui"):
+                    from localpilot.tui.app import LocalPilotTUI
+                    LocalPilotTUI().run()
+                elif choice in ("2", "discover"):
+                    discover_models()
+                elif choice in ("3", "installed"):
+                    list_installed()
+                elif choice in ("4", "doctor"):
+                    run_doctor()
+                elif choice in ("5", "storage"):
+                    show_storage()
+                else:
+                    return
+            except (KeyboardInterrupt, EOFError):
+                return
+        else:
+            console.print("[bold]Welcome to LocalPilot![/bold]\n")
+            console.print("Common commands:")
+            console.print("  [cyan]localpilot tui[/cyan]         Open the complete visual dashboard")
+            console.print("  [cyan]localpilot discover[/cyan]    Find compatible models")
+            console.print("  [cyan]localpilot installed[/cyan]   View your installed models")
+            console.print("  [cyan]localpilot doctor[/cyan]      Check computer capabilities")
+            console.print("  [cyan]localpilot setup[/cyan]       Set up a new model")
+            console.print("  [cyan]localpilot storage[/cyan]     View storage breakdown\n")
+            console.print("Run [cyan]localpilot --help[/cyan] to see all available commands.")
 
 
 @app.command("tui")
@@ -402,23 +428,78 @@ def prepare_support(
 
 @self_app.command("update")
 def self_update() -> None:
-    """Update LocalPilot application."""
-    console.print("[bold cyan]Checking for LocalPilot updates...[/bold cyan]")
-    console.print("LocalPilot is running the latest version (0.1.0).")
+    """Check PyPI and update LocalPilot application."""
+    import httpx
+    import localpilot
+    current = getattr(localpilot, "__version__", "0.1.0")
+    console.print(f"[bold cyan]Checking for LocalPilot updates (current: v{current})...[/bold cyan]")
+    try:
+        resp = httpx.get("https://pypi.org/pypi/localpilot/json", timeout=4.0)
+        if resp.status_code == 200:
+            data = resp.json()
+            latest = data.get("info", {}).get("version", current)
+            if latest != current:
+                console.print(f"\n[bold green]New version available:[/bold green] [bold cyan]v{latest}[/bold cyan] (current: v{current})")
+                is_pipx = "pipx" in sys.prefix or "PIPX_HOME" in os.environ
+                if is_pipx:
+                    console.print("To update, run: [bold cyan]pipx upgrade localpilot[/bold cyan]")
+                else:
+                    console.print("To update, run: [bold cyan]pip install -U localpilot[/bold cyan]")
+                return
+            else:
+                console.print(f"LocalPilot is up to date (version {current}).")
+                return
+    except Exception as e:
+        console.print(f"[yellow]Could not reach PyPI to verify updates ({e}).[/yellow]")
+        console.print("To check manually, visit: https://pypi.org/project/localpilot/")
 
 
 @self_app.command("uninstall")
 def self_uninstall(
     yes: bool = typer.Option(False, "-y", "--yes", help="Confirm uninstallation"),
-    purge_models: bool = typer.Option(False, "--purge-models", help="Also delete downloaded models"),
+    purge_models: bool = typer.Option(False, "--purge-models", help="Also delete downloaded models and database"),
 ) -> None:
-    """Uninstall LocalPilot application."""
+    """Uninstall LocalPilot application and optionally purge stored models."""
+    from localpilot.storage.db import get_default_data_dir
+    import subprocess
+    data_dir = get_default_data_dir()
+
+    console.print("[bold yellow]LocalPilot Application Uninstallation[/bold yellow]")
+    if purge_models:
+        console.print(f"[bold red]WARNING:[/bold red] --purge-models will delete all models and data in [cyan]{data_dir}[/cyan]")
+    else:
+        console.print(f"[dim]Model files and configuration in {data_dir} will be preserved.[/dim]")
+
     if not yes:
-        confirm = typer.confirm("Uninstall LocalPilot application?", default=False)
+        confirm = typer.confirm("Are you sure you want to proceed with uninstallation?", default=False)
         if not confirm:
-            console.print("Cancelled.")
+            console.print("Uninstallation cancelled.")
             return
-    console.print("[yellow]Uninstalling LocalPilot application...[/yellow]")
-    if not purge_models:
-        console.print("[green]Notice: Model files are preserved in your data folder.[/green]")
-    console.print("LocalPilot uninstallation complete.")
+
+    # 1. Purge data directory if requested
+    if purge_models:
+        if data_dir.exists():
+            shutil.rmtree(data_dir)
+            console.print(f"[green]Purged data directory: {data_dir}[/green]")
+
+    # 2. Check for pipx symlink or executable to clean up
+    user_symlink = Path(os.path.expanduser("~/.local/bin/localpilot"))
+    if user_symlink.is_symlink() or user_symlink.exists():
+        try:
+            user_symlink.unlink()
+            console.print(f"[green]Removed user symlink: {user_symlink}[/green]")
+        except Exception:
+            pass
+
+    # 3. Detect package manager and uninstall
+    is_pipx = "pipx" in sys.prefix or "PIPX_HOME" in os.environ
+    if is_pipx and shutil.which("pipx"):
+        console.print("[cyan]Running pipx uninstall localpilot...[/cyan]")
+        res = subprocess.run(["pipx", "uninstall", "localpilot"], capture_output=True, text=True)
+        if res.returncode == 0:
+            console.print("[bold green]LocalPilot application uninstalled successfully via pipx.[/bold green]")
+            return
+
+    console.print("\n[bold green]Cleanup finished.[/bold green]")
+    console.print("To complete removal of the Python package from your environment, run:")
+    console.print("  [bold cyan]pip uninstall localpilot[/bold cyan] (or [bold cyan]pipx uninstall localpilot[/bold cyan])")

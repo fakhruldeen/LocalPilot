@@ -134,29 +134,111 @@ class CompatibilityPolicy:
                 )
         else:
             has_gpu = bool(hardware.gpu_devices and hardware.safe_vram_budget_bytes > 0)
-            use_gpu = has_gpu and (requested_mode in (ExecutionMode.AUTO, ExecutionMode.GPU, ExecutionMode.CPU_GPU))
 
-            if use_gpu and hardware.safe_vram_budget_bytes >= total_model_memory:
+            if requested_mode == ExecutionMode.GPU:
+                if not has_gpu:
+                    checks.append({"name": "gpu_device", "passed": False})
+                    return CompatibilityCheckResult(
+                        is_compatible=False,
+                        verification_stage=VerificationStage.SUPPORTED,
+                        reason_code="GPU_NOT_AVAILABLE",
+                        friendly_explanation="GPU execution was explicitly requested, but no supported graphics device was detected.",
+                        checks=checks,
+                        projected_ram_utilization=0.0,
+                        projected_vram_utilization=0.0,
+                        projected_shared_utilization=0.0,
+                    )
+                if hardware.safe_vram_budget_bytes < total_model_memory:
+                    projected_vram_u = min(1.0, total_model_memory / max(1, hardware.safe_vram_budget_bytes))
+                    checks.append({"name": "gpu_memory", "passed": False, "required": total_model_memory, "available": hardware.safe_vram_budget_bytes})
+                    return CompatibilityCheckResult(
+                        is_compatible=False,
+                        verification_stage=VerificationStage.SUPPORTED,
+                        reason_code="INSUFFICIENT_VRAM",
+                        friendly_explanation="GPU execution was explicitly requested, but available graphics memory is insufficient.",
+                        checks=checks,
+                        projected_ram_utilization=0.0,
+                        projected_vram_utilization=projected_vram_u,
+                        projected_shared_utilization=0.0,
+                    )
                 projected_vram_u = min(1.0, total_model_memory / max(1, hardware.safe_vram_budget_bytes))
-                projected_ram_u = min(1.0, (self.DEFAULT_RUNTIME_OVERHEAD_BYTES) / max(1, hardware.safe_ram_budget_bytes))
+                projected_ram_u = min(1.0, self.DEFAULT_RUNTIME_OVERHEAD_BYTES / max(1, hardware.safe_ram_budget_bytes))
                 checks.append({"name": "gpu_memory", "passed": True, "utilization": projected_vram_u})
-            elif hardware.safe_ram_budget_bytes >= total_model_memory:
+
+            elif requested_mode == ExecutionMode.CPU_GPU:
+                if not has_gpu:
+                    checks.append({"name": "gpu_device", "passed": False})
+                    return CompatibilityCheckResult(
+                        is_compatible=False,
+                        verification_stage=VerificationStage.SUPPORTED,
+                        reason_code="GPU_NOT_AVAILABLE",
+                        friendly_explanation="Combined CPU+GPU execution requires a supported graphics device.",
+                        checks=checks,
+                        projected_ram_utilization=0.0,
+                        projected_vram_utilization=0.0,
+                        projected_shared_utilization=0.0,
+                    )
+                combined_budget = hardware.safe_vram_budget_bytes + hardware.safe_ram_budget_bytes
+                if combined_budget < total_model_memory:
+                    checks.append({"name": "combined_memory", "passed": False, "required": total_model_memory, "available": combined_budget})
+                    return CompatibilityCheckResult(
+                        is_compatible=False,
+                        verification_stage=VerificationStage.SUPPORTED,
+                        reason_code="MEMORY_BUDGET_EXCEEDED",
+                        friendly_explanation="Combined CPU RAM and graphics memory are insufficient for this model.",
+                        checks=checks,
+                        projected_ram_utilization=min(1.0, total_model_memory / max(1, hardware.safe_ram_budget_bytes)),
+                        projected_vram_utilization=min(1.0, total_model_memory / max(1, hardware.safe_vram_budget_bytes)),
+                        projected_shared_utilization=0.0,
+                    )
+                projected_vram_u = min(1.0, hardware.safe_vram_budget_bytes / max(1, hardware.safe_vram_budget_bytes))
+                remaining_bytes = total_model_memory - hardware.safe_vram_budget_bytes
+                projected_ram_u = min(1.0, max(self.DEFAULT_RUNTIME_OVERHEAD_BYTES, remaining_bytes) / max(1, hardware.safe_ram_budget_bytes))
+                checks.append({"name": "cpu_gpu_memory", "passed": True, "vram_u": projected_vram_u, "ram_u": projected_ram_u})
+
+            elif requested_mode == ExecutionMode.CPU:
+                if hardware.safe_ram_budget_bytes < total_model_memory:
+                    projected_ram_u = min(1.0, total_model_memory / max(1, hardware.safe_ram_budget_bytes))
+                    checks.append({"name": "cpu_memory", "passed": False, "required": total_model_memory})
+                    return CompatibilityCheckResult(
+                        is_compatible=False,
+                        verification_stage=VerificationStage.SUPPORTED,
+                        reason_code="MEMORY_BUDGET_EXCEEDED",
+                        friendly_explanation="CPU execution requires more system RAM than is safely available.",
+                        checks=checks,
+                        projected_ram_utilization=projected_ram_u,
+                        projected_vram_utilization=0.0,
+                        projected_shared_utilization=0.0,
+                    )
                 projected_ram_u = min(1.0, total_model_memory / max(1, hardware.safe_ram_budget_bytes))
-                projected_vram_u = 0.0
                 checks.append({"name": "cpu_memory", "passed": True, "utilization": projected_ram_u})
-            else:
-                projected_ram_u = min(1.0, total_model_memory / max(1, hardware.safe_ram_budget_bytes))
-                checks.append({"name": "memory_budget", "passed": False, "required_bytes": total_model_memory})
-                return CompatibilityCheckResult(
-                    is_compatible=False,
-                    verification_stage=VerificationStage.SUPPORTED,
-                    reason_code="MEMORY_BUDGET_EXCEEDED",
-                    friendly_explanation="This configuration requires more memory than is safely available in RAM or graphics memory.",
-                    checks=checks,
-                    projected_ram_utilization=projected_ram_u,
-                    projected_vram_utilization=projected_vram_u,
-                    projected_shared_utilization=0.0,
-                )
+
+            else:  # AUTO
+                if has_gpu and hardware.safe_vram_budget_bytes >= total_model_memory:
+                    projected_vram_u = min(1.0, total_model_memory / max(1, hardware.safe_vram_budget_bytes))
+                    projected_ram_u = min(1.0, self.DEFAULT_RUNTIME_OVERHEAD_BYTES / max(1, hardware.safe_ram_budget_bytes))
+                    checks.append({"name": "gpu_memory", "passed": True, "utilization": projected_vram_u})
+                elif hardware.safe_ram_budget_bytes >= total_model_memory:
+                    projected_ram_u = min(1.0, total_model_memory / max(1, hardware.safe_ram_budget_bytes))
+                    checks.append({"name": "cpu_memory", "passed": True, "utilization": projected_ram_u})
+                elif has_gpu and (hardware.safe_vram_budget_bytes + hardware.safe_ram_budget_bytes >= total_model_memory):
+                    projected_vram_u = 1.0
+                    remaining = total_model_memory - hardware.safe_vram_budget_bytes
+                    projected_ram_u = min(1.0, remaining / max(1, hardware.safe_ram_budget_bytes))
+                    checks.append({"name": "cpu_gpu_memory", "passed": True})
+                else:
+                    projected_ram_u = min(1.0, total_model_memory / max(1, hardware.safe_ram_budget_bytes))
+                    checks.append({"name": "memory_budget", "passed": False, "required_bytes": total_model_memory})
+                    return CompatibilityCheckResult(
+                        is_compatible=False,
+                        verification_stage=VerificationStage.SUPPORTED,
+                        reason_code="MEMORY_BUDGET_EXCEEDED",
+                        friendly_explanation="This configuration requires more memory than is safely available in RAM or graphics memory.",
+                        checks=checks,
+                        projected_ram_utilization=projected_ram_u,
+                        projected_vram_utilization=projected_vram_u,
+                        projected_shared_utilization=0.0,
+                    )
 
         return CompatibilityCheckResult(
             is_compatible=True,
@@ -175,6 +257,9 @@ class CompatibilityPolicy:
         hardware: HardwareSnapshot,
         requested_mode: ExecutionMode = ExecutionMode.AUTO,
     ) -> CompatibilityCheckResult:
+        if requested_mode == ExecutionMode.AUTO and getattr(candidate, "execution_mode", None):
+            requested_mode = candidate.execution_mode
+
         checks: List[Dict[str, Any]] = []
 
         # 1. Format check
@@ -252,32 +337,111 @@ class CompatibilityPolicy:
         else:
             # Separate RAM and dedicated VRAM
             has_gpu = bool(hardware.gpu_devices and hardware.safe_vram_budget_bytes > 0)
-            use_gpu = has_gpu and (requested_mode in (ExecutionMode.AUTO, ExecutionMode.GPU, ExecutionMode.CPU_GPU))
 
-            if use_gpu and hardware.safe_vram_budget_bytes >= total_model_memory:
-                # Full GPU fit
+            if requested_mode == ExecutionMode.GPU:
+                if not has_gpu:
+                    checks.append({"name": "gpu_device", "passed": False})
+                    return CompatibilityCheckResult(
+                        is_compatible=False,
+                        verification_stage=VerificationStage.SUPPORTED,
+                        reason_code="GPU_NOT_AVAILABLE",
+                        friendly_explanation="GPU execution was explicitly requested, but no supported graphics device was detected.",
+                        checks=checks,
+                        projected_ram_utilization=0.0,
+                        projected_vram_utilization=0.0,
+                        projected_shared_utilization=0.0,
+                    )
+                if hardware.safe_vram_budget_bytes < total_model_memory:
+                    projected_vram_u = min(1.0, total_model_memory / max(1, hardware.safe_vram_budget_bytes))
+                    checks.append({"name": "gpu_memory", "passed": False, "required": total_model_memory, "available": hardware.safe_vram_budget_bytes})
+                    return CompatibilityCheckResult(
+                        is_compatible=False,
+                        verification_stage=VerificationStage.SUPPORTED,
+                        reason_code="INSUFFICIENT_VRAM",
+                        friendly_explanation="GPU execution was explicitly requested, but available graphics memory is insufficient.",
+                        checks=checks,
+                        projected_ram_utilization=0.0,
+                        projected_vram_utilization=projected_vram_u,
+                        projected_shared_utilization=0.0,
+                    )
                 projected_vram_u = min(1.0, total_model_memory / max(1, hardware.safe_vram_budget_bytes))
-                projected_ram_u = min(1.0, (self.DEFAULT_RUNTIME_OVERHEAD_BYTES) / max(1, hardware.safe_ram_budget_bytes))
+                projected_ram_u = min(1.0, self.DEFAULT_RUNTIME_OVERHEAD_BYTES / max(1, hardware.safe_ram_budget_bytes))
                 checks.append({"name": "gpu_memory", "passed": True, "utilization": projected_vram_u})
-            elif hardware.safe_ram_budget_bytes >= total_model_memory:
-                # CPU fit
+
+            elif requested_mode == ExecutionMode.CPU_GPU:
+                if not has_gpu:
+                    checks.append({"name": "gpu_device", "passed": False})
+                    return CompatibilityCheckResult(
+                        is_compatible=False,
+                        verification_stage=VerificationStage.SUPPORTED,
+                        reason_code="GPU_NOT_AVAILABLE",
+                        friendly_explanation="Combined CPU+GPU execution requires a supported graphics device.",
+                        checks=checks,
+                        projected_ram_utilization=0.0,
+                        projected_vram_utilization=0.0,
+                        projected_shared_utilization=0.0,
+                    )
+                combined_budget = hardware.safe_vram_budget_bytes + hardware.safe_ram_budget_bytes
+                if combined_budget < total_model_memory:
+                    checks.append({"name": "combined_memory", "passed": False, "required": total_model_memory, "available": combined_budget})
+                    return CompatibilityCheckResult(
+                        is_compatible=False,
+                        verification_stage=VerificationStage.SUPPORTED,
+                        reason_code="MEMORY_BUDGET_EXCEEDED",
+                        friendly_explanation="Combined CPU RAM and graphics memory are insufficient for this model.",
+                        checks=checks,
+                        projected_ram_utilization=min(1.0, total_model_memory / max(1, hardware.safe_ram_budget_bytes)),
+                        projected_vram_utilization=min(1.0, total_model_memory / max(1, hardware.safe_vram_budget_bytes)),
+                        projected_shared_utilization=0.0,
+                    )
+                projected_vram_u = min(1.0, hardware.safe_vram_budget_bytes / max(1, hardware.safe_vram_budget_bytes))
+                remaining_bytes = total_model_memory - hardware.safe_vram_budget_bytes
+                projected_ram_u = min(1.0, max(self.DEFAULT_RUNTIME_OVERHEAD_BYTES, remaining_bytes) / max(1, hardware.safe_ram_budget_bytes))
+                checks.append({"name": "cpu_gpu_memory", "passed": True, "vram_u": projected_vram_u, "ram_u": projected_ram_u})
+
+            elif requested_mode == ExecutionMode.CPU:
+                if hardware.safe_ram_budget_bytes < total_model_memory:
+                    projected_ram_u = min(1.0, total_model_memory / max(1, hardware.safe_ram_budget_bytes))
+                    checks.append({"name": "cpu_memory", "passed": False, "required": total_model_memory})
+                    return CompatibilityCheckResult(
+                        is_compatible=False,
+                        verification_stage=VerificationStage.SUPPORTED,
+                        reason_code="MEMORY_BUDGET_EXCEEDED",
+                        friendly_explanation="CPU execution requires more system RAM than is safely available.",
+                        checks=checks,
+                        projected_ram_utilization=projected_ram_u,
+                        projected_vram_utilization=0.0,
+                        projected_shared_utilization=0.0,
+                    )
                 projected_ram_u = min(1.0, total_model_memory / max(1, hardware.safe_ram_budget_bytes))
-                projected_vram_u = 0.0
                 checks.append({"name": "cpu_memory", "passed": True, "utilization": projected_ram_u})
-            else:
-                # Neither full GPU nor CPU has enough safe memory
-                projected_ram_u = min(1.0, total_model_memory / max(1, hardware.safe_ram_budget_bytes))
-                checks.append({"name": "memory_budget", "passed": False, "required_bytes": total_model_memory})
-                return CompatibilityCheckResult(
-                    is_compatible=False,
-                    verification_stage=VerificationStage.SUPPORTED,
-                    reason_code="MEMORY_BUDGET_EXCEEDED",
-                    friendly_explanation="This model requires more memory than is safely available in RAM or graphics memory.",
-                    checks=checks,
-                    projected_ram_utilization=projected_ram_u,
-                    projected_vram_utilization=projected_vram_u,
-                    projected_shared_utilization=0.0,
-                )
+
+            else:  # AUTO
+                if has_gpu and hardware.safe_vram_budget_bytes >= total_model_memory:
+                    projected_vram_u = min(1.0, total_model_memory / max(1, hardware.safe_vram_budget_bytes))
+                    projected_ram_u = min(1.0, self.DEFAULT_RUNTIME_OVERHEAD_BYTES / max(1, hardware.safe_ram_budget_bytes))
+                    checks.append({"name": "gpu_memory", "passed": True, "utilization": projected_vram_u})
+                elif hardware.safe_ram_budget_bytes >= total_model_memory:
+                    projected_ram_u = min(1.0, total_model_memory / max(1, hardware.safe_ram_budget_bytes))
+                    checks.append({"name": "cpu_memory", "passed": True, "utilization": projected_ram_u})
+                elif has_gpu and (hardware.safe_vram_budget_bytes + hardware.safe_ram_budget_bytes >= total_model_memory):
+                    projected_vram_u = 1.0
+                    remaining = total_model_memory - hardware.safe_vram_budget_bytes
+                    projected_ram_u = min(1.0, remaining / max(1, hardware.safe_ram_budget_bytes))
+                    checks.append({"name": "cpu_gpu_memory", "passed": True})
+                else:
+                    projected_ram_u = min(1.0, total_model_memory / max(1, hardware.safe_ram_budget_bytes))
+                    checks.append({"name": "memory_budget", "passed": False, "required_bytes": total_model_memory})
+                    return CompatibilityCheckResult(
+                        is_compatible=False,
+                        verification_stage=VerificationStage.SUPPORTED,
+                        reason_code="MEMORY_BUDGET_EXCEEDED",
+                        friendly_explanation="This model requires more memory than is safely available in RAM or graphics memory.",
+                        checks=checks,
+                        projected_ram_utilization=projected_ram_u,
+                        projected_vram_utilization=projected_vram_u,
+                        projected_shared_utilization=0.0,
+                    )
 
         return CompatibilityCheckResult(
             is_compatible=True,

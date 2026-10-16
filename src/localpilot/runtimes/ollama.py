@@ -22,7 +22,7 @@ from localpilot.runtimes.base import (
     RuntimeCapabilities,
     RuntimeInstallPlan,
 )
-from localpilot.security import safe_extract_tar
+from localpilot.security import safe_extract_tar, safe_extract_zip
 from localpilot.storage.db import get_default_data_dir
 
 
@@ -139,16 +139,23 @@ class OllamaRuntimeAdapter(BaseRuntimeAdapter):
 
         if str(archive_path).endswith(".tgz") or str(archive_path).endswith(".tar.gz"):
             safe_extract_tar(archive_path, extract_dir)
-            # Find the ollama binary
-            extracted_bin = None
-            for p in extract_dir.rglob("ollama"):
-                if p.is_file():
-                    extracted_bin = p
-                    break
-            if extracted_bin:
-                if str(extracted_bin) != str(target_path):
-                    shutil.copy2(extracted_bin, target_path)
-                os.chmod(target_path, 0o755)
+        elif str(archive_path).endswith(".zip"):
+            safe_extract_zip(archive_path, extract_dir)
+
+        # Locate extracted binary
+        extracted_bin = None
+        for p in extract_dir.rglob("ollama"):
+            if p.is_file():
+                extracted_bin = p
+                break
+
+        if extracted_bin:
+            if str(extracted_bin) != str(target_path):
+                shutil.copy2(extracted_bin, target_path)
+            os.chmod(target_path, 0o755)
+
+        if not Path(target_path).exists():
+            raise RuntimeError(f"Ollama preparation failed: binary was not found at {target_path} after extraction.")
 
         return str(target_path)
 
@@ -165,16 +172,19 @@ class OllamaRuntimeAdapter(BaseRuntimeAdapter):
         # Check if ollama daemon is already responding
         endpoint = "http://127.0.0.1:11434"
         try:
-            r = httpx.get(f"{endpoint}/api/tags", timeout=1.0)
-            if r.status_code == 200:
-                # Daemon already running externally
-                return ProcessIdentity(
-                    pid=os.getpid(),  # proxy
-                    process_create_time=psutil.boot_time(),
-                    executable_path=bin_path,
-                    endpoint_url=endpoint,
-                    ownership_class=OwnershipClass.EXTERNAL_APPROVED,
-                )
+            async with httpx.AsyncClient(timeout=1.0) as client:
+                r = await client.get(f"{endpoint}/api/tags")
+                if r.status_code == 200:
+                    # Daemon already running externally; represent with unknown/None process identity
+                    return ProcessIdentity(
+                        pid=None,
+                        process_create_time=None,
+                        executable_path=bin_path,
+                        endpoint_url=endpoint,
+                        ownership_class=OwnershipClass.READONLY_DISCOVERED,
+                        service_id="ollama",
+                        deployment_method="local_api_service",
+                    )
         except Exception:
             pass
 
@@ -194,20 +204,28 @@ class OllamaRuntimeAdapter(BaseRuntimeAdapter):
             close_fds=True,
         )
 
-        # Wait for daemon readiness
+        # Wait for daemon readiness asynchronously while monitoring child process health
         ready = False
-        for _ in range(30):
-            await asyncio.sleep(0.5)
-            try:
-                r = httpx.get(f"{endpoint}/api/tags", timeout=1.0)
-                if r.status_code == 200:
-                    ready = True
-                    break
-            except Exception:
-                pass
+        async with httpx.AsyncClient(timeout=1.0) as client:
+            for _ in range(30):
+                await asyncio.sleep(0.5)
+                if proc.poll() is not None:
+                    raise RuntimeError(f"Ollama daemon terminated unexpectedly with exit code {proc.returncode}.")
+                try:
+                    r = await client.get(f"{endpoint}/api/tags")
+                    if r.status_code == 200:
+                        ready = True
+                        break
+                except Exception:
+                    pass
 
         if not ready:
-            proc.terminate()
+            if proc.poll() is None:
+                proc.terminate()
+                try:
+                    proc.wait(timeout=3)
+                except Exception:
+                    proc.kill()
             raise RuntimeError("Ollama daemon failed to become ready within 15 seconds.")
 
         p_proc = psutil.Process(proc.pid)
@@ -217,6 +235,8 @@ class OllamaRuntimeAdapter(BaseRuntimeAdapter):
             executable_path=bin_path,
             endpoint_url=endpoint,
             ownership_class=OwnershipClass.LOCALPILOT_OWNED,
+            service_id="ollama",
+            deployment_method="local_api_service",
         )
 
     def get_service_id(self) -> ManagedServiceId:
@@ -233,12 +253,19 @@ class OllamaRuntimeAdapter(BaseRuntimeAdapter):
         except Exception:
             return False
 
-    async def stop_instance(self, identity: ProcessIdentity) -> bool:
+    async def stop_instance(self, identity: ProcessIdentity, model_id: Optional[str] = None) -> bool:
         """Stops the running model. Never stops external/shared daemons automatically."""
-        if identity.ownership_class == OwnershipClass.LOCALPILOT_OWNED:
+        target_model = model_id or identity.service_id
+        if identity.endpoint_url and target_model:
+            await self.unload_model(identity.endpoint_url, target_model)
+
+        # Only terminate daemon process if explicitly owned by LocalPilot and has valid PID
+        if identity.ownership_class == OwnershipClass.LOCALPILOT_OWNED and identity.pid is not None:
             if psutil.pid_exists(identity.pid):
                 try:
                     p = psutil.Process(identity.pid)
+                    if identity.process_create_time and abs(p.create_time() - identity.process_create_time) > 1.0:
+                        return False
                     p.terminate()
                     p.wait(timeout=5)
                     return True
@@ -249,11 +276,7 @@ class OllamaRuntimeAdapter(BaseRuntimeAdapter):
                     except Exception:
                         return False
             return True
-        else:
-            # External or shared daemon: protect daemon and unload model memory if endpoint available
-            if identity.endpoint_url and identity.service_id:
-                await self.unload_model(identity.endpoint_url, identity.service_id)
-            return True
+        return True
 
     async def test_inference(self, endpoint_url: str, model_id: str) -> bool:
         url = endpoint_url.rstrip("/") + "/api/generate"

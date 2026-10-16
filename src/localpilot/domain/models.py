@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 class VerificationStage(str, Enum):
     SUPPORTED = "supported"              # LocalPilot supports this artifact/runtime/platform
     EXPECTED_TO_FIT = "expected_to_fit"  # Passed estimated resource check
+    DOWNLOADED_PREPARED = "downloaded_prepared"  # Model downloaded and prepared on disk
     TESTED_HERE = "tested_here"          # Verified inference completed on this computer
 
 

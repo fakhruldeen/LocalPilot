@@ -34,9 +34,9 @@ class StorageCategorySummary(BaseModel):
 class StorageManager:
     """Manages physical storage, downloads, and safe reference-counted removal."""
 
-    def __init__(self, db: Optional[DatabaseManager] = None) -> None:
+    def __init__(self, db: Optional[DatabaseManager] = None, data_dir: Optional[Path] = None) -> None:
         self.db = db or get_db()
-        self.data_dir = get_default_data_dir()
+        self.data_dir = data_dir or get_default_data_dir()
         self.models_dir = self.data_dir / "models"
         self.runtimes_dir = self.data_dir / "runtimes"
         self.downloads_dir = self.data_dir / "downloads"
@@ -118,41 +118,64 @@ class StorageManager:
         installation_id: str,
         delete_files: bool = True,
     ) -> Dict[str, Any]:
-        """Removes an installation record and deletes artifact files ONLY if no other installation references them."""
+        """Removes an installation record safely, preventing removal during active conflicting runs."""
         conn = self.db.get_connection()
         with conn:
             inst = conn.execute("SELECT * FROM installations WHERE installation_id = ?", (installation_id,)).fetchone()
             if not inst:
                 return {"success": False, "error": f"Installation {installation_id} not found."}
 
-            artifact_ids = json.loads(inst["artifact_ids_json"])
+            # 1. Prevent removal during active running instances
+            running = conn.execute(
+                "SELECT * FROM running_instances WHERE installation_id = ? OR model_id = ?",
+                (installation_id, inst["model_id"]),
+            ).fetchall()
+            if running:
+                return {
+                    "success": False,
+                    "error": f"Cannot remove installation {installation_id}: model is currently running. Stop the instance first.",
+                }
+
+            # 2. Prevent removal during active conflicting jobs
+            active_jobs = conn.execute(
+                "SELECT * FROM jobs WHERE target_id = ? AND status IN ('pending', 'running')",
+                (installation_id,),
+            ).fetchall()
+            if active_jobs:
+                return {
+                    "success": False,
+                    "error": f"Cannot remove installation {installation_id}: active workflow job is in progress.",
+                }
+
+            artifact_ids = json.loads(inst["artifact_ids_json"]) if inst["artifact_ids_json"] else []
             files_deleted = []
             files_preserved = []
             bytes_freed = 0
 
-            if delete_files:
-                for art_id in artifact_ids:
-                    art = conn.execute("SELECT * FROM storage_artifacts WHERE artifact_id = ?", (art_id,)).fetchone()
-                    if not art:
-                        continue
+            for art_id in artifact_ids:
+                art = conn.execute("SELECT * FROM storage_artifacts WHERE artifact_id = ?", (art_id,)).fetchone()
+                if not art:
+                    continue
 
-                    # Decrement ref_count
-                    new_ref = art["ref_count"] - 1
+                new_ref = max(0, art["ref_count"] - 1)
+                p = Path(art["physical_path"])
+                is_owned = inst["ownership_class"] == OwnershipClass.LOCALPILOT_OWNED.value
+                is_imported = art["management_mode"] == "imported_reference" or not art["is_managed"]
+
+                if delete_files and new_ref == 0 and p.exists() and art["is_managed"] and is_owned and not is_imported:
+                    if p.is_file():
+                        sz = p.stat().st_size
+                        p.unlink()
+                        bytes_freed += sz
+                        files_deleted.append(str(p))
+                    else:
+                        files_preserved.append(str(p))
+                    conn.execute("DELETE FROM storage_artifacts WHERE artifact_id = ?", (art_id,))
+                else:
+                    files_preserved.append(str(p))
                     if new_ref > 0:
                         conn.execute("UPDATE storage_artifacts SET ref_count = ? WHERE artifact_id = ?", (new_ref, art_id))
-                        files_preserved.append(art["physical_path"])
                     else:
-                        # No more references - safe to remove file only if localpilot-owned and managed
-                        p = Path(art["physical_path"])
-                        is_owned = inst["ownership_class"] == OwnershipClass.LOCALPILOT_OWNED.value
-                        if p.exists() and art["is_managed"] and is_owned:
-                            sz = p.stat().st_size if p.is_file() else self._get_dir_size(p)
-                            if p.is_file():
-                                p.unlink()
-                            else:
-                                shutil.rmtree(p)
-                            bytes_freed += sz
-                            files_deleted.append(str(p))
                         conn.execute("DELETE FROM storage_artifacts WHERE artifact_id = ?", (art_id,))
 
             conn.execute("DELETE FROM installations WHERE installation_id = ?", (installation_id,))

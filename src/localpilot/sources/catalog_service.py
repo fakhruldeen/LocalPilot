@@ -144,11 +144,24 @@ class CatalogService:
                     return (adv_penalty, svc_running_bonus)
 
                 compatible_plans.sort(key=_plan_priority)
-                recommended = compatible_plans[0][0]
+                recommended, recommended_comp = compatible_plans[0]
                 alternatives = [p for p, _ in compatible_plans[1:]]
+                plan_effective_comp = recommended_comp
             else:
-                recommended = all_plans[0] if all_plans else None
-                alternatives = all_plans[1:] if len(all_plans) > 1 else []
+                if only_compatible:
+                    continue  # Exclude candidates with no compatible execution plan
+                recommended = None
+                alternatives = []
+                plan_effective_comp = CompatibilityCheckResult(
+                    is_compatible=False,
+                    verification_stage=VerificationStage.SUPPORTED,
+                    reason_code="NO_COMPATIBLE_PLAN",
+                    friendly_explanation="No compatible execution plan was found for this system configuration.",
+                    checks=[{"name": "execution_plans", "passed": False, "count": len(all_plans)}],
+                    projected_ram_utilization=0.0,
+                    projected_vram_utilization=0.0,
+                    projected_shared_utilization=0.0,
+                )
 
             # Persist plans to database for traceability
             with conn:
@@ -171,8 +184,11 @@ class CatalogService:
                         ),
                     )
 
-            scr = self.scoring_policy.score(c, comp)
-            scored_items.append((c, scr, comp, recommended, alternatives))
+            # Score using the selected plan's compatibility and context
+            if recommended:
+                c.usable_context = recommended.usable_context
+            scr = self.scoring_policy.score(c, plan_effective_comp)
+            scored_items.append((c, scr, plan_effective_comp, recommended, alternatives))
 
         # Sort candidates using scoring policy (based on primary candidate compatibility)
         scored_triplets = [(c, s, comp) for c, s, comp, _, _ in scored_items]

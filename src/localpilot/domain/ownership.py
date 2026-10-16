@@ -20,9 +20,9 @@ class OwnershipClass(str, Enum):
 
 
 class ProcessIdentity(BaseModel):
-    pid: int
-    process_create_time: float
-    executable_path: str
+    pid: Optional[int] = None
+    process_create_time: Optional[float] = None
+    executable_path: Optional[str] = None
     endpoint_url: Optional[str] = None
     ownership_class: OwnershipClass = OwnershipClass.UNKNOWN
     service_id: Optional[str] = None
@@ -39,20 +39,26 @@ class OwnershipVerifier:
     @staticmethod
     def verify_process(expected: ProcessIdentity) -> bool:
         """Checks PID, existence, creation time, and executable match to prevent PID reuse bugs."""
+        if expected.pid is None:
+            # External API service with unknown process identity; verify endpoint if provided
+            return bool(expected.endpoint_url)
+
         try:
             if not psutil.pid_exists(expected.pid):
                 return False
             p = psutil.Process(expected.pid)
             # Check create time within 1 second tolerance
-            if abs(p.create_time() - expected.process_create_time) > 1.0:
-                return False
-            # Check executable path if available
-            try:
-                exe = p.exe()
-                if exe and Path(exe).name != Path(expected.executable_path).name:
+            if expected.process_create_time is not None:
+                if abs(p.create_time() - expected.process_create_time) > 1.0:
                     return False
-            except (psutil.AccessDenied, psutil.NoSuchProcess):
-                pass
+            # Check executable path if available
+            if expected.executable_path:
+                try:
+                    exe = p.exe()
+                    if exe and Path(exe).name != Path(expected.executable_path).name:
+                        return False
+                except (psutil.AccessDenied, psutil.NoSuchProcess):
+                    pass
             return True
         except Exception:
             return False

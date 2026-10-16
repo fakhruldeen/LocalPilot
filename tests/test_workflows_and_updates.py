@@ -3,6 +3,8 @@
 from pathlib import Path
 import pytest
 
+from unittest.mock import AsyncMock
+
 from localpilot.application.setup_workflow import SetupWorkflow
 from localpilot.application.update_workflow import UpdateWorkflow
 from localpilot.domain.models import (
@@ -54,6 +56,13 @@ async def test_setup_workflow_execution(tmp_path: Path, test_candidate: Normaliz
     async def mock_prepare(*args, **kwargs):
         return "/bin/true"
     workflow.llamacpp_adapter.prepare_runtime = mock_prepare
+    workflow.llamacpp_adapter.test_inference = AsyncMock(return_value=True)
+
+    # Pre-stage test model fixture file in target directory
+    target_dir = Path(plan.target_install_dir)
+    target_dir.mkdir(parents=True, exist_ok=True)
+    test_file = target_dir / (test_candidate.artifact_id or f"{test_candidate.model_id}.gguf")
+    test_file.write_bytes(b"TEST_FIXTURE_BYTES" * 100)
 
     # Execute setup
     res = await workflow.execute_setup(test_candidate, plan)
