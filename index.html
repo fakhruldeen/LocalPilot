@@ -234,6 +234,88 @@
         </div>
     </section>
 
+    <!-- NEW: Interactive Hardware Fit Estimator -->
+    <section class="py-20 border-b border-white/5 bg-dark-950 relative overflow-hidden">
+        <div class="max-w-5xl mx-auto px-6 relative z-10">
+            <div class="text-center max-w-2xl mx-auto mb-12">
+                <span class="text-brand font-mono text-xs uppercase tracking-wider font-semibold">Zero Guesswork</span>
+                <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-white mt-2 mb-3">Will My Computer Run It?</h2>
+                <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+                    Select your computer setup below to see what you can safely run right now—with plenty of memory left for your browser and apps.
+                </p>
+            </div>
+
+            <!-- Hardware Selector Buttons -->
+            <div class="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-8">
+                <button onclick="selectHardware('mac-8')" id="hw-btn-mac-8" class="hw-tab-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all border bg-brand/10 border-brand/30 text-brand">
+                    🍏 Mac (M1/M2/M3 • 8GB)
+                </button>
+                <button onclick="selectHardware('mac-16')" id="hw-btn-mac-16" class="hw-tab-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all border bg-dark-900 border-white/10 text-slate-300 hover:text-white hover:border-white/20">
+                    🍏 Mac (M-Series • 16GB+)
+                </button>
+                <button onclick="selectHardware('pc-8')" id="hw-btn-pc-8" class="hw-tab-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all border bg-dark-900 border-white/10 text-slate-300 hover:text-white hover:border-white/20">
+                    💻 Laptop / PC (8GB RAM)
+                </button>
+                <button onclick="selectHardware('pc-16')" id="hw-btn-pc-16" class="hw-tab-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all border bg-dark-900 border-white/10 text-slate-300 hover:text-white hover:border-white/20">
+                    💼 Power Laptop (16GB - 32GB)
+                </button>
+                <button onclick="selectHardware('gpu')" id="hw-btn-gpu" class="hw-tab-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all border bg-dark-900 border-white/10 text-slate-300 hover:text-white hover:border-white/20">
+                    🎮 PC with Dedicated GPU
+                </button>
+            </div>
+
+            <!-- Interactive Result Display Card -->
+            <div class="bg-dark-900 rounded-3xl border border-white/10 p-6 sm:p-10 shadow-2xl space-y-6">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/5 pb-6">
+                    <div>
+                        <span id="hw-badge" class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mb-2">
+                            Smooth &amp; Highly Efficient
+                        </span>
+                        <h3 id="hw-title" class="text-xl sm:text-2xl font-bold text-white">
+                            Apple Silicon Mac (M1/M2/M3/M4 with 8 GB RAM)
+                        </h3>
+                    </div>
+                    <div class="text-left sm:text-right">
+                        <span class="text-xs text-slate-400 block font-mono">Expected Performance</span>
+                        <span id="hw-speed" class="text-brand font-bold text-sm sm:text-base">
+                            ⚡ ~35-45 words / second
+                        </span>
+                    </div>
+                </div>
+
+                <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-1">
+                        <span class="text-xs font-mono text-slate-400 block">Recommended Safe Model</span>
+                        <p id="hw-model" class="text-base font-bold text-white">Llama 3.2 (3B) or Qwen 2.5 (3B)</p>
+                        <p class="text-xs text-slate-400 leading-relaxed pt-1">Compact, incredibly intelligent, and requires only ~2.0 GB download.</p>
+                    </div>
+
+                    <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-1">
+                        <span class="text-xs font-mono text-slate-400 block">RAM Safety Margin</span>
+                        <p id="hw-ram" class="text-base font-bold text-emerald-400">Uses ~2.1 GB RAM</p>
+                        <p id="hw-headroom" class="text-xs text-slate-400 leading-relaxed pt-1">Leaves 5.9 GB safe headroom for Chrome, Safari, and daily apps.</p>
+                    </div>
+
+                    <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-1 sm:col-span-2 lg:col-span-1">
+                        <span class="text-xs font-mono text-slate-400 block">Best Everyday Tasks</span>
+                        <p id="hw-tasks" class="text-base font-bold text-white">Drafting, Summaries &amp; Q&amp;A</p>
+                        <p class="text-xs text-slate-400 leading-relaxed pt-1">Effortlessly edit emails, brainstorm ideas, and summarize long PDFs.</p>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div class="font-mono text-xs text-slate-300 w-full sm:w-auto">
+                        <span class="text-slate-500 mr-2">Try this model now:</span>
+                        <code id="hw-cmd" class="text-brand bg-dark-950 px-3 py-1.5 rounded-lg border border-white/10 select-all inline-block mt-1 sm:mt-0">localpilot chat llama3.2:3b</code>
+                    </div>
+                    <a href="models.html" class="text-xs font-semibold text-brand hover:text-brand-300 inline-flex items-center gap-1.5 transition-colors shrink-0">
+                        View all models in catalog &rarr;
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Why LocalPilot? (Pillars for Novices) -->
     <section class="py-20 border-b border-white/5 bg-dark-900">
         <div class="max-w-7xl mx-auto px-6">
@@ -283,6 +365,155 @@
                     </p>
                     <a href="install.html" class="text-brand text-xs font-semibold inline-flex items-center gap-1 hover:underline">
                         Read uninstallation steps &rarr;
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- NEW: Everyday Real-World Use Cases -->
+    <section class="py-20 border-b border-white/5 bg-dark-850">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center max-w-2xl mx-auto mb-16">
+                <span class="text-brand font-mono text-xs uppercase tracking-wider font-semibold">Practical Inspiration</span>
+                <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-white mt-2 mb-4">What Can You Actually Do With It?</h2>
+                <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+                    You don't need to write code to get tremendous value from local AI. Here are 4 everyday ways people use LocalPilot every day:
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Use Case 1 -->
+                <div class="bg-dark-900 p-8 rounded-3xl border border-white/10 hover:border-brand/30 transition-all flex flex-col justify-between space-y-6">
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-3">
+                            <span class="w-10 h-10 rounded-2xl bg-teal-500/10 text-teal-300 flex items-center justify-center text-xl">📄</span>
+                            <div>
+                                <h3 class="text-lg font-bold text-white">Private Document &amp; PDF Summarizer</h3>
+                                <span class="text-xs text-brand font-mono">100% Confidential</span>
+                            </div>
+                        </div>
+                        <p class="text-slate-300 text-sm leading-relaxed">
+                            Have confidential contracts, medical paperwork, tax summaries, or meeting transcripts? Paste them directly into LocalPilot to extract key takeaways or action items without worrying about third-party data leaks or cloud terms of service.
+                        </p>
+                        <div class="p-4 rounded-xl bg-dark-950 border border-white/5 font-mono text-xs text-slate-300 space-y-1">
+                            <span class="text-slate-500 text-[11px] block font-sans">Example Prompt:</span>
+                            <span class="text-teal-300">"Summarize this 5-page meeting transcript into 3 key decisions and assign action items to each person mentioned."</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Use Case 2 -->
+                <div class="bg-dark-900 p-8 rounded-3xl border border-white/10 hover:border-brand/30 transition-all flex flex-col justify-between space-y-6">
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-3">
+                            <span class="w-10 h-10 rounded-2xl bg-cyan-500/10 text-cyan-300 flex items-center justify-center text-xl">✈️</span>
+                            <div>
+                                <h3 class="text-lg font-bold text-white">The Airplane &amp; Commute Co-Pilot</h3>
+                                <span class="text-xs text-brand font-mono">Works 100% Offline</span>
+                            </div>
+                        </div>
+                        <p class="text-slate-300 text-sm leading-relaxed">
+                            Flying across continents, riding the subway, or camping off-grid? Because LocalPilot runs directly on your computer's chip, your personal AI works seamlessly with zero Wi-Fi, zero cellular data, and zero monthly subscriptions.
+                        </p>
+                        <div class="p-4 rounded-xl bg-dark-950 border border-white/5 font-mono text-xs text-slate-300 space-y-1">
+                            <span class="text-slate-500 text-[11px] block font-sans">Example Prompt:</span>
+                            <span class="text-cyan-300">"I'm drafting an article about sustainable gardening. Help me outline 5 compelling subheadings with practical tips."</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Use Case 3 -->
+                <div class="bg-dark-900 p-8 rounded-3xl border border-white/10 hover:border-brand/30 transition-all flex flex-col justify-between space-y-6">
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-3">
+                            <span class="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-300 flex items-center justify-center text-xl">✍️</span>
+                            <div>
+                                <h3 class="text-lg font-bold text-white">Distraction-Free Writing &amp; Email Polishing</h3>
+                                <span class="text-xs text-brand font-mono">Tone &amp; Grammar Mastery</span>
+                            </div>
+                        </div>
+                        <p class="text-slate-300 text-sm leading-relaxed">
+                            Draft delicate emails, refine resume bullet points, fix awkward sentence phrasing, or brainstorm engaging headlines. Get instant linguistic suggestions without tracking cookies or advertising algorithms watching what you write.
+                        </p>
+                        <div class="p-4 rounded-xl bg-dark-950 border border-white/5 font-mono text-xs text-slate-300 space-y-1">
+                            <span class="text-slate-500 text-[11px] block font-sans">Example Prompt:</span>
+                            <span class="text-indigo-300">"Rewrite this draft email to sound warm yet decisive, reducing the length to under 80 words."</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Use Case 4 -->
+                <div class="bg-dark-900 p-8 rounded-3xl border border-white/10 hover:border-brand/30 transition-all flex flex-col justify-between space-y-6">
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-3">
+                            <span class="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-300 flex items-center justify-center text-xl">🎓</span>
+                            <div>
+                                <h3 class="text-lg font-bold text-white">Ad-Free Study &amp; Learning Companion</h3>
+                                <span class="text-xs text-brand font-mono">Endless Curious Questions</span>
+                            </div>
+                        </div>
+                        <p class="text-slate-300 text-sm leading-relaxed">
+                            A patient interactive tutor for yourself or your kids to explore science, history, geography, and philosophy. Ask follow-up questions for hours with zero paywalls, zero usage caps, and zero marketing popups.
+                        </p>
+                        <div class="p-4 rounded-xl bg-dark-950 border border-white/5 font-mono text-xs text-slate-300 space-y-1">
+                            <span class="text-slate-500 text-[11px] block font-sans">Example Prompt:</span>
+                            <span class="text-emerald-300">"Explain the difference between nuclear fission and fusion as if I were a curious 12-year-old."</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- NEW: The LocalPilot 5-Point Safety Promise -->
+    <section class="py-20 border-b border-white/5 bg-dark-900">
+        <div class="max-w-5xl mx-auto px-6">
+            <div class="text-center max-w-2xl mx-auto mb-14">
+                <span class="text-brand font-mono text-xs uppercase tracking-wider font-semibold">User Protection</span>
+                <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-white mt-2 mb-3">Our 5-Point Safety Guarantee</h2>
+                <p class="text-slate-300 text-sm sm:text-base">We engineered LocalPilot with non-technical users in mind so you never have to worry about your machine.</p>
+            </div>
+
+            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <div class="text-2xl text-emerald-400 font-bold">1</div>
+                    <h3 class="text-base font-bold text-white">Zero RAM Freezes</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">LocalPilot inspects your exact hardware and enforces safe memory limits before downloading, preventing system freeze-ups.</p>
+                </div>
+
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <div class="text-2xl text-emerald-400 font-bold">2</div>
+                    <h3 class="text-base font-bold text-white">Zero Telemetry &amp; Tracking</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">No usage tracking, no remote logging, and no analytics. Your computer connects to the internet only when downloading the open model you chose.</p>
+                </div>
+
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <div class="text-2xl text-emerald-400 font-bold">3</div>
+                    <h3 class="text-base font-bold text-white">No Root / Sudo Required</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">Installs cleanly inside your personal user folder. It never modifies operating system files or installs hidden background root services.</p>
+                </div>
+
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <div class="text-2xl text-emerald-400 font-bold">4</div>
+                    <h3 class="text-base font-bold text-white">Respects Your Other Tools</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">Already have Ollama or LM Studio? LocalPilot connects politely, unloads memory when done, and never kills or corrupts other services.</p>
+                </div>
+
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <div class="text-2xl text-emerald-400 font-bold">5</div>
+                    <h3 class="text-base font-bold text-white">1-Command Clean Removal</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">If you decide you no longer want LocalPilot, one command deletes every model, log, and configuration file. Nothing is left behind.</p>
+                </div>
+
+                <div class="p-6 rounded-2xl bg-brand/10 border border-brand/20 space-y-2 flex flex-col justify-between">
+                    <div>
+                        <div class="text-2xl text-brand font-bold">★</div>
+                        <h3 class="text-base font-bold text-white">Free &amp; Open Forever</h3>
+                        <p class="text-xs text-slate-300 leading-relaxed">Licensed under GNU GPLv3. Transparent source code, public releases, and zero hidden commercial tiers.</p>
+                    </div>
+                    <a href="architecture.html" class="text-xs font-bold text-brand hover:underline inline-flex items-center gap-1">
+                        Read technical details &rarr;
                     </a>
                 </div>
             </div>
@@ -451,6 +682,82 @@
                 } else {
                     screen.classList.add('hidden');
                     btn.className = 'text-[11px] font-mono px-2.5 py-1 rounded text-slate-400 hover:text-slate-200';
+                }
+            });
+        }
+
+        const hardwareProfiles = {
+            'mac-8': {
+                title: 'Apple Silicon Mac (M1/M2/M3/M4 with 8 GB RAM)',
+                badge: 'Smooth & Highly Efficient',
+                speed: '⚡ ~35-45 words / second',
+                model: 'Llama 3.2 (3B) or Qwen 2.5 (3B)',
+                ram: 'Uses ~2.1 GB RAM',
+                headroom: 'Leaves 5.9 GB safe headroom for Chrome, Safari, and daily apps.',
+                tasks: 'Drafting, Summaries & Q&A',
+                cmd: 'localpilot chat llama3.2:3b'
+            },
+            'mac-16': {
+                title: 'Apple Silicon Mac (M-Series with 16 GB - 36 GB+ RAM)',
+                badge: 'Powerhouse Performance • Instant Responses',
+                speed: '⚡ ~45-60+ words / second',
+                model: 'Qwen 2.5 (7B), Llama 3.1 (8B), or Mistral (7B)',
+                ram: 'Uses ~4.8 GB RAM',
+                headroom: 'Leaves 11.2+ GB headroom for heavy multitasking and pro apps.',
+                tasks: 'Deep Analysis, Long Documents & Code',
+                cmd: 'localpilot chat qwen2.5:7b'
+            },
+            'pc-8': {
+                title: 'Everyday Laptop / Desktop (Intel or AMD with 8 GB RAM)',
+                badge: 'Comfortable CPU Execution • Zero GPU Needed',
+                speed: '⚡ ~12-20 words / second (Reading speed)',
+                model: 'Llama 3.2 (3B) or SmolLM2 (1.7B)',
+                ram: 'Uses ~2.2 GB RAM',
+                headroom: 'Leaves 5.8 GB free for your browser and background tasks.',
+                tasks: 'Proofreading, Brainstorming & Q&A',
+                cmd: 'localpilot chat llama3.2:3b'
+            },
+            'pc-16': {
+                title: 'Power Laptop / Workstation (16 GB - 32 GB RAM)',
+                badge: 'Multitasking Ready • Smooth Thinking',
+                speed: '⚡ ~18-28 words / second on Multi-Core CPU',
+                model: 'Mistral (7B), Qwen 2.5 (7B), or Llama 3.1 (8B)',
+                ram: 'Uses ~5.1 GB RAM',
+                headroom: 'Leaves 10.9+ GB free for development and virtual environments.',
+                tasks: 'Complex Synthesis, Long Reports & Technical Tasks',
+                cmd: 'localpilot chat mistral:7b'
+            },
+            'gpu': {
+                title: 'PC or Laptop with Dedicated GPU (NVIDIA RTX / AMD Radeon)',
+                badge: 'Hardware Accelerated • Lightning Fast',
+                speed: '⚡ ~60-100+ words / second',
+                model: 'Llama 3.1 (8B), Qwen 2.5 Coder (7B), or Gemma 2 (9B)',
+                ram: 'Uses ~5.5 GB VRAM (Offloaded to GPU)',
+                headroom: 'System RAM remains 100% free for desktop workflows.',
+                tasks: 'Rapid Coding, Heavy Generation & Instant Dialogue',
+                cmd: 'localpilot chat llama3.1:8b'
+            }
+        };
+
+        function selectHardware(key) {
+            const p = hardwareProfiles[key];
+            if (!p) return;
+
+            document.getElementById('hw-title').innerText = p.title;
+            document.getElementById('hw-badge').innerText = p.badge;
+            document.getElementById('hw-speed').innerText = p.speed;
+            document.getElementById('hw-model').innerText = p.model;
+            document.getElementById('hw-ram').innerText = p.ram;
+            document.getElementById('hw-headroom').innerText = p.headroom;
+            document.getElementById('hw-tasks').innerText = p.tasks;
+            document.getElementById('hw-cmd').innerText = p.cmd;
+
+            ['mac-8', 'mac-16', 'pc-8', 'pc-16', 'gpu'].forEach(k => {
+                const btn = document.getElementById('hw-btn-' + k);
+                if (k === key) {
+                    btn.className = 'hw-tab-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all border bg-brand/10 border-brand/30 text-brand';
+                } else {
+                    btn.className = 'hw-tab-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all border bg-dark-900 border-white/10 text-slate-300 hover:text-white hover:border-white/20';
                 }
             });
         }

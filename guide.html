@@ -199,37 +199,243 @@
         <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-6">
             <div class="flex items-center gap-3">
                 <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">3</span>
-                <h2 class="text-2xl font-bold text-white">Do I Need an Expensive Gaming PC?</h2>
+                <h2 class="text-2xl font-bold text-white">The No-Jargon AI Dictionary</h2>
             </div>
-            
-            <p class="text-slate-300 leading-relaxed text-sm sm:text-base">
-                <strong>No!</strong> Modern small models (like <em>Llama 3.2 3B</em> or <em>Phi-3 Mini</em>) are specifically designed to run on ordinary laptops:
+            <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+                When exploring AI, you will encounter words that sound like alien code. Here is what they actually mean in plain, everyday language:
             </p>
+            
+            <div class="grid sm:grid-cols-2 gap-4">
+                <!-- Term 1 -->
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-lg">💬</span>
+                        <h3 class="font-bold text-white text-base">Prompt</h3>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        The message or instruction you type to the AI. Think of it like giving a clear assignment to a polite, eager personal assistant.
+                    </p>
+                    <div class="text-[11px] font-mono text-brand bg-brand/5 px-2.5 py-1 rounded border border-brand/10">
+                        Example: "Summarize this meeting into 3 bullet points."
+                    </div>
+                </div>
 
-            <div class="grid sm:grid-cols-3 gap-4 text-xs">
-                <div class="p-4 rounded-xl bg-dark-850 border border-white/5 text-center">
-                    <div class="text-2xl mb-2">🍏</div>
-                    <h4 class="font-bold text-white mb-1">Apple Silicon Macs</h4>
-                    <p class="text-slate-400">M1, M2, M3, M4 chips share memory between CPU and GPU, making them world-class for local AI right out of the box.</p>
+                <!-- Term 2 -->
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-lg">🧩</span>
+                        <h3 class="font-bold text-white text-base">Tokens</h3>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        The bite-sized building blocks the AI uses to read and write. A token is roughly <strong class="text-slate-200">0.75 of a word</strong> (or about 4 letters).
+                    </p>
+                    <div class="text-[11px] font-mono text-brand bg-brand/5 px-2.5 py-1 rounded border border-brand/10">
+                        "Artificial intelligence" ≈ 3 tokens
+                    </div>
                 </div>
-                <div class="p-4 rounded-xl bg-dark-850 border border-white/5 text-center">
-                    <div class="text-2xl mb-2">💻</div>
-                    <h4 class="font-bold text-white mb-1">Standard Laptops</h4>
-                    <p class="text-slate-400">Any modern Intel or AMD laptop with 8GB or 16GB of RAM can run compact models smoothly on the CPU.</p>
+
+                <!-- Term 3 -->
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-lg">📜</span>
+                        <h3 class="font-bold text-white text-base">Context Window</h3>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        The AI's short-term attention span in a single conversation. An 8K context window means the AI remembers roughly 20 to 25 pages of past dialogue before older messages roll off.
+                    </p>
+                    <div class="text-[11px] font-mono text-slate-300 bg-white/5 px-2.5 py-1 rounded border border-white/10">
+                        LocalPilot configures this safely to avoid RAM blowups.
+                    </div>
                 </div>
-                <div class="p-4 rounded-xl bg-dark-850 border border-white/5 text-center">
-                    <div class="text-2xl mb-2">🎮</div>
-                    <h4 class="font-bold text-white mb-1">Gaming PC with GPU</h4>
-                    <p class="text-slate-400">If you have an NVIDIA or AMD graphics card, LocalPilot automatically activates hardware acceleration for lightning speed.</p>
+
+                <!-- Term 4 -->
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-lg">📐</span>
+                        <h3 class="font-bold text-white text-base">Parameters (3B, 7B, 14B)</h3>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        The number of connections inside the AI's digital brain. <strong class="text-slate-200">3B</strong> has 3 Billion connections (super fast, runs on any laptop); <strong class="text-slate-200">7B</strong> has 7 Billion (richer reasoning, needs 8–16GB RAM).
+                    </p>
+                    <div class="text-[11px] font-mono text-slate-300 bg-white/5 px-2.5 py-1 rounded border border-white/10">
+                        B = Billion parameters
+                    </div>
+                </div>
+
+                <!-- Term 5 -->
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-lg">🗜️</span>
+                        <h3 class="font-bold text-white text-base">Quantization (Q4, Q8)</h3>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        High-tech compression. It rounds off numbers inside the AI so a huge 14 GB model fits into 4.5 GB of RAM with virtually zero noticeable loss of intelligence.
+                    </p>
+                    <div class="text-[11px] font-mono text-brand bg-brand/5 px-2.5 py-1 rounded border border-brand/10">
+                        Q4_K_M is the universal "sweet spot" for laptops.
+                    </div>
+                </div>
+
+                <!-- Term 6 -->
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <div class="flex items-center gap-2">
+                        <span class="text-lg">🎭</span>
+                        <h3 class="font-bold text-white text-base">Hallucination</h3>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        When an AI sounds 100% confident and articulate, but invents a false date or fact. That's why models are best used for writing, brainstorming, and summarizing your own documents.
+                    </p>
+                    <div class="text-[11px] font-mono text-amber-300 bg-amber-500/10 px-2.5 py-1 rounded border border-amber-500/20">
+                        Tip: Provide the source text and ask the model to analyze it!
+                    </div>
                 </div>
             </div>
         </article>
 
-        <!-- Section 4 -->
+        <!-- Section 4: Anatomy of a Local Chat -->
         <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-6">
             <div class="flex items-center gap-3">
                 <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">4</span>
-                <h2 class="text-2xl font-bold text-white">Your First Conversation in 3 Commands</h2>
+                <h2 class="text-2xl font-bold text-white">Anatomy of a Local Chat Session</h2>
+            </div>
+            
+            <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+                What actually happens from the second you type <code class="text-brand font-mono text-xs">localpilot chat</code> to the moment you close it? Here is the lifecycle behind the curtain:
+            </p>
+
+            <div class="grid sm:grid-cols-4 gap-4 text-xs">
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 relative">
+                    <div class="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 font-bold flex items-center justify-center text-sm mb-3">1</div>
+                    <h4 class="font-bold text-white mb-1.5 text-sm">Pre-Flight Check</h4>
+                    <p class="text-slate-400 leading-relaxed">LocalPilot inspects your available RAM and thermal headroom. If memory is tight, it warns you before touching disk.</p>
+                </div>
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 relative">
+                    <div class="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 font-bold flex items-center justify-center text-sm mb-3">2</div>
+                    <h4 class="font-bold text-white mb-1.5 text-sm">Engine Spawn</h4>
+                    <p class="text-slate-400 leading-relaxed">The model is mapped into memory using a dedicated local service (Ollama or llama.cpp). CPU/GPU threads are allocated cleanly.</p>
+                </div>
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 relative">
+                    <div class="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 font-bold flex items-center justify-center text-sm mb-3">3</div>
+                    <h4 class="font-bold text-white mb-1.5 text-sm">Streaming Stream</h4>
+                    <p class="text-slate-400 leading-relaxed">Words generate live on your terminal. Zero packets leave your network card — everything is computed on your silicon.</p>
+                </div>
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 relative">
+                    <div class="w-7 h-7 rounded-lg bg-emerald-500/10 text-emerald-400 font-bold flex items-center justify-center text-sm mb-3">4</div>
+                    <h4 class="font-bold text-white mb-1.5 text-sm">Clean Unload</h4>
+                    <p class="text-slate-400 leading-relaxed">When you exit (<kbd class="px-1.5 py-0.5 rounded bg-white/10 font-mono">Ctrl + C</kbd> or <code class="text-slate-200">/exit</code>), LocalPilot terminates the background process and instantly releases every megabyte of RAM.</p>
+                </div>
+            </div>
+        </article>
+
+        <!-- Section 5: Prompting 101 for Beginners -->
+        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">5</span>
+                <h2 class="text-2xl font-bold text-white">Beginner Prompting 101 (Copy &amp; Paste Templates)</h2>
+            </div>
+            
+            <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+                You do not need to memorize complicated engineering formulas. Effective prompts only need three things: <strong>Role</strong>, <strong>Context</strong>, and <strong>Clear Output Format</strong>. Here are 3 templates ready to use:
+            </p>
+
+            <div class="space-y-4">
+                <!-- Template 1 -->
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">Template A &bull; The Plain-English Explainer</span>
+                        <span class="text-[11px] text-slate-300">Best for: Research &amp; Learning</span>
+                    </div>
+                    <div class="p-3.5 rounded-xl bg-dark-950 font-mono text-xs text-slate-200 leading-relaxed border border-white/5">
+                        "Act as an expert teacher. Explain [COMPLEX TOPIC, e.g. Quantum Computing or Inflation] to someone with no background in this field. Use a real-life analogy, avoid technical jargon, and summarize the key takeaway in 2 sentences at the end."
+                    </div>
+                </div>
+
+                <!-- Template 2 -->
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">Template B &bull; The Confidential Document Summarizer</span>
+                        <span class="text-[11px] text-slate-300">Best for: Meeting Notes, Contracts, PDFs</span>
+                    </div>
+                    <div class="p-3.5 rounded-xl bg-dark-950 font-mono text-xs text-slate-200 leading-relaxed border border-white/5">
+                        "Review the following notes and extract: 1) The main decision made, 2) Action items with assigned names, and 3) Next deadlines. Keep the summary under 150 words.<br><br>[PASTE YOUR PRIVATE TEXT HERE]"
+                    </div>
+                </div>
+
+                <!-- Template 3 -->
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold text-emerald-400 uppercase tracking-wider">Template C &bull; The Tone &amp; Polish Editor</span>
+                        <span class="text-[11px] text-slate-300">Best for: Important Emails &amp; Proposals</span>
+                    </div>
+                    <div class="p-3.5 rounded-xl bg-dark-950 font-mono text-xs text-slate-200 leading-relaxed border border-white/5">
+                        "Here is a draft email I wrote to [RECIPIENT, e.g. a client or landlord]. Please rewrite it to be polite, concise, and professional while keeping my original message intact. Show me 2 versions: one formal and one casual.<br><br>[PASTE YOUR DRAFT HERE]"
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- Section 6: Do I Need an Expensive Gaming PC? -->
+        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">6</span>
+                <h2 class="text-2xl font-bold text-white">Do I Need an Expensive Gaming PC?</h2>
+            </div>
+            
+            <p class="text-slate-300 leading-relaxed text-sm sm:text-base">
+                <strong>No!</strong> Modern compact models (like <em>Llama 3.2 3B</em> or <em>Phi-3 Mini</em>) are engineered specifically to run smoothly on everyday consumer hardware:
+            </p>
+
+            <div class="grid sm:grid-cols-3 gap-4 text-xs">
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 text-center">
+                    <div class="text-3xl mb-3">🍏</div>
+                    <h4 class="font-bold text-white mb-1.5 text-sm">Apple Silicon Macs</h4>
+                    <p class="text-slate-400 leading-relaxed">M1, M2, M3, M4 chips use Unified Memory shared between CPU and GPU, making them world-class for local AI right out of the box.</p>
+                </div>
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 text-center">
+                    <div class="text-3xl mb-3">💻</div>
+                    <h4 class="font-bold text-white mb-1.5 text-sm">Standard Laptops</h4>
+                    <p class="text-slate-400 leading-relaxed">Any Intel or AMD laptop with 8GB or 16GB of RAM runs 3B models effortlessly on CPU with zero overheating.</p>
+                </div>
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 text-center">
+                    <div class="text-3xl mb-3">🎮</div>
+                    <h4 class="font-bold text-white mb-1.5 text-sm">Gaming PCs with GPU</h4>
+                    <p class="text-slate-400 leading-relaxed">If you have an NVIDIA RTX card or AMD Radeon GPU, LocalPilot detects CUDA / ROCm and routes layers to GPU for blistering speed.</p>
+                </div>
+            </div>
+        </article>
+
+        <!-- Section 7: How to Verify True Offline Privacy -->
+        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">7</span>
+                <h2 class="text-2xl font-bold text-white">How to Verify Privacy For Yourself</h2>
+            </div>
+            
+            <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+                Don't just take our word for it. You can independently verify that LocalPilot never sends your prompts to the outside world using this 60-second test:
+            </p>
+
+            <div class="p-6 rounded-2xl bg-dark-850 border border-brand/20 space-y-4">
+                <h3 class="font-bold text-brand text-sm sm:text-base flex items-center gap-2">
+                    ✈️ The "Airplane Mode" Verification Test
+                </h3>
+                <ol class="text-xs sm:text-sm text-slate-300 space-y-2.5 list-decimal list-inside leading-relaxed">
+                    <li>Download any model once: <code class="font-mono text-xs text-white bg-dark-950 px-2 py-0.5 rounded">localpilot install llama3.2:3b</code></li>
+                    <li><strong>Turn off your Wi-Fi or unplug your Ethernet cable completely.</strong></li>
+                    <li>Run the chat command: <code class="font-mono text-xs text-white bg-dark-950 px-2 py-0.5 rounded">localpilot chat llama3.2:3b</code></li>
+                    <li>Ask any question: it will reply at full speed without needing a single byte of internet connectivity.</li>
+                </ol>
+                <div class="text-xs text-slate-400 pt-2 border-t border-white/5">
+                    Your questions, your documents, and your answers are physically confined to your computer's RAM and never leave your room.
+                </div>
+            </div>
+        </article>
+
+        <!-- Section 8: Quick Start Commands -->
+        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">8</span>
+                <h2 class="text-2xl font-bold text-white">Your First Conversation in 3 Steps</h2>
             </div>
             
             <div class="space-y-4 font-mono text-xs sm:text-sm">
@@ -252,7 +458,7 @@
                     See Complete Install Instructions &rarr;
                 </a>
                 <a href="models.html" class="px-5 py-2.5 rounded-xl bg-white/5 text-white border border-white/10 font-semibold text-xs sm:text-sm hover:bg-white/10 transition-all">
-                    Browse Popular Models &rarr;
+                    Browse Recommended Models &rarr;
                 </a>
             </div>
         </article>

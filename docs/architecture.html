@@ -11,7 +11,7 @@
     <meta property="og:url" content="https://fakhr.me/LocalPilot/architecture.html">
     <meta property="og:title" content="LocalPilot Architecture &amp; FAQ">
     <meta property="og:description" content="Learn how LocalPilot's 3-axis architecture protects external tools, manages memory, and ensures 100% private offline AI.">
-    <meta property="og:image" content="https://raw.githubusercontent.com/fakhruldeen/LocalPilot/main/docs/img/banner-social.jpeg">
+    <meta property="og:image" content="https://raw.githubusercontent.com/fakhruldeen/LocalPilot/main/img/banner-social.jpeg">
 
     <link rel="icon" type="image/png" href="img/logo.png">
     
@@ -118,120 +118,193 @@
     <!-- Main Content -->
     <main class="py-16 max-w-4xl mx-auto px-6 space-y-16">
 
-        <!-- 3-Axis Architecture -->
+        <!-- 3-Axis Architecture Framed as 3 Protective Shields -->
         <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-8">
             <div>
-                <span class="text-brand font-mono text-xs uppercase tracking-wider font-semibold">Clean Abstractions</span>
-                <h2 class="text-2xl font-bold text-white mt-1">The 3-Axis Architecture Model</h2>
-                <p class="text-slate-400 text-sm mt-2 leading-relaxed">
-                    Instead of treating local AI as a flat "runtime" black box, LocalPilot explicitly separates execution into three independent, validated dimensions:
+                <span class="text-brand font-mono text-xs uppercase tracking-wider font-semibold">Under The Hood &bull; Built For Trust</span>
+                <h2 class="text-2xl sm:text-3xl font-bold text-white mt-1">How LocalPilot Protects Your Computer</h2>
+                <p class="text-slate-300 text-sm mt-2 leading-relaxed">
+                    Most tools treat local AI like a single chaotic script that can crash your computer or overwrite your files. LocalPilot divides execution into three strictly isolated safety shields:
                 </p>
             </div>
 
             <div class="grid md:grid-cols-3 gap-6">
-                <!-- Axis A -->
-                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5">
-                    <span class="text-xs font-mono font-bold text-brand uppercase block mb-1">Axis A</span>
-                    <h3 class="text-lg font-bold text-white mb-2">Inference Backend</h3>
-                    <p class="text-slate-400 text-xs leading-relaxed mb-3">
-                        The raw engine or computation library performing tensor arithmetic.
+                <!-- Shield A -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center text-lg font-bold">1</div>
+                    <span class="text-xs font-mono font-bold text-brand uppercase block">Shield 1: The Engine</span>
+                    <h3 class="text-lg font-bold text-white">Inference Backend</h3>
+                    <p class="text-slate-400 text-xs leading-relaxed">
+                        The pure math engine that does the neural network calculations. LocalPilot only routes to backends that have been tested and verified for your exact CPU/GPU chips.
                     </p>
-                    <ul class="text-xs text-slate-300 space-y-1 font-mono">
-                        <li>• llama.cpp</li>
-                        <li>• vLLM (Advanced)</li>
-                        <li>• Service-managed</li>
-                    </ul>
+                    <div class="pt-2 text-[11px] font-mono text-slate-300">
+                        llama.cpp &bull; Apple Metal &bull; CUDA
+                    </div>
                 </div>
 
-                <!-- Axis B -->
-                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5">
-                    <span class="text-xs font-mono font-bold text-brand uppercase block mb-1">Axis B</span>
-                    <h3 class="text-lg font-bold text-white mb-2">Execution Service</h3>
-                    <p class="text-slate-400 text-xs leading-relaxed mb-3">
-                        The product or daemon that manages model life-cycles, downloads, and endpoints.
+                <!-- Shield B -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center text-lg font-bold">2</div>
+                    <span class="text-xs font-mono font-bold text-brand uppercase block">Shield 2: Process Boundary</span>
+                    <h3 class="text-lg font-bold text-white">Execution Service</h3>
+                    <p class="text-slate-400 text-xs leading-relaxed">
+                        If you already have tools like Ollama or LM Studio running, LocalPilot never hijacks, shuts down, or messes with their configuration. It respects other software.
                     </p>
-                    <ul class="text-xs text-slate-300 space-y-1 font-mono">
-                        <li>• Ollama</li>
-                        <li>• LM Studio / llmster</li>
-                        <li>• Docker Model Runner</li>
-                    </ul>
+                    <div class="pt-2 text-[11px] font-mono text-slate-300">
+                        Ollama &bull; LocalPilot Managed &bull; LM Studio
+                    </div>
                 </div>
 
-                <!-- Axis C -->
-                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5">
-                    <span class="text-xs font-mono font-bold text-brand uppercase block mb-1">Axis C</span>
-                    <h3 class="text-lg font-bold text-white mb-2">Deployment Method</h3>
-                    <p class="text-slate-400 text-xs leading-relaxed mb-3">
-                        How the computation process is hosted and controlled by LocalPilot.
+                <!-- Shield C -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center text-lg font-bold">3</div>
+                    <span class="text-xs font-mono font-bold text-brand uppercase block">Shield 3: User Space</span>
+                    <h3 class="text-lg font-bold text-white">Deployment Sandbox</h3>
+                    <p class="text-slate-400 text-xs leading-relaxed">
+                        Runs strictly inside your regular user permissions. It never asks for administrative or root passwords, keeping your core operating system protected.
                     </p>
-                    <ul class="text-xs text-slate-300 space-y-1 font-mono">
-                        <li>• Direct worker process</li>
-                        <li>• Local API service</li>
-                        <li>• Container</li>
-                        <li>• Browser</li>
-                    </ul>
+                    <div class="pt-2 text-[11px] font-mono text-slate-300">
+                        Direct Process &bull; No Sudo Needed
+                    </div>
                 </div>
             </div>
 
-            <div class="p-5 rounded-2xl bg-dark-950 border border-white/10 text-xs text-slate-300 leading-relaxed">
-                <strong class="text-brand">Why this matters to the user:</strong> LocalPilot will never assume an endpoint reveals the backend, never hijack an externally managed daemon, and never modify your system without explicit capability validation.
+            <div class="p-5 rounded-2xl bg-dark-950 border border-brand/20 text-xs text-slate-300 leading-relaxed flex items-start gap-3">
+                <span class="text-lg">🛡️</span>
+                <div>
+                    <strong class="text-brand font-semibold block mb-0.5">The LocalPilot Golden Rule of Ownership:</strong>
+                    "If LocalPilot didn't create a process or download a file, it will never delete, terminate, or silently alter it."
+                </div>
             </div>
         </article>
 
-        <!-- Comprehensive FAQ -->
-        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-8">
-            <h2 class="text-2xl font-bold text-white">Frequently Asked Questions</h2>
+        <!-- Comprehensive FAQ with Native Details Accordion -->
+        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-6">
+            <div>
+                <span class="text-brand font-mono text-xs uppercase tracking-wider font-semibold">Everything You Wondered</span>
+                <h2 class="text-2xl sm:text-3xl font-bold text-white mt-1">Frequently Asked Questions</h2>
+                <p class="text-slate-400 text-sm mt-1">Click any question to view the plain-English answer.</p>
+            </div>
 
-            <div class="space-y-6">
+            <div class="space-y-3 pt-2">
                 <!-- FAQ 1 -->
-                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5">
-                    <h3 class="text-base font-bold text-white mb-2">
-                        Do I need a gaming PC or an expensive dedicated GPU?
-                    </h3>
-                    <p class="text-slate-400 text-sm leading-relaxed">
-                        No. Modern 3B models (like Llama 3.2 3B or Phi-3 Mini) run smoothly on ordinary Intel and AMD laptop CPUs. If you own an Apple Silicon Mac (M1/M2/M3/M4), memory is unified between the CPU and GPU, delivering rapid performance without extra hardware.
-                    </p>
-                </div>
+                <details name="faq" class="group bg-dark-850 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>Will running an AI model freeze or slow down my computer?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            Not with LocalPilot. Traditional tools attempt to load models without checking how much RAM you have left, which can freeze your machine.
+                        </p>
+                        <p>
+                            LocalPilot scans your real-time available memory and refuses to launch models that don't leave comfortable breathing room for your browser, Spotify, and operating system.
+                        </p>
+                    </div>
+                </details>
 
                 <!-- FAQ 2 -->
-                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5">
-                    <h3 class="text-base font-bold text-white mb-2">
-                        Will LocalPilot delete or touch my existing Ollama or LM Studio models?
-                    </h3>
-                    <p class="text-slate-400 text-sm leading-relaxed">
-                        No. LocalPilot enforces strict process and storage ownership boundaries. External services discovered on your computer are treated with respect: LocalPilot can connect and talk to them, but will never stop external daemons, delete external files, or change configuration outside its managed directory.
-                    </p>
-                </div>
+                <details name="faq" class="group bg-dark-850 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>Can I use LocalPilot on an airplane with no Wi-Fi?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            <strong>Yes, 100%!</strong> You only need an internet connection once to download the model file. After that, you can turn off Wi-Fi, go into airplane mode, or take your laptop into the woods. LocalPilot will converse, brainstorm, and summarize at full speed completely offline.
+                        </p>
+                    </div>
+                </details>
 
                 <!-- FAQ 3 -->
-                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5">
-                    <h3 class="text-base font-bold text-white mb-2">
-                        What is Docker, and do I need to install it?
-                    </h3>
-                    <p class="text-slate-400 text-sm leading-relaxed">
-                        Docker is a virtualization tool used by developers to package software into isolated containers. <strong>You do not need Docker to use LocalPilot.</strong> LocalPilot runs directly and natively on your computer. If you happen to have Docker installed, LocalPilot can optionally detect the Docker Model Runner, but it is strictly optional.
-                    </p>
-                </div>
+                <details name="faq" class="group bg-dark-850 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>Does running local AI drain my laptop battery fast?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            While an AI is generating text, it actively exercises your processor cores, which uses more power than browsing a webpage. However, compact models (like Llama 3.2 3B) generate text in seconds and immediately drop back to zero power consumption when idle.
+                        </p>
+                        <p>
+                            On Apple Silicon Macs (M1/M2/M3/M4), energy efficiency is so good that you can easily chat for hours on battery.
+                        </p>
+                    </div>
+                </details>
 
                 <!-- FAQ 4 -->
-                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5">
-                    <h3 class="text-base font-bold text-white mb-2">
-                        Does LocalPilot send any telemetry or conversation history online?
-                    </h3>
-                    <p class="text-slate-400 text-sm leading-relaxed">
-                        Zero. LocalPilot has no telemetry, analytics, user tracking, or advertising SDKs. All network calls are strictly limited to downloading model artifacts from public registries when you explicitly request them. Local inference runs completely offline.
-                    </p>
-                </div>
+                <details name="faq" class="group bg-dark-850 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>Will LocalPilot touch or delete my existing Ollama or LM Studio models?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            <strong>No, never.</strong> LocalPilot enforces strict process and storage ownership boundaries. Discovered external services on your computer are treated with absolute respect: LocalPilot can connect and talk to them if you wish, but will never terminate external services or touch external files.
+                        </p>
+                    </div>
+                </details>
 
                 <!-- FAQ 5 -->
-                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5">
-                    <h3 class="text-base font-bold text-white mb-2">
-                        Where does LocalPilot store downloaded models?
-                    </h3>
-                    <p class="text-slate-400 text-sm leading-relaxed">
-                        All managed files reside in your operating system's standard user data directory (<code class="text-slate-300">~/.local/share/localpilot</code> on Linux or <code class="text-slate-300">~/Library/Application Support/localpilot</code> on macOS). You can view total space or reclaim it with a single command at any time.
-                    </p>
-                </div>
+                <details name="faq" class="group bg-dark-850 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>What is Docker, and do I need to install it?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            Docker is a virtualization system used by software engineers to package apps. <strong>You do NOT need Docker to use LocalPilot.</strong> LocalPilot runs directly and natively on your operating system without containers. If you don't know what Docker is, you can completely ignore it.
+                        </p>
+                    </div>
+                </details>
+
+                <!-- FAQ 6 -->
+                <details name="faq" class="group bg-dark-850 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>How do I delete models or reclaim hard drive space?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            You have total control. To remove a model and free up its disk space, simply run:
+                        </p>
+                        <div class="p-3 rounded-xl bg-dark-950 font-mono text-xs text-brand border border-white/5">
+                            localpilot remove llama3.2:3b
+                        </div>
+                        <p>
+                            LocalPilot immediately deletes the model file and reports exactly how many gigabytes were returned to your hard drive.
+                        </p>
+                    </div>
+                </details>
+
+                <!-- FAQ 7 -->
+                <details name="faq" class="group bg-dark-850 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>Is it safe to run open-source models downloaded from the internet?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            Yes. Unlike downloaded programs or scripts (<code class="text-slate-300">.exe</code>, <code class="text-slate-300">.sh</code>, or <code class="text-slate-300">.bat</code>), model weight files (<code class="text-slate-300">.gguf</code>) are static data files containing numerical matrices. They do not execute arbitrary instructions. Furthermore, LocalPilot validates SHA-256 cryptographic hashes on official downloads to guarantee file integrity.
+                        </p>
+                    </div>
+                </details>
+
+                <!-- FAQ 8 -->
+                <details name="faq" class="group bg-dark-850 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>How does LocalPilot compare to ChatGPT or Claude?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            Cloud chatbots run on billion-dollar computing clusters; they have larger world knowledge databases but require monthly subscriptions, active internet connections, and send your private words to remote servers.
+                        </p>
+                        <p>
+                            LocalPilot runs right on your computer. It costs zero dollars, works without internet, never shares your notes or documents with any corporation, and gives you complete ownership of your AI tools.
+                        </p>
+                    </div>
+                </details>
             </div>
         </article>
 
