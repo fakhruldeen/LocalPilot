@@ -515,7 +515,7 @@
                     ✈️ The "Airplane Mode" Verification Test
                 </h3>
                 <ol class="text-xs sm:text-sm text-slate-300 space-y-2.5 list-decimal list-inside leading-relaxed">
-                    <li>Download any model once: <code class="font-mono text-xs text-white bg-dark-950 px-2 py-0.5 rounded">localpilot install llama3.2:3b</code></li>
+                    <li>Download any model once: <code class="font-mono text-xs text-white bg-dark-950 px-2 py-0.5 rounded">localpilot setup llama3.2:3b</code></li>
                     <li><strong>Turn off your Wi-Fi or unplug your Ethernet cable completely.</strong></li>
                     <li>Run the chat command: <code class="font-mono text-xs text-white bg-dark-950 px-2 py-0.5 rounded">localpilot chat llama3.2:3b</code></li>
                     <li>Ask any question: it will reply at full speed without needing a single byte of internet connectivity.</li>
@@ -540,12 +540,18 @@
                 </div>
                 <div class="p-4 rounded-xl bg-dark-850 border border-white/5">
                     <div class="text-slate-300 font-sans text-xs mb-1 font-semibold text-brand">Step 2: See which models fit your computer</div>
-                    <code class="text-white">$ localpilot recommend</code>
+                    <code class="text-white">$ localpilot discover --task chat</code>
                 </div>
                 <div class="p-4 rounded-xl bg-dark-850 border border-white/5">
                     <div class="text-slate-300 font-sans text-xs mb-1 font-semibold text-brand">Step 3: Start chatting privately</div>
                     <code class="text-white">$ localpilot chat llama3.2:3b</code>
                 </div>
+                <div class="p-4 rounded-xl bg-dark-850 border border-brand/20">
+                    <div class="text-slate-300 font-sans text-xs mb-1 font-semibold text-brand">Built-in Terminal Help &amp; Offline Guides</div>
+                    <code class="text-white">$ localpilot guide &nbsp;&nbsp;<span class="text-slate-400"># Interactive guide right inside your terminal</span></code><br>
+                    <code class="text-white">$ localpilot docs &nbsp;&nbsp;&nbsp;<span class="text-slate-400"># Technical reference manual and architecture</span></code>
+                </div>
+
             </div>
 
             <div class="pt-4 flex flex-wrap gap-4 items-center">

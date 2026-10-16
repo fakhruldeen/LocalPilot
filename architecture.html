@@ -224,7 +224,170 @@
                 LocalPilot is engineered using strict domain-driven hexagonal boundaries. The core business rules and verification logic have zero dependencies on CLI frameworks, TUI libraries, or specific runtime binaries.
             </p>
 
-            <div class="p-6 rounded-2xl bg-dark-950 font-mono text-xs text-slate-300 border border-white/10 overflow-x-auto leading-relaxed">
+                        <!-- Interactive Visual Hexagonal Architecture Diagram -->
+            <div class="space-y-4 my-6">
+                <!-- Layer 1: Presentation -->
+                <div class="p-5 rounded-2xl bg-dark-950 border border-brand/30 shadow-lg shadow-brand/5 relative">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-brand animate-pulse"></span>
+                            <span class="font-mono text-xs uppercase tracking-wider text-brand font-bold">1. Presentation Layer (CLI &amp; TUI Drivers)</span>
+                        </div>
+                        <span class="text-[11px] font-mono text-slate-400 bg-white/5 px-2 py-0.5 rounded border border-white/5">User Interface Inbound Ports</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div class="p-3.5 rounded-xl bg-dark-900 border border-white/5 flex items-center justify-between">
+                            <div>
+                                <strong class="text-white font-mono block text-sm">Typer CLI</strong>
+                                <span class="text-slate-400 text-[11px]">Command routing, Rich terminal formatting, JSON &amp; plaintext pipes</span>
+                            </div>
+                            <span class="text-[10px] bg-brand/10 text-brand px-2 py-0.5 rounded font-mono font-bold">localpilot</span>
+                        </div>
+                        <div class="p-3.5 rounded-xl bg-dark-900 border border-white/5 flex items-center justify-between">
+                            <div>
+                                <strong class="text-white font-mono block text-sm">Textual TUI Hub</strong>
+                                <span class="text-slate-400 text-[11px]">Reactive full-screen dashboard, live log streams, F1 / ? keybinding help</span>
+                            </div>
+                            <span class="text-[10px] bg-brand/10 text-brand px-2 py-0.5 rounded font-mono font-bold">localpilot tui</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Arrow Connector 1 -->
+                <div class="flex items-center justify-center -my-1 select-none">
+                    <div class="flex items-center gap-2 px-3 py-1 rounded-full bg-dark-950 border border-white/10 text-[11px] text-brand font-mono shadow-sm">
+                        <span>▼</span> invokes use cases through typed execution boundaries
+                    </div>
+                </div>
+
+                <!-- Layer 2: Application -->
+                <div class="p-5 rounded-2xl bg-dark-950 border border-cyan-500/30 shadow-lg shadow-cyan-500/5">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-cyan-400"></span>
+                            <span class="font-mono text-xs uppercase tracking-wider text-cyan-400 font-bold">2. Application Layer (Use Cases &amp; Orchestration)</span>
+                        </div>
+                        <span class="text-[11px] font-mono text-slate-400 bg-white/5 px-2 py-0.5 rounded border border-white/5">Transactional Workflows</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs font-mono">
+                        <div class="p-2.5 rounded-xl bg-dark-900 border border-white/5">
+                            <span class="text-cyan-300 font-bold block text-[11px]">SetupWorkflow</span>
+                            <span class="text-[10px] text-slate-400 font-sans">Discover &rarr; Pull &rarr; Test</span>
+                        </div>
+                        <div class="p-2.5 rounded-xl bg-dark-900 border border-white/5">
+                            <span class="text-cyan-300 font-bold block text-[11px]">RuntimeService</span>
+                            <span class="text-[10px] text-slate-400 font-sans">Lifecycles &amp; Probes</span>
+                        </div>
+                        <div class="p-2.5 rounded-xl bg-dark-900 border border-white/5">
+                            <span class="text-cyan-300 font-bold block text-[11px]">UpdateWorkflow</span>
+                            <span class="text-[10px] text-slate-400 font-sans">Atomic Staging</span>
+                        </div>
+                        <div class="p-2.5 rounded-xl bg-dark-900 border border-white/5">
+                            <span class="text-cyan-300 font-bold block text-[11px]">JobManager</span>
+                            <span class="text-[10px] text-slate-400 font-sans">Async Task Tracking</span>
+                        </div>
+                        <div class="p-2.5 rounded-xl bg-dark-900 border border-white/5 col-span-2 sm:col-span-1">
+                            <span class="text-cyan-300 font-bold block text-[11px]">ActivityService</span>
+                            <span class="text-[10px] text-slate-400 font-sans">Redacted Audit Trails</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Arrow Connector 2 -->
+                <div class="flex items-center justify-center -my-1 select-none">
+                    <div class="flex items-center gap-2 px-3 py-1 rounded-full bg-dark-950 border border-white/10 text-[11px] text-cyan-400 font-mono shadow-sm">
+                        <span>▼</span> enforces pure domain invariants, safety rules &amp; scoring policies
+                    </div>
+                </div>
+
+                <!-- Layer 3: Domain Core (Hexagon) -->
+                <div class="p-6 rounded-2xl bg-dark-950 border-2 border-emerald-500/40 shadow-xl shadow-emerald-500/10">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3.5 h-3.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400"></span>
+                            <span class="font-mono text-sm uppercase tracking-wider text-emerald-400 font-extrabold">3. Domain Core (Zero External Dependencies)</span>
+                        </div>
+                        <span class="text-[11px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">Pure Python Logic</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs font-mono">
+                        <div class="p-3.5 rounded-xl bg-dark-900 border border-white/5">
+                            <span class="text-emerald-300 font-bold block text-xs mb-1">CompatibilityPolicy</span>
+                            <p class="text-[11px] text-slate-400 font-sans leading-relaxed">Calculates RAM/VRAM offload ratio, reserves 512 MB OS buffer, and excludes oversized weights.</p>
+                        </div>
+                        <div class="p-3.5 rounded-xl bg-dark-900 border border-white/5">
+                            <span class="text-emerald-300 font-bold block text-xs mb-1">ScoringPolicy</span>
+                            <p class="text-[11px] text-slate-400 font-sans leading-relaxed">Multi-factor weighting: fit confidence, generation speed, quantization quality, and platform acceleration.</p>
+                        </div>
+                        <div class="p-3.5 rounded-xl bg-dark-900 border border-white/5">
+                            <span class="text-emerald-300 font-bold block text-xs mb-1">ExecutionPlan</span>
+                            <p class="text-[11px] text-slate-400 font-sans leading-relaxed">Immutable 3-axis execution triplet: Backend &times; Managed Service &times; Deployment Method.</p>
+                        </div>
+                        <div class="p-3.5 rounded-xl bg-dark-900 border border-white/5">
+                            <span class="text-emerald-300 font-bold block text-xs mb-1">VerifiedState</span>
+                            <p class="text-[11px] text-slate-400 font-sans leading-relaxed">Evidence-backed state transitions: UNTESTED &rarr; DOWNLOADED &rarr; TESTED_HERE (verified inference).</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Arrow Connector 3: Multiplexed -->
+                <div class="flex items-center justify-center -my-1 select-none">
+                    <div class="flex items-center gap-2 px-3 py-1 rounded-full bg-dark-950 border border-white/10 text-[11px] text-emerald-400 font-mono shadow-sm">
+                        <span>▼</span> drives infrastructure via abstract SPI ports (outbound interfaces) <span>▼</span>
+                    </div>
+                </div>
+
+                <!-- Layer 4: Pluggable Adapters (Hexagon Outlets) -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Platform Adapters -->
+                    <div class="p-5 rounded-2xl bg-dark-950 border border-purple-500/20 space-y-3">
+                        <div class="flex items-center justify-between border-b border-white/5 pb-2">
+                            <span class="font-mono text-xs uppercase tracking-wider text-purple-400 font-bold">Platform Adapters</span>
+                            <span class="text-[10px] text-slate-400 font-mono bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">Hardware SPI</span>
+                        </div>
+                        <ul class="text-xs text-slate-300 space-y-2 font-mono">
+                            <li class="flex items-start gap-2"><span class="text-purple-400 mt-0.5">&bull;</span> <span>Linux / Darwin OS Probes</span></li>
+                            <li class="flex items-start gap-2"><span class="text-purple-400 mt-0.5">&bull;</span> <span>Apple Metal &amp; Unified Memory</span></li>
+                            <li class="flex items-start gap-2"><span class="text-purple-400 mt-0.5">&bull;</span> <span>NVIDIA CUDA &amp; AMD ROCm</span></li>
+                            <li class="flex items-start gap-2"><span class="text-purple-400 mt-0.5">&bull;</span> <span>Loopback Port Scanner</span></li>
+                        </ul>
+                    </div>
+
+                    <!-- Source Adapters -->
+                    <div class="p-5 rounded-2xl bg-dark-950 border border-amber-500/20 space-y-3">
+                        <div class="flex items-center justify-between border-b border-white/5 pb-2">
+                            <span class="font-mono text-xs uppercase tracking-wider text-amber-400 font-bold">Source Adapters</span>
+                            <span class="text-[10px] text-slate-400 font-mono bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">Catalog SPI</span>
+                        </div>
+                        <ul class="text-xs text-slate-300 space-y-2 font-mono">
+                            <li class="flex items-start gap-2"><span class="text-amber-400 mt-0.5">&bull;</span> <span>Ollama Model Registry Client</span></li>
+                            <li class="flex items-start gap-2"><span class="text-amber-400 mt-0.5">&bull;</span> <span>Hugging Face Hub (GGUF Weights)</span></li>
+                            <li class="flex items-start gap-2"><span class="text-amber-400 mt-0.5">&bull;</span> <span>Curated Local Seed Catalog</span></li>
+                            <li class="flex items-start gap-2"><span class="text-amber-400 mt-0.5">&bull;</span> <span>SHA-256 Digest &amp; Length Validator</span></li>
+                        </ul>
+                    </div>
+
+                    <!-- Runtime & Storage Adapters -->
+                    <div class="p-5 rounded-2xl bg-dark-950 border border-blue-500/20 space-y-3">
+                        <div class="flex items-center justify-between border-b border-white/5 pb-2">
+                            <span class="font-mono text-xs uppercase tracking-wider text-blue-400 font-bold">Runtime &amp; Storage</span>
+                            <span class="text-[10px] text-slate-400 font-mono bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">Execution SPI</span>
+                        </div>
+                        <ul class="text-xs text-slate-300 space-y-2 font-mono">
+                            <li class="flex items-start gap-2"><span class="text-blue-400 mt-0.5">&bull;</span> <span>llama.cpp Direct Subprocess Runner</span></li>
+                            <li class="flex items-start gap-2"><span class="text-blue-400 mt-0.5">&bull;</span> <span>Ollama Local REST API Client</span></li>
+                            <li class="flex items-start gap-2"><span class="text-blue-400 mt-0.5">&bull;</span> <span>LM Studio / llmster Client</span></li>
+                            <li class="flex items-start gap-2"><span class="text-blue-400 mt-0.5">&bull;</span> <span>Reference-Counted Storage &amp; SQLite</span></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Clean Monospace ASCII Blueprint (Inside <pre> for perfect alignment) -->
+                <details class="rounded-2xl border border-white/10 bg-dark-950 p-4 text-xs font-mono text-slate-300 mt-4">
+                    <summary class="cursor-pointer text-slate-400 hover:text-brand font-semibold select-none flex items-center justify-between">
+                        <span>📐 View Monospace ASCII Architectural Blueprint</span>
+                        <span class="text-[10px] bg-white/5 px-2 py-0.5 rounded border border-white/10">Expand Raw ASCII</span>
+                    </summary>
+                    <pre class="mt-4 p-5 rounded-xl bg-dark-900 border border-white/5 overflow-x-auto whitespace-pre leading-relaxed text-[11px] text-slate-300 font-mono">
 ┌────────────────────────────────────────────────────────────────────────┐
 │                        PRESENTATION LAYER                              │
 │       Typer CLI (localpilot)     │       Textual TUI (Visual Hub)      │
@@ -245,7 +408,8 @@
 │  Linux / Darwin      │ │  Ollama Registry │ │  llama.cpp runner       │
 │  Hardware Inspector  │ │  HuggingFace Hub │ │  Ollama API Client      │
 │  Metal / CUDA check  │ │  Local Seed DB   │ │  LM Studio Client       │
-└──────────────────────┘ └──────────────────┘ └─────────────────────────┘
+└──────────────────────┘ └──────────────────┘ └─────────────────────────┘</pre>
+                </details>
             </div>
 
             <div class="grid sm:grid-cols-3 gap-4 text-xs pt-2">
@@ -455,21 +619,107 @@
                     </div>
                 </div>
 
-                <!-- Command 5: Installed & Running -->
+                                <!-- Command 5: Chat -->
                 <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
                     <div class="flex items-center justify-between">
-                        <code class="text-brand font-bold text-sm font-mono">localpilot installed | running</code>
-                        <span class="text-[11px] text-slate-400 font-mono">Inventory Management</span>
+                        <code class="text-brand font-bold text-sm font-mono">localpilot chat &lt;model_id&gt; [OPTIONS]</code>
+                        <span class="text-[11px] text-slate-400 font-mono">Interactive Dialogue</span>
                     </div>
                     <p class="text-xs text-slate-300 leading-relaxed">
-                        <code class="text-brand">installed</code> lists models present on disk with their verification stage (<code class="text-emerald-400">TESTED_HERE</code>), size, and runtime. <code class="text-brand">running</code> probes live PID/service instances. Supports <code class="text-slate-300">--plain</code> and <code class="text-slate-300">--json</code>.
+                        Starts a live, streaming chat session in your terminal with real-time token rendering. If the model is not currently running, LocalPilot automatically activates the selected execution backend, verifies readiness, and manages graceful cleanup upon exit (<kbd class="px-1.5 py-0.5 rounded bg-white/10 font-mono text-[10px]">Ctrl + C</kbd> or <code class="text-brand font-mono">/exit</code>).
                     </p>
-                    <div class="bg-dark-950 p-3 rounded-xl font-mono text-xs text-slate-300 border border-white/5">
-                        $ localpilot installed --json
+                    <div class="bg-dark-950 p-3 rounded-xl font-mono text-xs text-slate-300 border border-white/5 space-y-1">
+                        <div>$ localpilot chat llama3.2:3b &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="text-slate-400"># Chat with verified local model</span></div>
+                        <div>$ localpilot chat qwen2.5-coder:7b --temperature 0.2 <span class="text-slate-400"># Low temperature for coding precision</span></div>
                     </div>
                 </div>
 
-                <!-- Command 6: Storage & Remove -->
+                <!-- Command 6: Run & Stop -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <code class="text-brand font-bold text-sm font-mono">localpilot run | stop &lt;model_id&gt;</code>
+                        <span class="text-[11px] text-slate-400 font-mono">Process Supervision</span>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        <code class="text-brand font-mono">run</code> launches a headless model instance or server in the background. <code class="text-brand font-mono">stop</code> performs a non-destructive shutdown. Crucially, LocalPilot respects ownership: if an external daemon (like Ollama system service) was already running before, LocalPilot will unbind without terminating external user processes.
+                    </p>
+                    <div class="bg-dark-950 p-3 rounded-xl font-mono text-xs text-slate-300 border border-white/5 space-y-1">
+                        <div>$ localpilot run llama3.2:3b &nbsp;&nbsp;<span class="text-slate-400"># Start model instance in background</span></div>
+                        <div>$ localpilot stop llama3.2:3b &nbsp;<span class="text-slate-400"># Safely unload model and release memory</span></div>
+                    </div>
+                </div>
+
+                <!-- Command 7: Installed & Running -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <code class="text-brand font-bold text-sm font-mono">localpilot installed | running</code>
+                        <span class="text-[11px] text-slate-400 font-mono">Inventory &amp; Probes</span>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        <code class="text-brand font-mono">installed</code> lists models present on disk with their verification stage (<code class="text-emerald-400 font-mono">TESTED_HERE</code>), size, and runtime. <code class="text-brand font-mono">running</code> probes live PID/service instances. Supports <code class="text-slate-300 font-mono">--plain</code> and <code class="text-slate-300 font-mono">--json</code>.
+                    </p>
+                    <div class="bg-dark-950 p-3 rounded-xl font-mono text-xs text-slate-300 border border-white/5 space-y-1">
+                        <div>$ localpilot installed --json</div>
+                        <div>$ localpilot running --plain</div>
+                    </div>
+                </div>
+
+                <!-- Command 8: In-CLI Guide & Docs -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <code class="text-brand font-bold text-sm font-mono">localpilot guide | docs [OPTIONS]</code>
+                        <span class="text-[11px] text-slate-400 font-mono">Built-in Knowledge System</span>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Access comprehensive documentation right in the terminal. <code class="text-brand font-mono">guide</code> provides chapter-by-chapter tutorials tailored for beginners or developers. <code class="text-brand font-mono">docs</code> outputs deep engineering references for memory math, storage structures, and security boundaries.
+                    </p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr class="text-slate-400 font-mono border-b border-white/10">
+                                    <th class="py-2">Command / Option</th>
+                                    <th class="py-2">Description</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-white/5 text-slate-300 font-mono text-[11px]">
+                                <tr>
+                                    <td class="py-2 text-brand">guide --audience novice|technical</td>
+                                    <td>Filter the guide for plain-English beginners or deep technical users</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 text-brand">guide -s, --search &lt;query&gt;</td>
+                                    <td>Search across all guide topics and answers directly from terminal</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 text-brand">docs --topic &lt;topic&gt;</td>
+                                    <td>Inspect deep technical manuals: <code class="text-white">overview</code>, <code class="text-white">technical</code>, <code class="text-white">storage</code>, <code class="text-white">compatibility</code></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="bg-dark-950 p-3 rounded-xl font-mono text-xs text-slate-300 border border-white/5 space-y-1">
+                        <div>$ localpilot guide --interactive &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="text-slate-400"># Open interactive chapter navigator</span></div>
+                        <div>$ localpilot docs --topic technical --plain <span class="text-slate-400"># Pipe technical architecture to pager</span></div>
+                    </div>
+                </div>
+
+                <!-- Command 9: Logs, Activity & Support -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <code class="text-brand font-bold text-sm font-mono">localpilot logs | activity | support</code>
+                        <span class="text-[11px] text-slate-400 font-mono">Audit &amp; Diagnostics</span>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        LocalPilot features automatic privacy redaction: API tokens, bearer keys, and user personal file paths are scrubbed in memory before writing to disk. <code class="text-brand font-mono">activity</code> shows installation/lifecycle events; <code class="text-brand font-mono">support</code> generates an anonymized diagnostic bundle for GitHub issues.
+                    </p>
+                    <div class="bg-dark-950 p-3 rounded-xl font-mono text-xs text-slate-300 border border-white/5 space-y-1">
+                        <div>$ localpilot logs --lines 50 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="text-slate-400"># Tail redacted runtime logs</span></div>
+                        <div>$ localpilot activity --json &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="text-slate-400"># Audit trail of operations</span></div>
+                        <div>$ localpilot support &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="text-slate-400"># Generate privacy-redacted debug archive</span></div>
+                    </div>
+                </div>
+
+                <!-- Command 10: Storage & Remove -->
                 <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
                     <div class="flex items-center justify-between">
                         <code class="text-brand font-bold text-sm font-mono">localpilot storage | remove &lt;id&gt;</code>
@@ -484,7 +734,7 @@
                     </div>
                 </div>
 
-                <!-- Command 7: Self Update & Uninstall -->
+                <!-- Command 11: Self Update & Uninstall -->
                 <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
                     <div class="flex items-center justify-between">
                         <code class="text-brand font-bold text-sm font-mono">localpilot self update | uninstall</code>

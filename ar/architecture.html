@@ -206,6 +206,209 @@
     <!-- Content -->
     <main class="py-16 max-w-5xl mx-auto px-6 space-y-16">
 
+        <!-- Section 1: Hexagonal Clean Architecture (المعمارية السداسية النظيفة) -->
+        <section class="code-box rounded-2xl p-6 sm:p-10 space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">1</span>
+                <div>
+                    <span class="text-xs font-mono uppercase tracking-wider text-brand font-bold">الهندسة البرمجية والنطاق</span>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-0.5">المعمارية السداسية النظيفة (المنافذ والمحولات - Hexagonal Architecture)</h2>
+                </div>
+            </div>
+            
+            <p class="text-slate-300 text-sm leading-relaxed">
+                تمت هندسة LocalPilot بالاعتماد على نموذج التصميم المقاد بالنطاق (Domain-Driven Design) مع حدود سداسية صارمة تفصل بين منطق العمليات الأساسي وقواعد التحقق وبين أدوات واجهة المستخدم أو محركات التشغيل الخارجية، بحيث تعمل النواة بنسبة 100% دون أي تبعيات خارجية أو مكتبات TUI أو أدوات تشغيل ثانوية.
+            </p>
+
+            <!-- Visual Diagram in Arabic -->
+            <div class="space-y-4 my-6">
+                <!-- Layer 1: Presentation -->
+                <div class="p-5 rounded-2xl bg-dark-950 border border-brand/30 shadow-lg shadow-brand/5 relative">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-brand animate-pulse"></span>
+                            <span class="font-mono text-xs uppercase tracking-wider text-brand font-bold">1. طبقة العرض والواجهات (Presentation Layer)</span>
+                        </div>
+                        <span class="text-[11px] font-mono text-slate-400 bg-white/5 px-2 py-0.5 rounded border border-white/5">منافذ واجهة المستخدم (Inbound Ports)</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                        <div class="p-3.5 rounded-xl bg-dark-900 border border-white/5 flex items-center justify-between">
+                            <div>
+                                <strong class="text-white font-mono block text-sm">Typer CLI</strong>
+                                <span class="text-slate-400 text-[11px]">توجيه الأوامر، جداول Rich التفاعلية، ومخرجات JSON والنصوص البسيطة للأتمتة</span>
+                            </div>
+                            <span class="text-[10px] bg-brand/10 text-brand px-2 py-0.5 rounded font-mono font-bold" dir="ltr">localpilot</span>
+                        </div>
+                        <div class="p-3.5 rounded-xl bg-dark-900 border border-white/5 flex items-center justify-between">
+                            <div>
+                                <strong class="text-white font-mono block text-sm">Textual TUI Hub</strong>
+                                <span class="text-slate-400 text-[11px]">لوحة تحكم رسومية كاملة داخل الطرفية، تدفق فوري للسجلات، ومودال المساعدة F1</span>
+                            </div>
+                            <span class="text-[10px] bg-brand/10 text-brand px-2 py-0.5 rounded font-mono font-bold" dir="ltr">localpilot tui</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Connector 1 -->
+                <div class="flex items-center justify-center -my-1 select-none">
+                    <div class="flex items-center gap-2 px-3 py-1 rounded-full bg-dark-950 border border-white/10 text-[11px] text-brand font-mono shadow-sm">
+                        <span>▼</span> استدعاء حالات الاستخدام عبر حدود تنفيذ منضبطة ومعزولة
+                    </div>
+                </div>
+
+                <!-- Layer 2: Application -->
+                <div class="p-5 rounded-2xl bg-dark-950 border border-cyan-500/30 shadow-lg shadow-cyan-500/5">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-3">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3 h-3 rounded-full bg-cyan-400"></span>
+                            <span class="font-mono text-xs uppercase tracking-wider text-cyan-400 font-bold">2. طبقة التطبيق والتنسيق (Application Layer)</span>
+                        </div>
+                        <span class="text-[11px] font-mono text-slate-400 bg-white/5 px-2 py-0.5 rounded border border-white/5">سير العمليات والمعاملات (Workflows)</span>
+                    </div>
+                    <div class="grid grid-cols-2 sm:grid-cols-5 gap-2 text-center text-xs font-mono">
+                        <div class="p-2.5 rounded-xl bg-dark-900 border border-white/5">
+                            <span class="text-cyan-300 font-bold block text-[11px]">SetupWorkflow</span>
+                            <span class="text-[10px] text-slate-400 font-sans">تنزيل &larr; تشغيل &larr; فحص</span>
+                        </div>
+                        <div class="p-2.5 rounded-xl bg-dark-900 border border-white/5">
+                            <span class="text-cyan-300 font-bold block text-[11px]">RuntimeService</span>
+                            <span class="text-[10px] text-slate-400 font-sans">دورة الحياة والمنافذ</span>
+                        </div>
+                        <div class="p-2.5 rounded-xl bg-dark-900 border border-white/5">
+                            <span class="text-cyan-300 font-bold block text-[11px]">UpdateWorkflow</span>
+                            <span class="text-[10px] text-slate-400 font-sans">تحديث ذري مع التراجع</span>
+                        </div>
+                        <div class="p-2.5 rounded-xl bg-dark-900 border border-white/5">
+                            <span class="text-cyan-300 font-bold block text-[11px]">JobManager</span>
+                            <span class="text-[10px] text-slate-400 font-sans">المهام في الخلفية</span>
+                        </div>
+                        <div class="p-2.5 rounded-xl bg-dark-900 border border-white/5 col-span-2 sm:col-span-1">
+                            <span class="text-cyan-300 font-bold block text-[11px]">ActivityService</span>
+                            <span class="text-[10px] text-slate-400 font-sans">سجل العمليات المنقح</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Connector 2 -->
+                <div class="flex items-center justify-center -my-1 select-none">
+                    <div class="flex items-center gap-2 px-3 py-1 rounded-full bg-dark-950 border border-white/10 text-[11px] text-cyan-400 font-mono shadow-sm">
+                        <span>▼</span> فرض قواعد وسياسات النطاق الحسابية وخوارزميات التقييم
+                    </div>
+                </div>
+
+                <!-- Layer 3: Domain Core -->
+                <div class="p-6 rounded-2xl bg-dark-950 border-2 border-emerald-500/40 shadow-xl shadow-emerald-500/10">
+                    <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-4">
+                        <div class="flex items-center gap-2">
+                            <span class="w-3.5 h-3.5 rounded-full bg-emerald-400 shadow-sm shadow-emerald-400"></span>
+                            <span class="font-mono text-sm uppercase tracking-wider text-emerald-400 font-extrabold">3. نواة النطاق الأساسية (Domain Core - خالية من التبعيات)</span>
+                        </div>
+                        <span class="text-[11px] font-mono text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">منطق بايثون النقي</span>
+                    </div>
+                    <div class="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs font-mono">
+                        <div class="p-3.5 rounded-xl bg-dark-900 border border-white/5">
+                            <span class="text-emerald-300 font-bold block text-xs mb-1">CompatibilityPolicy</span>
+                            <p class="text-[11px] text-slate-400 font-sans leading-relaxed">احتساب تفريغ الذاكرة للـ GPU والـ RAM مع حجز مساحة أمان 512MB للنظام.</p>
+                        </div>
+                        <div class="p-3.5 rounded-xl bg-dark-900 border border-white/5">
+                            <span class="text-emerald-300 font-bold block text-xs mb-1">ScoringPolicy</span>
+                            <p class="text-[11px] text-slate-400 font-sans leading-relaxed">أوزان ترجيح متعددة العوامل: التوافق، السرعة، جودة التكميم، والتسريع العتادي.</p>
+                        </div>
+                        <div class="p-3.5 rounded-xl bg-dark-900 border border-white/5">
+                            <span class="text-emerald-300 font-bold block text-xs mb-1">ExecutionPlan</span>
+                            <p class="text-[11px] text-slate-400 font-sans leading-relaxed">ثلاثية التنفيذ غير القابلة للتغيير: (المحرك الحسابي &times; نوع الخدمة &times; نمط النشر).</p>
+                        </div>
+                        <div class="p-3.5 rounded-xl bg-dark-900 border border-white/5">
+                            <span class="text-emerald-300 font-bold block text-xs mb-1">VerifiedState</span>
+                            <p class="text-[11px] text-slate-400 font-sans leading-relaxed">آلة حالات صارمة تعتمد الإثبات الفعلي: UNTESTED &larr; DOWNLOADED &larr; TESTED_HERE.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Connector 3 -->
+                <div class="flex items-center justify-center -my-1 select-none">
+                    <div class="flex items-center gap-2 px-3 py-1 rounded-full bg-dark-950 border border-white/10 text-[11px] text-emerald-400 font-mono shadow-sm">
+                        <span>▼</span> قيادة البنية التحتية والعتاد عبر واجهات التوصيل والمحولات (SPI) <span>▼</span>
+                    </div>
+                </div>
+
+                <!-- Layer 4: Adapters -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Platform -->
+                    <div class="p-5 rounded-2xl bg-dark-950 border border-purple-500/20 space-y-3">
+                        <div class="flex items-center justify-between border-b border-white/5 pb-2">
+                            <span class="font-mono text-xs uppercase tracking-wider text-purple-400 font-bold">محولات المنصة والعتاد</span>
+                            <span class="text-[10px] text-slate-400 font-mono bg-purple-500/10 px-2 py-0.5 rounded border border-purple-500/20">Hardware SPI</span>
+                        </div>
+                        <ul class="text-xs text-slate-300 space-y-2 font-mono">
+                            <li class="flex items-start gap-2"><span class="text-purple-400 mt-0.5">&bull;</span> <span>فحص أنظمة Linux و macOS Darwin</span></li>
+                            <li class="flex items-start gap-2"><span class="text-purple-400 mt-0.5">&bull;</span> <span>تسريع Apple Metal والذاكرة الموحدة</span></li>
+                            <li class="flex items-start gap-2"><span class="text-purple-400 mt-0.5">&bull;</span> <span>فحص كروت NVIDIA CUDA و AMD ROCm</span></li>
+                            <li class="flex items-start gap-2"><span class="text-purple-400 mt-0.5">&bull;</span> <span>فاحص جهوزية منافذ Loopback المحلية</span></li>
+                        </ul>
+                    </div>
+
+                    <!-- Source -->
+                    <div class="p-5 rounded-2xl bg-dark-950 border border-amber-500/20 space-y-3">
+                        <div class="flex items-center justify-between border-b border-white/5 pb-2">
+                            <span class="font-mono text-xs uppercase tracking-wider text-amber-400 font-bold">محولات مصادر النماذج</span>
+                            <span class="text-[10px] text-slate-400 font-mono bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">Catalog SPI</span>
+                        </div>
+                        <ul class="text-xs text-slate-300 space-y-2 font-mono">
+                            <li class="flex items-start gap-2"><span class="text-amber-400 mt-0.5">&bull;</span> <span>عميل مكتبة ومستودع Ollama Registry</span></li>
+                            <li class="flex items-start gap-2"><span class="text-amber-400 mt-0.5">&bull;</span> <span>منصة Hugging Face Hub (أوزان GGUF)</span></li>
+                            <li class="flex items-start gap-2"><span class="text-amber-400 mt-0.5">&bull;</span> <span>الفهرس المحلي المعتمد (Seed Catalog)</span></li>
+                            <li class="flex items-start gap-2"><span class="text-amber-400 mt-0.5">&bull;</span> <span>التحقق التشفيري من تجزئة SHA-256 والحجم</span></li>
+                        </ul>
+                    </div>
+
+                    <!-- Runtime & Storage -->
+                    <div class="p-5 rounded-2xl bg-dark-950 border border-blue-500/20 space-y-3">
+                        <div class="flex items-center justify-between border-b border-white/5 pb-2">
+                            <span class="font-mono text-xs uppercase tracking-wider text-blue-400 font-bold">محولات التشغيل والتخزين</span>
+                            <span class="text-[10px] text-slate-400 font-mono bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20">Execution SPI</span>
+                        </div>
+                        <ul class="text-xs text-slate-300 space-y-2 font-mono">
+                            <li class="flex items-start gap-2"><span class="text-blue-400 mt-0.5">&bull;</span> <span>مشغل llama.cpp كعملية فرعية معزولة</span></li>
+                            <li class="flex items-start gap-2"><span class="text-blue-400 mt-0.5">&bull;</span> <span>عميل Ollama Local REST API المباشر</span></li>
+                            <li class="flex items-start gap-2"><span class="text-blue-400 mt-0.5">&bull;</span> <span>عميل واجهات LM Studio / llmster</span></li>
+                            <li class="flex items-start gap-2"><span class="text-blue-400 mt-0.5">&bull;</span> <span>التخزين المنظم مع احتساب المراجع و SQLite</span></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Clean Monospace ASCII Blueprint -->
+                <details class="rounded-2xl border border-white/10 bg-dark-950 p-4 text-xs font-mono text-slate-300 mt-4">
+                    <summary class="cursor-pointer text-slate-400 hover:text-brand font-semibold select-none flex items-center justify-between">
+                        <span>📐 استعراض المخطط الهيكلي أحادي المسافة (ASCII Blueprint)</span>
+                        <span class="text-[10px] bg-white/5 px-2 py-0.5 rounded border border-white/10">فتح المخطط</span>
+                    </summary>
+                    <pre class="mt-4 p-5 rounded-xl bg-dark-900 border border-white/5 overflow-x-auto whitespace-pre leading-relaxed text-[11px] text-slate-300 font-mono" dir="ltr">
+┌────────────────────────────────────────────────────────────────────────┐
+│                        PRESENTATION LAYER                              │
+│       Typer CLI (localpilot)     │       Textual TUI (Visual Hub)      │
+└─────────────────────────────────┬──────────────────────────────────────┘
+                                  ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                        APPLICATION LAYER                               │
+│  SetupWorkflow  │  UpdateWorkflow  │  JobManager  │  ActivityService   │
+└─────────────────────────────────┬──────────────────────────────────────┘
+                                  ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                          DOMAIN LAYER                                  │
+│  CompatibilityPolicy │ ScoringPolicy │ ExecutionPlan │ VerifiedState   │
+└──────────────┬──────────────────┬──────────────────────┬───────────────┘
+               ▼                  ▼                      ▼
+┌──────────────────────┐ ┌──────────────────┐ ┌─────────────────────────┐
+│   PLATFORM ADAPTERS  │ │  SOURCE ADAPTERS │ │    RUNTIME ADAPTERS     │
+│  Linux / Darwin      │ │  Ollama Registry │ │  llama.cpp runner       │
+│  Hardware Inspector  │ │  HuggingFace Hub │ │  Ollama API Client      │
+│  Metal / CUDA check  │ │  Local Seed DB   │ │  LM Studio Client       │
+└──────────────────────┘ └──────────────────┘ └─────────────────────────┘</pre>
+                </details>
+            </div>
+        </section>
+
         <!-- 3-Axis Architecture -->
         <section class="code-box rounded-2xl p-6 sm:p-10 space-y-6">
             <div>
@@ -355,6 +558,26 @@
                                 <td class="p-4 font-mono font-bold text-brand" dir="ltr">localpilot running</td>
                                 <td class="p-4">عرض النماذج والعمليات النشطة قيد الاستخدام في الخلفية.</td>
                                 <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot running --json</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-mono font-bold text-brand" dir="ltr">localpilot docs</td>
+                                <td class="p-4">استعراض المراجع الهندسية العميقة للمعمارية، تفريغ الذاكرة، والأمان في الطرفية.</td>
+                                <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot docs --topic technical</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-mono font-bold text-brand" dir="ltr">localpilot remove &lt;ID&gt;</td>
+                                <td class="p-4">حذف ملفات النموذج المحملة واحتساب المراجع وتحرير مساحة القرص الصلب فوراً.</td>
+                                <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot remove llama3.2:3b -y</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-mono font-bold text-brand" dir="ltr">localpilot logs</td>
+                                <td class="p-4">استعراض سجلات التشغيل مع حجب المفاتيح السرية والمسارات الشخصية تلقائياً.</td>
+                                <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot logs --lines 50</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-mono font-bold text-brand" dir="ltr">localpilot activity</td>
+                                <td class="p-4">سجل زمني لعمليات التثبيت، التشغيل، والإيقاف لتدقيق النشاط.</td>
+                                <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot activity --json</td>
                             </tr>
                             <tr>
                                 <td class="p-4 font-mono font-bold text-brand" dir="ltr">localpilot storage</td>
