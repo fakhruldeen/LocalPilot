@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>دليل المبتدئين خطوة بخطوة — LocalPilot</title>
+    <meta name="description" content="دليل مبسط وشامل من الصفر وحتى بدء المحادثة مع الذكاء الاصطناعي على جهازك الخاص بأمان ودون أي تعقيدات تقنية.">
+    
+    <link rel="icon" type="image/png" href="../img/logo.png">
+    
+    <!-- Google Fonts & Tailwind CDN -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            DEFAULT: '#0df2c9',
+                            400: '#2ef5d1',
+                            500: '#0df2c9',
+                            600: '#00cbb6',
+                        },
+                        dark: {
+                            950: '#070a0f',
+                            900: '#0b0f17',
+                            850: '#101623',
+                            800: '#161f31',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Tajawal', 'Cairo', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                        heading: ['Cairo', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Tajawal', sans-serif; }
+        h1, h2, h3, h4, h5, h6 { font-family: 'Cairo', sans-serif; }
+        .code-box { background-color: #0b0f17; border: 1px solid rgba(255, 255, 255, 0.08); }
+        .hero-bg {
+            background-image: linear-gradient(to bottom, rgba(11, 15, 23, 0.90), rgba(7, 10, 15, 0.98)), url('../img/bg.jpeg');
+            background-size: cover;
+            background-position: center;
+        }
+    </style>
+</head>
+<body class="bg-dark-950 text-slate-100 font-sans antialiased selection:bg-brand selection:text-dark-900 min-h-screen flex flex-col">
+
+    <!-- Header Navigation -->
+    <header class="sticky top-0 z-50 backdrop-blur-md bg-dark-900/85 border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-3 group">
+                <img src="../img/logo.png" alt="LocalPilot Logo" class="w-10 h-10 rounded-xl object-contain border border-white/10 group-hover:scale-105 transition-transform duration-300">
+                <span class="font-bold text-xl tracking-tight text-white flex items-center gap-2">
+                    LocalPilot
+                    <span class="text-xs bg-brand/10 text-brand px-2 py-0.5 rounded-full border border-brand/20 font-mono font-medium">v0.1.5</span>
+                </span>
+            </a>
+
+            <nav class="hidden md:flex items-center gap-7 text-sm font-medium text-slate-300">
+                <a href="index.html" class="hover:text-brand transition-colors">الرئيسية</a>
+                <a href="guide.html" class="text-brand font-semibold">دليل المبتدئين</a>
+                <a href="install.html" class="hover:text-brand transition-colors">التثبيت</a>
+                <a href="models.html" class="hover:text-brand transition-colors">دليل النماذج</a>
+                <a href="faq.html" class="hover:text-brand transition-colors">الأسئلة الشائعة</a>
+                <a href="architecture.html" class="hover:text-brand transition-colors">المعمارية التقنية</a>
+            </nav>
+
+            <div class="flex items-center gap-3">
+                <a href="../guide.html" class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 transition-colors">
+                    English 🌐
+                </a>
+                <a href="https://github.com/fakhruldeen/LocalPilot" target="_blank" class="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl bg-brand text-dark-900 hover:bg-brand-400 transition-all font-bold">
+                    GitHub
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Page Header -->
+    <section class="py-16 hero-bg border-b border-white/5">
+        <div class="max-w-4xl mx-auto px-6 text-center">
+            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand/10 border border-brand/20 text-brand text-xs font-semibold mb-4">
+                دليل شامل خطوة بخطوة للمبتدئين
+            </div>
+            <h1 class="text-3xl sm:text-5xl font-extrabold text-white mb-4">رحلتك من الصفر إلى أول محادثة خاصة</h1>
+            <p class="text-slate-300 text-base sm:text-lg max-w-2xl mx-auto font-light leading-relaxed">
+                لا تحتاج لأي خبرة برمجية سابقة. اتبع هذه الخطوات البسيطة وستتمكن من تشغيل أقوى نماذج الذكاء الاصطناعي على حاسوبك الشخصي في دقائق معدودة.
+            </p>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="py-16 max-w-5xl mx-auto px-6 space-y-16">
+
+        <!-- 4 Step Flow -->
+        <section class="space-y-12">
+            <div class="text-center">
+                <span class="text-xs font-mono uppercase tracking-wider text-brand font-bold">الخطوات الأربع السريعة</span>
+                <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1">كيف يعمل LocalPilot في 4 خطوات سهلة</h2>
+            </div>
+
+            <div class="space-y-6">
+                <!-- Step 1 -->
+                <div class="code-box rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row gap-6 items-start">
+                    <div class="w-12 h-12 rounded-xl bg-brand/10 border border-brand/20 text-brand flex items-center justify-center text-xl font-bold shrink-0">1</div>
+                    <div class="space-y-3 flex-1">
+                        <h3 class="text-xl font-bold text-white">فحص عتاد الحاسوب (<code class="text-brand font-mono text-sm" dir="ltr">localpilot doctor</code>)</h3>
+                        <p class="text-slate-300 text-sm leading-relaxed">
+                            يقوم LocalPilot أولاً بفحص المعالج، والذاكرة العشوائية المتاحة، وكرت الشاشة (سواء كان بطاقة NVIDIA في لينكس أو معالجات M-Series في أجهزة آبل). يحسب البرنامج ميزانية الأمان بدقة ليتأكد من عدم استهلاك الرام بالكامل.
+                        </p>
+                        <div class="bg-dark-950 p-3 rounded-xl border border-white/5 font-mono text-xs text-brand" dir="ltr">
+                            localpilot doctor
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="code-box rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row gap-6 items-start">
+                    <div class="w-12 h-12 rounded-xl bg-brand/10 border border-brand/20 text-brand flex items-center justify-center text-xl font-bold shrink-0">2</div>
+                    <div class="space-y-3 flex-1">
+                        <h3 class="text-xl font-bold text-white">اكتشاف النماذج المتوافقة (<code class="text-brand font-mono text-sm" dir="ltr">localpilot discover</code>)</h3>
+                        <p class="text-slate-300 text-sm leading-relaxed">
+                            يعرض لك البرنامج قائمة بالنماذج التي تتسع لها ذاكرتك بأمان. النماذج الحمراء التي قد تسبب بطء جهازك يتم استبعادها تلقائياً لحمايتك، مع إظهار تقييم درجة التوافق وسرعة التشغيل المتوقعة.
+                        </p>
+                        <div class="bg-dark-950 p-3 rounded-xl border border-white/5 font-mono text-xs text-brand" dir="ltr">
+                            localpilot discover --task chat
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="code-box rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row gap-6 items-start">
+                    <div class="w-12 h-12 rounded-xl bg-brand/10 border border-brand/20 text-brand flex items-center justify-center text-xl font-bold shrink-0">3</div>
+                    <div class="space-y-3 flex-1">
+                        <h3 class="text-xl font-bold text-white">التثبيت الموجه والفحص الذاتي (<code class="text-brand font-mono text-sm" dir="ltr">localpilot setup</code>)</h3>
+                        <p class="text-slate-300 text-sm leading-relaxed">
+                            يقوم بتنزيل ملف الأوزان الحقيقي والتأكد من سلامة البصمة الرقمية للتحميل (SHA-256). بعد اكتمال التنزيل، يقوم البرنامج بسؤال النموذج سؤالاً تجريبياً حقيقياً (Smoke Test) للتأكد من قدرته على توليد الإجابات قبل إعلان اكتمال التثبيت.
+                        </p>
+                        <div class="bg-dark-950 p-3 rounded-xl border border-white/5 font-mono text-xs text-brand" dir="ltr">
+                            localpilot setup cand_llama32_3b
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step 4 -->
+                <div class="code-box rounded-2xl p-6 sm:p-8 flex flex-col md:flex-row gap-6 items-start">
+                    <div class="w-12 h-12 rounded-xl bg-brand/10 border border-brand/20 text-brand flex items-center justify-center text-xl font-bold shrink-0">4</div>
+                    <div class="space-y-3 flex-1">
+                        <h3 class="text-xl font-bold text-white">المحادثة الخاصة والفورية (<code class="text-brand font-mono text-sm" dir="ltr">localpilot chat</code>)</h3>
+                        <p class="text-slate-300 text-sm leading-relaxed">
+                            ابدأ الحديث مباشرة مع الذكاء الاصطناعي في شاشة الطرفية أو في لوحة التحكم الرسومية الملونة (TUI). عند خروجك عبر كتابة <code class="text-brand font-mono text-xs" dir="ltr">/exit</code>، يتم تفريغ الذاكرة فوراً واستعادة موارد جهازك بالكامل لنظام التشغيل.
+                        </p>
+                        <div class="bg-dark-950 p-3 rounded-xl border border-white/5 font-mono text-xs text-brand" dir="ltr">
+                            localpilot chat inst_llama32_3b
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- No-Jargon Dictionary -->
+        <section class="code-box rounded-2xl p-6 sm:p-10 space-y-8">
+            <div>
+                <span class="text-xs font-mono uppercase tracking-wider text-brand font-bold">بدون تعقيدات</span>
+                <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1">قاموس مصطلحات الذكاء الاصطناعي للمبتدئين</h2>
+                <p class="text-slate-400 text-sm mt-2">شرح مبسط لأهم الكلمات التي ستصادفها دون مصطلحات تقنية معقدة:</p>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                <div class="p-4 rounded-xl bg-dark-950/70 border border-white/5 space-y-2">
+                    <h4 class="font-bold text-white text-base text-brand">الأوزان (Weights / Model File)</h4>
+                    <p class="text-slate-300 leading-relaxed">
+                        هو الملف الرقمي الذي يحتوي على كل المعرفة واللغات والخبرات التي تعلمها الذكاء الاصطناعي أثناء تدريبه. يشبه "الكتاب الضخم" الذي يقرأ منه الحاسوب للإجابة عليك.
+                    </p>
+                </div>
+
+                <div class="p-4 rounded-xl bg-dark-950/70 border border-white/5 space-y-2">
+                    <h4 class="font-bold text-white text-base text-brand">البارامترات (Parameters - e.g. 3B, 8B)</h4>
+                    <p class="text-slate-300 leading-relaxed">
+                        حجم عقل النموذج؛ الحرف <strong class="text-white">B</strong> يعني مليار (Billion). نموذج 3B يحتوي على 3 مليارات رابط عصبي، ونموذج 8B يحتوي على 8 مليارات. كلما زاد الرقم كان النموذج أذكى لكنه يتطلب ذاكرة أكبر.
+                    </p>
+                </div>
+
+                <div class="p-4 rounded-xl bg-dark-950/70 border border-white/5 space-y-2">
+                    <h4 class="font-bold text-white text-base text-brand">التكميم والضغط (Quantization - GGUF)</h4>
+                    <p class="text-slate-300 leading-relaxed">
+                        تقنية ذكية تضغط حجم النموذج لتقليص استهلاكه للذاكرة بنسبة تزيد عن 60%، مع الحفاظ على أكثر من 98% من جودته وذكائه الأصلي، مما يسمح له بالعمل بسلاسة على الحواسيب العادية.
+                    </p>
+                </div>
+
+                <div class="p-4 rounded-xl bg-dark-950/70 border border-white/5 space-y-2">
+                    <h4 class="font-bold text-white text-base text-brand">نافذة السياق (Context Window)</h4>
+                    <p class="text-slate-300 leading-relaxed">
+                        ذاكرة المحادثة اللحظية للنموذج؛ أي كمية النصوص التي يستطيع تذكرها في نفس الوقت (مثل تذكر الأسئلة السابقة أو نص المستند الطويل الذي ألصقته).
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Prompting 101 -->
+        <section class="space-y-6">
+            <div>
+                <span class="text-xs font-mono uppercase tracking-wider text-brand font-bold">نصائح المحادثة الفعالة</span>
+                <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1">كيف تحصل على أفضل إجابة من نموذجك المحلي؟</h2>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm">
+                <div class="code-box rounded-2xl p-6 space-y-3">
+                    <div class="text-2xl">🎯</div>
+                    <h4 class="font-bold text-white text-base">حدد الدور بوضوح</h4>
+                    <p class="text-slate-300 leading-relaxed">
+                        ابدأ بتحديد شخصية النموذج: "تصرف كخبير تدقيق لغوي"، أو "تصرف كمعلم برمجة للمبتدئين". هذا يوجه أسلوبه بدقة.
+                    </p>
+                </div>
+
+                <div class="code-box rounded-2xl p-6 space-y-3">
+                    <div class="text-2xl">📐</div>
+                    <h4 class="font-bold text-white text-base">اطلب تنسيقاً محدداً</h4>
+                    <p class="text-slate-300 leading-relaxed">
+                        اطلب منه تنظيم الإجابة: "أجب في 3 نقاط محددة"، أو "ضع النتائج في جدول مقارنة"، أو "اشرح بدون مقدمات طويلة".
+                    </p>
+                </div>
+
+                <div class="code-box rounded-2xl p-6 space-y-3">
+                    <div class="text-2xl">🔄</div>
+                    <h4 class="font-bold text-white text-base">قسّم المهام المعقدة</h4>
+                    <p class="text-slate-300 leading-relaxed">
+                        بدلاً من طلب كتابة بحث كامل بطلب واحد، اطلب منه أولاً اقتراح العناوين، ثم اطلب منه التوسع في كل عنوان على حدة.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- Post Install Walkthrough -->
+        <section class="code-box rounded-2xl p-6 sm:p-10 space-y-6">
+            <div>
+                <span class="text-xs font-mono uppercase tracking-wider text-brand font-bold">دليل ما بعد التثبيت</span>
+                <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1">6 خطوات عملية بعد إتمام التثبيت</h2>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-slate-300">
+                <div class="p-4 rounded-xl bg-dark-950/70 border border-white/5 flex gap-3">
+                    <span class="text-brand font-bold">1.</span>
+                    <div>
+                        <strong class="text-white block mb-1">فتح لوحة التحكم الرسومية:</strong>
+                        اكتب <code class="text-brand font-mono text-xs" dir="ltr">localpilot tui</code> لفتح واجهة ملونة بالكامل تتنقل فيها بلوحة المفاتيح والماوس.
+                    </div>
+                </div>
+
+                <div class="p-4 rounded-xl bg-dark-950/70 border border-white/5 flex gap-3">
+                    <span class="text-brand font-bold">2.</span>
+                    <div>
+                        <strong class="text-white block mb-1">فحص التوافق السريع:</strong>
+                        اضغط على حرف <kbd class="px-1.5 py-0.5 rounded bg-white/10 font-mono text-xs">d</kbd> لرؤية النماذج المتوافقة ودرجة ملاءمتها لجهازك.
+                    </div>
+                </div>
+
+                <div class="p-4 rounded-xl bg-dark-950/70 border border-white/5 flex gap-3">
+                    <span class="text-brand font-bold">3.</span>
+                    <div>
+                        <strong class="text-white block mb-1">معرفة استهلاك المساحة:</strong>
+                        نفذ <code class="text-brand font-mono text-xs" dir="ltr">localpilot storage</code> لترى بالتفصيل حجم النماذج والملفات المؤقتة.
+                    </div>
+                </div>
+
+                <div class="p-4 rounded-xl bg-dark-950/70 border border-white/5 flex gap-3">
+                    <span class="text-brand font-bold">4.</span>
+                    <div>
+                        <strong class="text-white block mb-1">الاطلاع على المساعدة في أي وقت:</strong>
+                        اضغط <kbd class="px-1.5 py-0.5 rounded bg-white/10 font-mono text-xs">?</kbd> داخل لوحة التحكم أو اكتب <code class="text-brand font-mono text-xs" dir="ltr">localpilot guide</code> في أي وقت.
+                    </div>
+                </div>
+
+                <div class="p-4 rounded-xl bg-dark-950/70 border border-white/5 flex gap-3">
+                    <span class="text-brand font-bold">5.</span>
+                    <div>
+                        <strong class="text-white block mb-1">متابعة العمليات النشطة:</strong>
+                        اكتب <code class="text-brand font-mono text-xs" dir="ltr">localpilot running</code> للتأكد من النماذج التي تستهلك ذاكرة حالياً.
+                    </div>
+                </div>
+
+                <div class="p-4 rounded-xl bg-dark-950/70 border border-white/5 flex gap-3">
+                    <span class="text-brand font-bold">6.</span>
+                    <div>
+                        <strong class="text-white block mb-1">إيقاف النموذج بأمان:</strong>
+                        عند الانتهاء اكتب <code class="text-brand font-mono text-xs" dir="ltr">localpilot stop &lt;ID&gt;</code> لإرجاع الذاكرة العشوائية كاملة لنظام التشغيل.
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto border-t border-white/5 bg-dark-950 py-12 text-sm text-slate-400">
+        <div class="max-w-7xl mx-auto px-6 space-y-6">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-300">
+                <div class="flex items-center gap-3">
+                    <img src="../img/logo.png" alt="LocalPilot" class="w-6 h-6 rounded-md object-contain opacity-75">
+                    <span>&copy; 2026 LocalPilot &bull; منشور تحت رخصة GNU GPLv3 مفتوحة المصدر</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-6">
+                    <a href="index.html" class="hover:text-brand transition-colors">الرئيسية</a>
+                    <a href="install.html" class="hover:text-brand transition-colors">التثبيت</a>
+                    <a href="models.html" class="hover:text-brand transition-colors">النماذج</a>
+                    <a href="faq.html" class="hover:text-brand transition-colors">الأسئلة الشائعة</a>
+                    <a href="architecture.html" class="hover:text-brand transition-colors">المعمارية التقنية</a>
+                    <a href="../guide.html" class="hover:text-brand transition-colors">English 🌐</a>
+                </div>
+            </div>
+
+            <!-- DOI & Academic Citation -->
+            <div class="pt-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-400">
+                <div class="flex items-center gap-2">
+                    <span class="px-2 py-0.5 rounded bg-brand/10 border border-brand/20 text-brand font-mono font-semibold">معرّف الكائن الرقمي (DOI)</span>
+                    <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="hover:text-brand transition-colors underline font-mono text-slate-300">10.5281/zenodo.23424540</a>
+                </div>
+                <div class="text-center md:text-left leading-relaxed" dir="ltr">
+                    Mohamed (Fouad) Fakhruldeen. (2026). <em class="text-slate-300">fakhruldeen/LocalPilot: v0.1.5</em> (Version v0.1.5) [Computer software]. Zenodo. <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="text-brand hover:underline font-mono">https://doi.org/10.5281/zenodo.23424540</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

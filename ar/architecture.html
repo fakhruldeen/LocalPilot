@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>المعمارية التقنية ودليل سطر الأوامر — LocalPilot</title>
+    <meta name="description" content="الدليل التقني الشامل للمهندسين والمطورين: معمارية المحاور الثلاثة، معادلات موازنة الذاكرة، حماية العمليات، والمرجع الكامل لأوامر CLI.">
+    
+    <link rel="icon" type="image/png" href="../img/logo.png">
+    
+    <!-- Google Fonts & Tailwind CDN -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            DEFAULT: '#0df2c9',
+                            400: '#2ef5d1',
+                            500: '#0df2c9',
+                            600: '#00cbb6',
+                        },
+                        dark: {
+                            950: '#070a0f',
+                            900: '#0b0f17',
+                            850: '#101623',
+                            800: '#161f31',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Tajawal', 'Cairo', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                        heading: ['Cairo', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Tajawal', sans-serif; }
+        h1, h2, h3, h4, h5, h6 { font-family: 'Cairo', sans-serif; }
+        .code-box { background-color: #0b0f17; border: 1px solid rgba(255, 255, 255, 0.08); }
+        .hero-bg {
+            background-image: linear-gradient(to bottom, rgba(11, 15, 23, 0.90), rgba(7, 10, 15, 0.98)), url('../img/bg.jpeg');
+            background-size: cover;
+            background-position: center;
+        }
+    </style>
+</head>
+<body class="bg-dark-950 text-slate-100 font-sans antialiased selection:bg-brand selection:text-dark-900 min-h-screen flex flex-col">
+
+    <!-- Header Navigation -->
+    <header class="sticky top-0 z-50 backdrop-blur-md bg-dark-900/85 border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-3 group">
+                <img src="../img/logo.png" alt="LocalPilot Logo" class="w-10 h-10 rounded-xl object-contain border border-white/10 group-hover:scale-105 transition-transform duration-300">
+                <span class="font-bold text-xl tracking-tight text-white flex items-center gap-2">
+                    LocalPilot
+                    <span class="text-xs bg-brand/10 text-brand px-2 py-0.5 rounded-full border border-brand/20 font-mono font-medium">v0.1.5</span>
+                </span>
+            </a>
+
+            <nav class="hidden md:flex items-center gap-7 text-sm font-medium text-slate-300">
+                <a href="index.html" class="hover:text-brand transition-colors">الرئيسية</a>
+                <a href="guide.html" class="hover:text-brand transition-colors">دليل المبتدئين</a>
+                <a href="install.html" class="hover:text-brand transition-colors">التثبيت</a>
+                <a href="models.html" class="hover:text-brand transition-colors">دليل النماذج</a>
+                <a href="faq.html" class="hover:text-brand transition-colors">الأسئلة الشائعة</a>
+                <a href="architecture.html" class="text-brand font-semibold">المعمارية التقنية</a>
+            </nav>
+
+            <div class="flex items-center gap-3">
+                <a href="../architecture.html" class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 transition-colors">
+                    English 🌐
+                </a>
+                <a href="https://github.com/fakhruldeen/LocalPilot" target="_blank" class="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl bg-brand text-dark-900 hover:bg-brand-400 transition-all font-bold">
+                    GitHub
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Page Header -->
+    <section class="py-16 hero-bg border-b border-white/5">
+        <div class="max-w-4xl mx-auto px-6 text-center">
+            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand/10 border border-brand/20 text-brand text-xs font-semibold mb-4">
+                دليل المهندسين والمطورين
+            </div>
+            <h1 class="text-3xl sm:text-5xl font-extrabold text-white mb-4">المعمارية التقنية ودليل سطر الأوامر</h1>
+            <p class="text-slate-300 text-base sm:text-lg max-w-2xl mx-auto font-light leading-relaxed">
+                استعراض هندسي دقيق لمعمارية المحاور الثلاثة، خوارزميات قياس واحتساب الذاكرة، سياسات إدارة العمليات، والمرجع الكامل لأوامر CLI.
+            </p>
+        </div>
+    </section>
+
+    <!-- Content -->
+    <main class="py-16 max-w-5xl mx-auto px-6 space-y-16">
+
+        <!-- 3-Axis Architecture -->
+        <section class="code-box rounded-2xl p-6 sm:p-10 space-y-6">
+            <div>
+                <span class="text-xs font-mono uppercase tracking-wider text-brand font-bold">الهندسة البرمجية</span>
+                <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1">معمارية المحاور الثلاثة للتنفيذ (3-Axis Architecture)</h2>
+            </div>
+            <p class="text-slate-300 text-sm leading-relaxed">
+                يقوم LocalPilot بفصل عملية تشغيل نماذج اللغة إلى ثلاثة محاور متعامدة ومستقلة تماماً:
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm pt-2">
+                <div class="p-5 rounded-xl bg-dark-950/70 border border-white/5 space-y-3">
+                    <span class="text-xs font-mono font-bold text-brand uppercase block">المحور الأول: المحرك (Backend)</span>
+                    <h3 class="text-base font-bold text-white">محركات الاستدلال الحسابي</h3>
+                    <p class="text-slate-400 text-xs leading-relaxed">
+                        المحرك البرمجي المسؤول عن ضرب المصفوفات وتوليد الرموز:
+                    </p>
+                    <ul class="text-xs text-slate-300 space-y-1 font-mono">
+                        <li>• llama.cpp (GGUF, Metal, CUDA)</li>
+                        <li>• vLLM (أنظمة GPU المتقدمة)</li>
+                    </ul>
+                </div>
+
+                <div class="p-5 rounded-xl bg-dark-950/70 border border-white/5 space-y-3">
+                    <span class="text-xs font-mono font-bold text-brand uppercase block">المحور الثاني: الخدمة (Service)</span>
+                    <h3 class="text-base font-bold text-white">خدمات الإدارة والتنسيق</h3>
+                    <p class="text-slate-400 text-xs leading-relaxed">
+                        الطبقة المسؤولة عن دورة حياة النماذج وإدارة الموارد:
+                    </p>
+                    <ul class="text-xs text-slate-300 space-y-1 font-mono">
+                        <li>• Direct / Embedded (مباشر)</li>
+                        <li>• Ollama Daemon</li>
+                        <li>• LM Studio / llmster</li>
+                    </ul>
+                </div>
+
+                <div class="p-5 rounded-xl bg-dark-950/70 border border-white/5 space-y-3">
+                    <span class="text-xs font-mono font-bold text-brand uppercase block">المحور الثالث: النشر (Deployment)</span>
+                    <h3 class="text-base font-bold text-white">أسلوب وطريقة التشغيل</h3>
+                    <p class="text-slate-400 text-xs leading-relaxed">
+                        كيفية استدعاء العملية والتواصل معها داخل النظام:
+                    </p>
+                    <ul class="text-xs text-slate-300 space-y-1 font-mono">
+                        <li>• direct_worker (عملية فرعية معزولة)</li>
+                        <li>• local_api_service (خادم محلي)</li>
+                        <li>• container (حاوية معزولة)</li>
+                    </ul>
+                </div>
+            </div>
+        </section>
+
+        <!-- Memory Math Section -->
+        <section class="code-box rounded-2xl p-6 sm:p-10 space-y-6">
+            <div>
+                <span class="text-xs font-mono uppercase tracking-wider text-brand font-bold">الحسابات الرياضية</span>
+                <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1">خوارزمية ميزانية الذاكرة الآمنة (Memory Budget Math)</h2>
+            </div>
+            <p class="text-slate-300 text-sm leading-relaxed">
+                لتجنب تجميد نظام التشغيل أو انهيار العمليات، يطبق LocalPilot معادلات ميزانية دقيقة تختلف بحسب معمارية العتاد:
+            </p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs text-slate-300">
+                <div class="p-5 rounded-xl bg-dark-950/70 border border-white/5 space-y-3">
+                    <h4 class="font-bold text-white text-sm text-brand">1. أجهزة Apple Silicon (macOS):</h4>
+                    <p class="leading-relaxed">
+                        في الذاكرة الموحدة (Unified Memory)، يتم حجز ميزانية آمنة لا تتجاوز:
+                    </p>
+                    <div class="bg-dark-900 p-3 rounded-lg font-mono text-brand text-xs" dir="ltr">
+                        Safe_RAM = min(Available_RAM * 0.85, Total_RAM * 0.70)
+                    </div>
+                    <p class="text-slate-400">
+                        هذا يضمن بقاء مساحة كافية لتطبيقات النظام وواجهة المستخدم الرسومية.
+                    </p>
+                </div>
+
+                <div class="p-5 rounded-xl bg-dark-950/70 border border-white/5 space-y-3">
+                    <h4 class="font-bold text-white text-sm text-brand">2. حواسيب Linux وبطاقات NVIDIA:</h4>
+                    <p class="leading-relaxed">
+                        حساب دقيق لطبقات كارت الشاشة (GPU Offload Layers):
+                    </p>
+                    <div class="bg-dark-900 p-3 rounded-lg font-mono text-brand text-xs" dir="ltr">
+                        VRAM_Budget = Available_VRAM * 0.90<br>
+                        KV_Cache = 2 * layers * heads * dim * context * bytes
+                    </div>
+                    <p class="text-slate-400">
+                        إذا لم تتسع VRAM بالكامل، يتم تفعيل التشغيل الهجين (Partial Offload) بين كرت الشاشة والرام.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <!-- CLI Command Reference Table -->
+        <section class="space-y-6">
+            <div>
+                <span class="text-xs font-mono uppercase tracking-wider text-brand font-bold">المرجع الشامل</span>
+                <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1">دليل أوامر سطر الأوامر (CLI Reference)</h2>
+                <p class="text-slate-400 text-sm mt-2">جميع الأوامر تدعم الخيارات <code class="text-brand font-mono" dir="ltr">--plain</code> للأتمتة النصية و <code class="text-brand font-mono" dir="ltr">--json</code> للمخرجات المهيكلة:</p>
+            </div>
+
+            <div class="code-box rounded-2xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-right text-xs sm:text-sm">
+                        <thead class="bg-dark-900 border-b border-white/5 font-mono text-slate-400 uppercase text-xs">
+                            <tr>
+                                <th class="p-4">الأمر</th>
+                                <th class="p-4">الوصف الموجز</th>
+                                <th class="p-4">مثال على الاستخدام</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/5 text-slate-300">
+                            <tr>
+                                <td class="p-4 font-mono font-bold text-brand" dir="ltr">localpilot doctor</td>
+                                <td class="p-4">فحص العتاد، سعة الذاكرة، كروت الشاشة، ومحركات التشغيل المتوفرة.</td>
+                                <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot doctor --json</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-mono font-bold text-brand" dir="ltr">localpilot discover</td>
+                                <td class="p-4">استعراض النماذج المتوافقة بنسبة 100% مع جهازك وتقييم أدائها.</td>
+                                <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot discover -q "qwen"</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-mono font-bold text-brand" dir="ltr">localpilot setup &lt;ID&gt;</td>
+                                <td class="p-4">تنزيل النموذج، فحص البصمة، وإجراء فحص استدلال حقيقي قبل الاعتماد.</td>
+                                <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot setup cand_llama32_3b</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-mono font-bold text-brand" dir="ltr">localpilot run &lt;ID&gt;</td>
+                                <td class="p-4">بدء تشغيل النموذج المحمل وجعله جاهزاً للمحادثة واستقبال الطلبات.</td>
+                                <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot run inst_llama32_3b</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-mono font-bold text-brand" dir="ltr">localpilot chat &lt;ID&gt;</td>
+                                <td class="p-4">بدء محادثة فورية وتدفق الكلمات مباشرة في الطرفية بشكل خاص.</td>
+                                <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot chat inst_llama32_3b</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-mono font-bold text-brand" dir="ltr">localpilot stop &lt;ID&gt;</td>
+                                <td class="p-4">إيقاف النموذج وتفريغ الذاكرة فوراً وإعادتها لنظام التشغيل.</td>
+                                <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot stop inst_llama32_3b</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-mono font-bold text-brand" dir="ltr">localpilot installed</td>
+                                <td class="p-4">عرض مكتبة النماذج المثبتة على حاسوبك وأحجامها وحالتها.</td>
+                                <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot installed</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-mono font-bold text-brand" dir="ltr">localpilot running</td>
+                                <td class="p-4">عرض النماذج والعمليات النشطة قيد الاستخدام في الخلفية.</td>
+                                <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot running --json</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-mono font-bold text-brand" dir="ltr">localpilot storage</td>
+                                <td class="p-4">تفصيل استهلاك التخزين للملفات المؤقتة والأوزان وقاعدة البيانات.</td>
+                                <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot storage</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-mono font-bold text-brand" dir="ltr">localpilot guide</td>
+                                <td class="p-4">استعراض التوثيق المدمج التفاعلي للمبتدئين والمطورين في الطرفية.</td>
+                                <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot guide novice</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-mono font-bold text-brand" dir="ltr">localpilot support</td>
+                                <td class="p-4">توليد تقرير تشخيصي منقح بالكامل للمساعدة وحل المشكلات.</td>
+                                <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot support -o ./debug.json</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-mono font-bold text-brand" dir="ltr">localpilot self update</td>
+                                <td class="p-4">فحص مستودع PyPI وترقية تطبيق LocalPilot لأحدث إصدار رسمي.</td>
+                                <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot self update</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-mono font-bold text-brand" dir="ltr">localpilot self uninstall</td>
+                                <td class="p-4">إلغاء تثبيت التطبيق بنظافة، مع خيار حذف النماذج أو الاحتفاظ بها.</td>
+                                <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot self uninstall --purge-models</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto border-t border-white/5 bg-dark-950 py-12 text-sm text-slate-400">
+        <div class="max-w-7xl mx-auto px-6 space-y-6">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-300">
+                <div class="flex items-center gap-3">
+                    <img src="../img/logo.png" alt="LocalPilot" class="w-6 h-6 rounded-md object-contain opacity-75">
+                    <span>&copy; 2026 LocalPilot &bull; منشور تحت رخصة GNU GPLv3 مفتوحة المصدر</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-6">
+                    <a href="index.html" class="hover:text-brand transition-colors">الرئيسية</a>
+                    <a href="guide.html" class="hover:text-brand transition-colors">دليل المبتدئين</a>
+                    <a href="install.html" class="hover:text-brand transition-colors">التثبيت</a>
+                    <a href="models.html" class="hover:text-brand transition-colors">النماذج</a>
+                    <a href="faq.html" class="hover:text-brand transition-colors">الأسئلة الشائعة</a>
+                    <a href="../architecture.html" class="hover:text-brand transition-colors">English 🌐</a>
+                </div>
+            </div>
+
+            <!-- DOI & Academic Citation -->
+            <div class="pt-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-400">
+                <div class="flex items-center gap-2">
+                    <span class="px-2 py-0.5 rounded bg-brand/10 border border-brand/20 text-brand font-mono font-semibold">معرّف الكائن الرقمي (DOI)</span>
+                    <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="hover:text-brand transition-colors underline font-mono text-slate-300">10.5281/zenodo.23424540</a>
+                </div>
+                <div class="text-center md:text-left leading-relaxed" dir="ltr">
+                    Mohamed (Fouad) Fakhruldeen. (2026). <em class="text-slate-300">fakhruldeen/LocalPilot: v0.1.5</em> (Version v0.1.5) [Computer software]. Zenodo. <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="text-brand hover:underline font-mono">https://doi.org/10.5281/zenodo.23424540</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>

@@ -170,14 +170,19 @@ localpilot self uninstall --purge-models
 
 ---
 
-## 🌍 Arabic Documentation (التوثيق باللغة العربية)
+## 🌍 Arabic Documentation & Website (التوثيق والموقع باللغة العربية)
 
-LocalPilot provides first-class documentation in Arabic for Arabic-speaking users and researchers:
+LocalPilot provides first-class documentation and a complete native website in Arabic for Arabic-speaking users and researchers:
 
-- 📖 **[ملف القراءة بالعربية (Arabic README)](README.ar.md)**: نظرة شاملة على المشروع والمميزات ودليل الأوامر.
+- 🌐 **[الموقع الإلكتروني بالعربية (Arabic Website)](https://fakhr.me/LocalPilot/ar/)**: استعراض النماذج، أداة فحص الرام التفاعلية، ودليل الأمان.
+- 📖 **[ملف القراءة بالعربية (Arabic README)](README.ar.md)**: نظرة شاملة على فلسفة المشروع ودليل الأوامر السريع.
 - 🚀 **[دليل البدء السريع (Quickstart)](docs/ar/QUICKSTART.md)**: خطوات التثبيت والتشغيل في أقل من دقيقتين.
-- 🧠 **[دليل المفاهيم الأساسية (Conceptual Guide)](docs/ar/CONCEPTUAL_GUIDE.md)**: شرح مبسط لمفاهيم الأوزان والذاكرة والنماذج المحلية.
-- 📚 **[فهرس التوثيق العربي (Arabic Docs Index)](docs/ar/README.md)**: الفهرس الرئيسي للأدلة والموارد العربية.
+- 📦 **[دليل التثبيت الشامل (Installation)](docs/ar/INSTALLATION.md)**: خيارات التثبيت المعزول، الأوامر، والترقية.
+- 🧠 **[دليل المفاهيم الأساسية (Conceptual Guide)](docs/ar/CONCEPTUAL_GUIDE.md)**: شرح مبسط لمفاهيم الأوزان والذاكرة والتكميم.
+- 📋 **[مصفوفة المنصات المدعومة (Support Matrix)](docs/ar/SUPPORT_MATRIX.md)**: توافق المعالجات، كروت الشاشة، ومحركات التشغيل.
+- ❓ **[الأسئلة الشائعة (FAQ)](docs/ar/FAQ.md)**: إجابات مباشرة على أكثر من 20 سؤالاً تقنياً وعاماً.
+- 🏛️ **[المعمارية التقنية (Technical Architecture)](docs/ar/ARCHITECTURE.md)**: تفاصيل معمارية المحاور الثلاثة وحسابات الذاكرة.
+- 📚 **[فهرس التوثيق العربي الكامل (Arabic Docs Index)](docs/ar/README.md)**: الفهرس الرئيسي للأدلة والموارد العربية.
 
 ---
 

@@ -20,7 +20,7 @@
 
 *اكتشف نماذج الذكاء الاصطناعي المتوافقة مع عتاد جهازك، ثبتها بأمان تام، وابدأ المحادثة بخصوصية مطلقة.*
 
-[الموقع الإلكتروني](https://fakhr.me/LocalPilot/) • [دليل المبتدئين](https://fakhr.me/LocalPilot/guide.html) • [دليل النماذج](https://fakhr.me/LocalPilot/models.html) • [الأسئلة الشائعة](https://fakhr.me/LocalPilot/faq.html) • [المعمارية التقنية](https://fakhr.me/LocalPilot/architecture.html) • [التوثيق العربي](docs/ar/README.md) • [PyPI](https://pypi.org/project/localpilot/) • [DOI](https://doi.org/10.5281/zenodo.23424540)
+[الموقع الإلكتروني (بالعربية)](https://fakhr.me/LocalPilot/ar/) • [دليل المبتدئين](https://fakhr.me/LocalPilot/ar/guide.html) • [دليل التثبيت](https://fakhr.me/LocalPilot/ar/install.html) • [دليل النماذج](https://fakhr.me/LocalPilot/ar/models.html) • [الأسئلة الشائعة](https://fakhr.me/LocalPilot/ar/faq.html) • [المعمارية التقنية](https://fakhr.me/LocalPilot/ar/architecture.html) • [التوثيق المصدري (docs/ar)](docs/ar/README.md) • [PyPI](https://pypi.org/project/localpilot/) • [DOI](https://doi.org/10.5281/zenodo.23424540)
 
 </div>
 

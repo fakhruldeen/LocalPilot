@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>دليل واختيار النماذج — LocalPilot</title>
+    <meta name="description" content="ما هي نماذج الذكاء الاصطناعي؟ ما الفرق بين النماذج الرائدة السحابية والنماذج المحلية؟ جدول النماذج المتوافقة وكيفية اختيار النموذج الأنسب لجهازك.">
+    
+    <link rel="icon" type="image/png" href="../img/logo.png">
+    
+    <!-- Google Fonts & Tailwind CDN -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            DEFAULT: '#0df2c9',
+                            400: '#2ef5d1',
+                            500: '#0df2c9',
+                            600: '#00cbb6',
+                        },
+                        dark: {
+                            950: '#070a0f',
+                            900: '#0b0f17',
+                            850: '#101623',
+                            800: '#161f31',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Tajawal', 'Cairo', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                        heading: ['Cairo', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Tajawal', sans-serif; }
+        h1, h2, h3, h4, h5, h6 { font-family: 'Cairo', sans-serif; }
+        .code-box { background-color: #0b0f17; border: 1px solid rgba(255, 255, 255, 0.08); }
+        .hero-bg {
+            background-image: linear-gradient(to bottom, rgba(11, 15, 23, 0.90), rgba(7, 10, 15, 0.98)), url('../img/bg.jpeg');
+            background-size: cover;
+            background-position: center;
+        }
+    </style>
+</head>
+<body class="bg-dark-950 text-slate-100 font-sans antialiased selection:bg-brand selection:text-dark-900 min-h-screen flex flex-col">
+
+    <!-- Header Navigation -->
+    <header class="sticky top-0 z-50 backdrop-blur-md bg-dark-900/85 border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-3 group">
+                <img src="../img/logo.png" alt="LocalPilot Logo" class="w-10 h-10 rounded-xl object-contain border border-white/10 group-hover:scale-105 transition-transform duration-300">
+                <span class="font-bold text-xl tracking-tight text-white flex items-center gap-2">
+                    LocalPilot
+                    <span class="text-xs bg-brand/10 text-brand px-2 py-0.5 rounded-full border border-brand/20 font-mono font-medium">v0.1.5</span>
+                </span>
+            </a>
+
+            <nav class="hidden md:flex items-center gap-7 text-sm font-medium text-slate-300">
+                <a href="index.html" class="hover:text-brand transition-colors">الرئيسية</a>
+                <a href="guide.html" class="hover:text-brand transition-colors">دليل المبتدئين</a>
+                <a href="install.html" class="hover:text-brand transition-colors">التثبيت</a>
+                <a href="models.html" class="text-brand font-semibold">دليل النماذج</a>
+                <a href="faq.html" class="hover:text-brand transition-colors">الأسئلة الشائعة</a>
+                <a href="architecture.html" class="hover:text-brand transition-colors">المعمارية التقنية</a>
+            </nav>
+
+            <div class="flex items-center gap-3">
+                <a href="../models.html" class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 transition-colors">
+                    English 🌐
+                </a>
+                <a href="https://github.com/fakhruldeen/LocalPilot" target="_blank" class="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl bg-brand text-dark-900 hover:bg-brand-400 transition-all font-bold">
+                    GitHub
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Page Header -->
+    <section class="py-16 hero-bg border-b border-white/5">
+        <div class="max-w-4xl mx-auto px-6 text-center">
+            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-brand/10 border border-brand/20 text-brand text-xs font-semibold mb-4">
+                فهم واختيار النماذج
+            </div>
+            <h1 class="text-3xl sm:text-5xl font-extrabold text-white mb-4">دليل نماذج الذكاء الاصطناعي</h1>
+            <p class="text-slate-300 text-base sm:text-lg max-w-2xl mx-auto font-light leading-relaxed">
+                تعرف على معنى النماذج، والفرق بين النماذج السحابية العملاقة والنماذج المحلية، وكيف تختار النموذج المثالي لحاسوبك.
+            </p>
+        </div>
+    </section>
+
+    <!-- Content -->
+    <main class="py-16 max-w-5xl mx-auto px-6 space-y-16">
+
+        <!-- What are Models -->
+        <section class="code-box rounded-2xl p-6 sm:p-10 space-y-6">
+            <div>
+                <span class="text-xs font-mono uppercase tracking-wider text-brand font-bold">مفهوم أساسي</span>
+                <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1">ما هي نماذج الذكاء الاصطناعي (AI Models)؟</h2>
+            </div>
+            <p class="text-slate-300 text-sm leading-relaxed">
+                نموذج الذكاء الاصطناعي هو عبارة عن ملف بيانات رقمي ضخم تم تدريبه على مئات المليارات من النصوص والكتب ومستودعات الأكواد عبر العالم.
+                يمكنك تخيله بمثابة <strong class="text-white">"عقل رقمي مضغوط"</strong> قادر على فهم الأسئلة وتوليد إجابات متناسقة ومبتكرة باللغة الطبيعية.
+            </p>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2 text-xs">
+                <div class="p-4 rounded-xl bg-dark-950/70 border border-white/5 space-y-1">
+                    <strong class="text-brand block text-sm">الأوزان الرقمية (Weights):</strong>
+                    <span class="text-slate-300">الأرقام التي تمثل قوة الروابط بين المفاهيم في النموذج، وتحدد طريقة تفكيره وإجابته.</span>
+                </div>
+                <div class="p-4 rounded-xl bg-dark-950/70 border border-white/5 space-y-1">
+                    <strong class="text-brand block text-sm">عدد البارامترات:</strong>
+                    <span class="text-slate-300">مقياس سعة النموذج وذكائه (مثلاً 3B تعني 3 مليارات رابط عصبي، و 8B تعني 8 مليارات).</span>
+                </div>
+                <div class="p-4 rounded-xl bg-dark-950/70 border border-white/5 space-y-1">
+                    <strong class="text-brand block text-sm">التكميم (Quantization):</strong>
+                    <span class="text-slate-300">تقنية ضغط رياضية تقلص حجم الملف إلى الثلث لكي يتسع في ذاكرة حاسوبك العادي بسلاسة.</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Frontier vs Local Models -->
+        <section class="space-y-6">
+            <div>
+                <span class="text-xs font-mono uppercase tracking-wider text-brand font-bold">المقارنة الشاملة</span>
+                <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1">النماذج الرائدة (Frontier) مقارنة بالنماذج المحلية</h2>
+                <p class="text-slate-400 text-sm mt-2">ما الفرق بين نماذج الشركات الكبرى السحابية والنماذج التي تشغلها على جهازك؟</p>
+            </div>
+
+            <!-- Comparison Table -->
+            <div class="code-box rounded-2xl overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm text-right">
+                        <thead class="bg-dark-900 border-b border-white/5 text-xs text-slate-400 uppercase font-mono">
+                            <tr>
+                                <th class="p-4">وجه المقارنة</th>
+                                <th class="p-4 text-brand font-bold">النماذج المحلية (عبر LocalPilot)</th>
+                                <th class="p-4 text-slate-300">النماذج السحابية الرائدة (Frontier)</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/5 text-slate-300 text-xs sm:text-sm">
+                            <tr>
+                                <td class="p-4 font-bold text-white">الخصوصية وأمان البيانات</td>
+                                <td class="p-4 text-emerald-400 font-semibold bg-emerald-500/5">خصوصية مطلقة 100% (صفر بيانات خارج جهازك)</td>
+                                <td class="p-4 text-slate-400">تُرسل المحادثات لخوادم الشركات وقد تُستخدم للتدريب</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-bold text-white">التكلفة والاشتراكات</td>
+                                <td class="p-4 text-emerald-400 font-semibold bg-emerald-500/5">مجاني تماماً وإلى الأبد (0 دولار)</td>
+                                <td class="p-4 text-slate-400">اشتراكات شهرية متكررة (20$+/شهرياً) أو رسوم لكل طلب</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-bold text-white">العمل دون اتصال بالإنترنت</td>
+                                <td class="p-4 text-emerald-400 font-semibold bg-emerald-500/5">يعمل بالكامل في وضع عدم الاتصال (Offline)</td>
+                                <td class="p-4 text-slate-400">يتوقف فور انقطاع اتصالك بالإنترنت</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-bold text-white">الاستقرار والرقابة المفاجئة</td>
+                                <td class="p-4 text-emerald-400 font-semibold bg-emerald-500/5">النموذج ملكك ولن يتغير سلوكه فجأة أو يُحجب</td>
+                                <td class="p-4 text-slate-400">عرضة للحجب الجغرافي أو تغيير سياسات الخدمة</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-bold text-white">القدرات والمهام الفائقة</td>
+                                <td class="p-4">ممتاز للمحادثة اليومية، الصياغة، البرمجة، والتلخيص</td>
+                                <td class="p-4 text-brand font-semibold">الأقوى في المهام الاستدلالية شديدة التعقيد والتفكير المطول</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-bold text-white">أمثلة شائعة</td>
+                                <td class="p-4 font-mono text-xs text-brand">Llama 3.2, Qwen 2.5 Coder, Mistral 7B</td>
+                                <td class="p-4 font-mono text-xs text-slate-400">GPT-4o, Claude 3.5 Sonnet, Gemini 1.5 Pro</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Recommended Models Catalog Table -->
+        <section class="space-y-6">
+            <div>
+                <span class="text-xs font-mono uppercase tracking-wider text-brand font-bold">النماذج المدعومة رسمياً</span>
+                <h2 class="text-2xl sm:text-3xl font-extrabold text-white mt-1">كتالوج النماذج الموصى بها في LocalPilot</h2>
+                <p class="text-slate-400 text-sm mt-2">جميع هذه النماذج مفحوصة بدقة وتعمل بصيغة GGUF المكممة عبر llama.cpp أو عبر مكتبة Ollama:</p>
+            </div>
+
+            <div class="space-y-4">
+                <!-- Model 1 -->
+                <div class="code-box rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-lg font-bold text-white">Llama 3.2 (3B)</h3>
+                            <span class="text-xs px-2.5 py-0.5 rounded-full bg-brand/10 text-brand border border-brand/20 font-bold">الأكثر توازناً</span>
+                        </div>
+                        <p class="text-slate-400 text-xs max-w-xl leading-relaxed">
+                            نموذج شركة Meta المدمج الرائع. يقدم استجابة سريعة جداً وذكاءً لغوياً ممتازاً في المحادثة والكتابة والتلخيص، ويناسب أجهزة 8GB RAM بكل أريحية.
+                        </p>
+                        <div class="flex flex-wrap gap-2 pt-2 text-xs font-mono text-slate-400">
+                            <span>الحجم: 2.2 GB</span> &bull; 
+                            <span>الذاكرة المطلوبة: 4+ GB</span> &bull; 
+                            <span>السياق: 8,192 رمز</span>
+                        </div>
+                    </div>
+                    <div class="shrink-0" dir="ltr">
+                        <code class="bg-dark-950 px-3 py-1.5 rounded-lg border border-white/5 font-mono text-xs text-brand block">localpilot setup cand_llama32_3b</code>
+                    </div>
+                </div>
+
+                <!-- Model 2 -->
+                <div class="code-box rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-lg font-bold text-white">Qwen 2.5 Coder (1.5B / 7B)</h3>
+                            <span class="text-xs px-2.5 py-0.5 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20 font-bold">بطل البرمجة</span>
+                        </div>
+                        <p class="text-slate-400 text-xs max-w-xl leading-relaxed">
+                            نموذج متخصص في البرمجة من Alibaba Cloud. يتفوق في كتابة الأكواد بلغات متعددة (Python, JS, C++, Go)، وتصحيح الأخطاء، وكتابة الاختبارات.
+                        </p>
+                        <div class="flex flex-wrap gap-2 pt-2 text-xs font-mono text-slate-400">
+                            <span>الحجم: 1.4 GB (1.5B) / 4.7 GB (7B)</span> &bull; 
+                            <span>الذاكرة المطلوبة: 4 - 16 GB</span>
+                        </div>
+                    </div>
+                    <div class="shrink-0" dir="ltr">
+                        <code class="bg-dark-950 px-3 py-1.5 rounded-lg border border-white/5 font-mono text-xs text-brand block">localpilot setup cand_qwen25_coder</code>
+                    </div>
+                </div>
+
+                <!-- Model 3 -->
+                <div class="code-box rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-lg font-bold text-white">Llama 3.1 (8B)</h3>
+                            <span class="text-xs px-2.5 py-0.5 rounded-full bg-purple-500/10 text-purple-400 border border-purple-500/20 font-bold">القدرة الاستيعابية العميقة</span>
+                        </div>
+                        <p class="text-slate-400 text-xs max-w-xl leading-relaxed">
+                            النموذج القياسي للمهام العميقة والمنطق الرياضي والترجمة المعقدة. يتطلب 16 جيجابايت من الذاكرة أو بطاقة رسوميات حديثة.
+                        </p>
+                        <div class="flex flex-wrap gap-2 pt-2 text-xs font-mono text-slate-400">
+                            <span>الحجم: 4.9 GB</span> &bull; 
+                            <span>الذاكرة المطلوبة: 16 GB</span> &bull; 
+                            <span>السياق: 32,768 رمز</span>
+                        </div>
+                    </div>
+                    <div class="shrink-0" dir="ltr">
+                        <code class="bg-dark-950 px-3 py-1.5 rounded-lg border border-white/5 font-mono text-xs text-brand block">localpilot setup cand_llama31_8b</code>
+                    </div>
+                </div>
+
+                <!-- Model 4 -->
+                <div class="code-box rounded-2xl p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
+                    <div class="space-y-1">
+                        <div class="flex items-center gap-2">
+                            <h3 class="text-lg font-bold text-white">Llama 3.2 (1B)</h3>
+                            <span class="text-xs px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">الخفيف الفائق</span>
+                        </div>
+                        <p class="text-slate-400 text-xs max-w-xl leading-relaxed">
+                            أسرع نموذج استجابة واستهلاكاً للبطارية. يعمل على الحواسيب الضعيفة بذاكرة 4 جيجابايت مع سرعة توليد فائقة تتجاوز 25 كلمة بالثانية.
+                        </p>
+                        <div class="flex flex-wrap gap-2 pt-2 text-xs font-mono text-slate-400">
+                            <span>الحجم: 1.1 GB</span> &bull; 
+                            <span>الذاكرة المطلوبة: 3 - 4 GB</span>
+                        </div>
+                    </div>
+                    <div class="shrink-0" dir="ltr">
+                        <code class="bg-dark-950 px-3 py-1.5 rounded-lg border border-white/5 font-mono text-xs text-brand block">localpilot setup cand_llama32_1b</code>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Footer -->
+    <footer class="mt-auto border-t border-white/5 bg-dark-950 py-12 text-sm text-slate-400">
+        <div class="max-w-7xl mx-auto px-6 space-y-6">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-300">
+                <div class="flex items-center gap-3">
+                    <img src="../img/logo.png" alt="LocalPilot" class="w-6 h-6 rounded-md object-contain opacity-75">
+                    <span>&copy; 2026 LocalPilot &bull; منشور تحت رخصة GNU GPLv3 مفتوحة المصدر</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-6">
+                    <a href="index.html" class="hover:text-brand transition-colors">الرئيسية</a>
+                    <a href="guide.html" class="hover:text-brand transition-colors">دليل المبتدئين</a>
+                    <a href="install.html" class="hover:text-brand transition-colors">التثبيت</a>
+                    <a href="faq.html" class="hover:text-brand transition-colors">الأسئلة الشائعة</a>
+                    <a href="architecture.html" class="hover:text-brand transition-colors">المعمارية التقنية</a>
+                    <a href="../models.html" class="hover:text-brand transition-colors">English 🌐</a>
+                </div>
+            </div>
+
+            <!-- DOI & Academic Citation -->
+            <div class="pt-6 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-400">
+                <div class="flex items-center gap-2">
+                    <span class="px-2 py-0.5 rounded bg-brand/10 border border-brand/20 text-brand font-mono font-semibold">معرّف الكائن الرقمي (DOI)</span>
+                    <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="hover:text-brand transition-colors underline font-mono text-slate-300">10.5281/zenodo.23424540</a>
+                </div>
+                <div class="text-center md:text-left leading-relaxed" dir="ltr">
+                    Mohamed (Fouad) Fakhruldeen. (2026). <em class="text-slate-300">fakhruldeen/LocalPilot: v0.1.5</em> (Version v0.1.5) [Computer software]. Zenodo. <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="text-brand hover:underline font-mono">https://doi.org/10.5281/zenodo.23424540</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
