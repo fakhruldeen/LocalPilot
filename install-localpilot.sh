@@ -191,8 +191,13 @@ SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 echo "Installing LocalPilot into $VENV_DIR..."
 
 if [ -f "$SCRIPT_DIR/pyproject.toml" ]; then
+  echo "Installing from local source directory..."
   "$VENV_DIR/bin/pip" install --upgrade pip >/dev/null 2>&1 || true
   "$VENV_DIR/bin/pip" install "$SCRIPT_DIR"
+else
+  echo "Downloading and installing LocalPilot from PyPI..."
+  "$VENV_DIR/bin/pip" install --upgrade pip >/dev/null 2>&1 || true
+  "$VENV_DIR/bin/pip" install "localpilot>=0.1.0"
 fi
 
 # Create launcher script
@@ -202,6 +207,14 @@ cat <<EOF > "$LAUNCHER"
 exec "$VENV_DIR/bin/localpilot" "\$@"
 EOF
 chmod +x "$LAUNCHER"
+
+# Convenience symlink to ~/.local/bin if available
+USER_LOCAL_BIN="$HOME/.local/bin"
+if [ -d "$USER_LOCAL_BIN" ] && [ "$BIN_DIR" != "$USER_LOCAL_BIN" ]; then
+  mkdir -p "$USER_LOCAL_BIN"
+  ln -sf "$LAUNCHER" "$USER_LOCAL_BIN/localpilot" 2>/dev/null || true
+  echo "Convenience link created: $USER_LOCAL_BIN/localpilot"
+fi
 
 echo ""
 echo "============================================================"

@@ -46,28 +46,43 @@ Running local AI shouldn't require configuring build flags, figuring out CUDA or
 
 ---
 
-## 🚀 Quick Start
+---
 
-### 1. Installation
+## 🚀 Installation & Quick Start
 
-#### With `pipx` (Recommended)
+Choose the method that fits your computer:
+
+### Option 1: Automated Shell Installer (Recommended for Non-Technical Users)
+No need to configure Python virtual environments or paths manually:
+```bash
+curl -fsSL https://raw.githubusercontent.com/fakhruldeen/LocalPilot/main/install-localpilot.sh | bash
+```
+
+### Option 2: With `pipx` (Recommended for Python CLI Users)
 ```bash
 pipx install localpilot
 ```
 
-#### With `pip` or `uv`
+### Option 3: With `pip` or `uv`
 ```bash
 pip install localpilot
 # or
 uv tool install localpilot
 ```
 
-#### Standalone Shell Installer
-```bash
-curl -fsSL https://raw.githubusercontent.com/fakhruldeen/LocalPilot/main/install-localpilot.sh | bash
-```
+👉 *For advanced flags, custom scopes, and uninstallation instructions, see the **[Installation Guide](docs/INSTALLATION.md)**.*
 
 ---
+
+## 🧠 New to Local AI? Read This First
+
+If terms like *inference backends*, *weights*, *VRAM*, *Ollama*, or *Docker* seem confusing, read our friendly **[Beginner's Guide to Local AI](docs/CONCEPTUAL_GUIDE.md)**.
+
+In short:
+- **Model Weights**: A large data file containing learned knowledge (like a book).
+- **Inference Backend** (e.g. `llama.cpp`, `vLLM`): The computational engine that does the math on your CPU or GPU (like the reader).
+- **Execution Service** (e.g. `Ollama`, `LM Studio`, `Docker`): Optional background daemons that manage models and local APIs.
+- **Why LocalPilot?**: You don't have to manually match engines, calculate memory bytes, or troubleshoot Docker. LocalPilot inspects your machine, selects the optimal plan automatically, and reuses any tools you already have installed!
 
 ## 🎮 Usage Guide
 
