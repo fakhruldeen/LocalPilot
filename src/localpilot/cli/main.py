@@ -431,7 +431,7 @@ def self_update() -> None:
     """Check PyPI and update LocalPilot application."""
     import httpx
     import localpilot
-    current = getattr(localpilot, "__version__", "0.1.0")
+    current = getattr(localpilot, "__version__", "0.1.1")
     console.print(f"[bold cyan]Checking for LocalPilot updates (current: v{current})...[/bold cyan]")
     try:
         resp = httpx.get("https://pypi.org/pypi/localpilot/json", timeout=4.0)

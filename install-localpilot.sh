@@ -197,7 +197,7 @@ if [ -f "$SCRIPT_DIR/pyproject.toml" ]; then
 else
   echo "Downloading and installing LocalPilot from PyPI..."
   "$VENV_DIR/bin/pip" install --upgrade pip >/dev/null 2>&1 || true
-  "$VENV_DIR/bin/pip" install "localpilot>=0.1.0"
+  "$VENV_DIR/bin/pip" install "localpilot>=0.1.1"
 fi
 
 # Create launcher script

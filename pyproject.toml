@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "localpilot"
-version = "0.1.0"
+version = "0.1.1"
 description = "A friendly application that helps you discover, install, run, monitor, update and remove local AI models."
 readme = "README.md"
 requires-python = ">=3.11"
