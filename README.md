@@ -6,6 +6,8 @@
 
 **Local AI, Made Simple.**
 
+**[English](README.md)** • **[العربية (Arabic)](README.ar.md)**
+
 [![PyPI Version](https://img.shields.io/pypi/v/localpilot.svg?style=flat-square&color=blue)](https://pypi.org/project/localpilot/)
 [![Python Versions](https://img.shields.io/pypi/pyversions/localpilot.svg?style=flat-square&color=3776AB)](https://pypi.org/project/localpilot/)
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=flat-square)](https://www.gnu.org/licenses/gpl-3.0)
@@ -15,7 +17,7 @@
 
 *Find an AI that fits your computer, set it up safely, and help you use it.*
 
-[Website](https://fakhr.me/LocalPilot/) • [Documentation](docs/SUPPORT_MATRIX.md) • [PyPI](https://pypi.org/project/localpilot/) • [DOI](https://doi.org/10.5281/zenodo.23424540) • [Report Bug](https://github.com/fakhruldeen/LocalPilot/issues)
+[Website](https://fakhr.me/LocalPilot/) • [Beginner Guide](https://fakhr.me/LocalPilot/guide.html) • [Model Catalog](https://fakhr.me/LocalPilot/models.html) • [FAQ](https://fakhr.me/LocalPilot/faq.html) • [Technical Architecture](https://fakhr.me/LocalPilot/architecture.html) • [التوثيق بالعربية](docs/ar/README.md) • [PyPI](https://pypi.org/project/localpilot/) • [DOI](https://doi.org/10.5281/zenodo.23424540)
 
 </div>
 
@@ -108,15 +110,15 @@ Use keyboard shortcuts to navigate:
 ```bash
 localpilot doctor
 ```
-Outputs CPU cores, system RAM, safe memory budget, GPU accelerators (CUDA/Metal), and discovered runtimes.
+Audits CPU cores, available RAM, memory safety thresholds, hardware acceleration (Metal on Mac, CUDA on Linux), and active background services.
 
 #### 2. Discover Compatible Models
 ```bash
+# List all models verified to fit your memory safely
 localpilot discover
-```
-Filter by task or search query:
-```bash
-localpilot discover --task coding
+
+# Filter by task or search query
+localpilot discover --task chat
 localpilot discover -q "llama"
 ```
 
@@ -124,27 +126,54 @@ localpilot discover -q "llama"
 ```bash
 localpilot setup <candidate-id>
 ```
-LocalPilot checks whether supporting software (such as Ollama or llama.cpp) is already present. If found, it calmly uses it:
-> *"LocalPilot found supporting software already installed. We can use it to run this model."*
+Downloads real weights, validates SHA-256 integrity, configures local runtime adapters, and executes automated smoke inference before marking the model ready.
 
-#### 4. Run & Chat
+#### 4. Instant Offline Chat
 ```bash
-localpilot run <model-id-or-install-id>
+localpilot chat <candidate-id-or-model-id>
 ```
+Launches an immediate private conversation. When you exit with `/exit` or <kbd>Ctrl + C</kbd>, memory is instantly returned to your operating system.
 
-#### 5. Monitor Running Models
+#### 5. Inventory & Process Inspection
 ```bash
+# View installed models on this computer
+localpilot installed
+
+# View active running models and memory consumption
 localpilot running
 ```
 
 #### 6. Storage Inspection & Safe Removal
 ```bash
-# View storage breakdown
+# View storage breakdown across weights and databases
 localpilot storage
 
-# Safely remove a model without affecting other installations
-localpilot remove <installation-id>
+# Safely remove a model and reclaim disk space
+localpilot remove <installation-id> --delete-files
 ```
+
+#### 7. Application Updates & Support
+```bash
+# Check PyPI and update LocalPilot application
+localpilot self update
+
+# Generate an anonymized diagnostic report for troubleshooting
+localpilot support
+
+# Cleanly uninstall LocalPilot and optionally purge stored models
+localpilot self uninstall --purge-models
+```
+
+---
+
+## 🌍 Arabic Documentation (التوثيق باللغة العربية)
+
+LocalPilot provides first-class documentation in Arabic for Arabic-speaking users and researchers:
+
+- 📖 **[ملف القراءة بالعربية (Arabic README)](README.ar.md)**: نظرة شاملة على المشروع والمميزات ودليل الأوامر.
+- 🚀 **[دليل البدء السريع (Quickstart)](docs/ar/QUICKSTART.md)**: خطوات التثبيت والتشغيل في أقل من دقيقتين.
+- 🧠 **[دليل المفاهيم الأساسية (Conceptual Guide)](docs/ar/CONCEPTUAL_GUIDE.md)**: شرح مبسط لمفاهيم الأوزان والذاكرة والنماذج المحلية.
+- 📚 **[فهرس التوثيق العربي (Arabic Docs Index)](docs/ar/README.md)**: الفهرس الرئيسي للأدلة والموارد العربية.
 
 ---
 
@@ -166,7 +195,7 @@ vLLM             LM Studio       local_api_service
                  Docker Runner   container
 ```
 
-For full details on platform compatibility and supported backend/service combinations, see the **[Support Matrix](docs/SUPPORT_MATRIX.md)**.
+For full details on platform compatibility and supported backend/service combinations, see the **[Support Matrix](docs/SUPPORT_MATRIX.md)** and the **[Technical Architecture Manual](https://fakhr.me/LocalPilot/architecture.html)**.
 
 ---
 
