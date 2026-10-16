@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocalPilot — Local AI, Made Simple</title>
+    <meta name="description" content="Discover, install, run, monitor, update and remove local AI models safely on Linux and macOS.">
+    
+    <!-- Open Graph / Social -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://fakhruldeen.github.io/LocalPilot/">
+    <meta property="og:title" content="LocalPilot — Local AI, Made Simple">
+    <meta property="og:description" content="Find an AI that fits your computer, set it up safely, and help you use it.">
+    <meta property="og:image" content="https://raw.githubusercontent.com/fakhruldeen/LocalPilot/main/docs/img/banner-social.jpeg">
+
+    <link rel="icon" type="image/png" href="docs/img/logo.png">
+    
+    <!-- Google Fonts & Tailwind CDN -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            400: '#2dd4bf',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            DEFAULT: '#00D2B4',
+                        },
+                        dark: {
+                            900: '#0B0F17',
+                            800: '#111827',
+                            700: '#1F2937',
+                            600: '#374151',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .glow-effect {
+            box-shadow: 0 0 50px -10px rgba(0, 210, 180, 0.25);
+        }
+        .code-block {
+            background: rgba(15, 23, 42, 0.95);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+    </style>
+</head>
+<body class="bg-dark-900 text-slate-100 font-sans antialiased selection:bg-brand selection:text-dark-900 min-h-screen flex flex-col">
+
+    <!-- Header Navigation -->
+    <header class="sticky top-0 z-50 backdrop-blur-md bg-dark-900/80 border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <a href="#" class="flex items-center gap-3 group">
+                <img src="docs/img/logo.png" alt="LocalPilot Logo" class="w-10 h-10 rounded-xl object-contain border border-white/10 group-hover:scale-105 transition-transform duration-300">
+                <span class="font-bold text-xl tracking-tight text-white flex items-center gap-2">
+                    LocalPilot
+                    <span class="text-xs bg-brand/10 text-brand px-2 py-0.5 rounded-full border border-brand/20 font-mono font-medium">v0.1.0</span>
+                </span>
+            </a>
+
+            <nav class="hidden md:flex items-center gap-8 text-sm font-medium text-slate-300">
+                <a href="#features" class="hover:text-brand transition-colors">Features</a>
+                <a href="#quickstart" class="hover:text-brand transition-colors">Quickstart</a>
+                <a href="#architecture" class="hover:text-brand transition-colors">Architecture</a>
+                <a href="#author" class="hover:text-brand transition-colors">About Maintainer</a>
+            </nav>
+
+            <div class="flex items-center gap-4">
+                <a href="https://pypi.org/project/localpilot/" target="_blank" class="hidden sm:inline-flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 transition-colors">
+                    <svg class="w-4 h-4 text-brand" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0L1.5 6v12L12 24l10.5-6V6L12 0zm0 2.3l8 4.6-3.4 2-8-4.6 3.4-2zm-9 5.2l7.5 4.3v8.6L3 16V7.5zm18 8.5l-7.5 4.4v-8.6l7.5-4.3v8.5z"/></svg>
+                    PyPI Package
+                </a>
+                <a href="https://github.com/fakhruldeen/LocalPilot" target="_blank" class="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl bg-brand text-dark-900 hover:bg-brand-400 transition-all shadow-sm hover:shadow-brand/20">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path fill-rule="evenodd" clip-rule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"/></svg>
+                    GitHub
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="relative pt-12 pb-24 overflow-hidden">
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top,_var(--tw-gradient-stops))] from-brand/10 via-dark-900 to-dark-900 pointer-events-none"></div>
+
+        <div class="max-w-7xl mx-auto px-6 relative">
+            <div class="text-center max-w-3xl mx-auto">
+                <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-white/5 border border-white/10 text-xs font-medium text-brand mb-8 backdrop-blur-md">
+                    <span class="w-2 h-2 rounded-full bg-brand animate-pulse"></span>
+                    LocalPilot v0.1.0 Released on PyPI
+                </div>
+                
+                <h1 class="text-5xl sm:text-6xl font-extrabold tracking-tight text-white mb-6 leading-tight">
+                    Local AI, <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand to-teal-200">Made Simple.</span>
+                </h1>
+                
+                <p class="text-lg sm:text-xl text-slate-300 mb-10 leading-relaxed font-normal">
+                    Find an AI model that fits your computer, set it up safely without technical questions, and start chatting right away.
+                </p>
+
+                <!-- Quick Install Box -->
+                <div class="code-block rounded-2xl p-3 sm:p-4 max-w-xl mx-auto shadow-2xl glow-effect text-left relative group">
+                    <div class="flex items-center justify-between gap-4 font-mono text-sm sm:text-base text-slate-200 pl-3">
+                        <div class="flex items-center gap-2 truncate">
+                            <span class="text-brand select-none">$</span>
+                            <span id="install-cmd" class="truncate">pip install localpilot</span>
+                        </div>
+                        <button onclick="copyInstall()" class="px-3.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-xs font-sans font-medium text-white transition-colors flex items-center gap-1.5 shrink-0">
+                            <span id="copy-text">Copy</span>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mt-4 flex items-center justify-center gap-6 text-xs text-slate-400 font-mono">
+                    <span>Linux x86_64 / ARM64</span>
+                    <span>•</span>
+                    <span>macOS Apple Silicon & Intel</span>
+                    <span>•</span>
+                    <span>GPL-3.0</span>
+                </div>
+            </div>
+
+            <!-- Banner Visual Preview -->
+            <div class="mt-14 max-w-5xl mx-auto rounded-3xl overflow-hidden border border-white/10 shadow-2xl glow-effect">
+                <img src="docs/img/banner-readme.jpeg" alt="LocalPilot Interface Preview" class="w-full object-cover">
+            </div>
+        </div>
+    </section>
+
+    <!-- Key Features Grid -->
+    <section id="features" class="py-20 border-t border-white/5 bg-dark-800/40">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center max-w-2xl mx-auto mb-16">
+                <h2 class="text-3xl font-bold tracking-tight text-white mb-4">Engineered for Simplicity & Safety</h2>
+                <p class="text-slate-400">Everything needed to run open models on your local machine with confidence.</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Card 1 -->
+                <div class="bg-dark-800/60 p-8 rounded-2xl border border-white/5 hover:border-brand/40 transition-colors">
+                    <div class="w-12 h-12 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand mb-6">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"/></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">Hardware-Aware Fit</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">
+                        Accurate memory accounting for Apple Silicon unified memory vs. discrete Linux/Intel GPUs. Incompatible models are excluded before you download gigabytes of weights.
+                    </p>
+                </div>
+
+                <!-- Card 2 -->
+                <div class="bg-dark-800/60 p-8 rounded-2xl border border-white/5 hover:border-brand/40 transition-colors">
+                    <div class="w-12 h-12 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand mb-6">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4"/></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">3-Axis Execution Plan</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">
+                        Decouples inference into Computation Engine (<code>llama.cpp</code>, <code>vLLM</code>), Managed Service (<code>Ollama</code>, <code>LM Studio / llmster</code>), and Deployment Method (<code>direct_worker</code>, <code>local_service</code>).
+                    </p>
+                </div>
+
+                <!-- Card 3 -->
+                <div class="bg-dark-800/60 p-8 rounded-2xl border border-white/5 hover:border-brand/40 transition-colors">
+                    <div class="w-12 h-12 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center text-brand mb-6">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-2">Zero Data Loss & Safe Removal</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed">
+                        External background daemons are never killed automatically; models are unloaded from VRAM cleanly. Reference-counted storage ensures shared weights are protected.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Terminal CLI / TUI Showcase -->
+    <section id="quickstart" class="py-20">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center max-w-2xl mx-auto mb-16">
+                <h2 class="text-3xl font-bold tracking-tight text-white mb-4">Full-Screen Dashboard or Swift CLI</h2>
+                <p class="text-slate-400">Launch the full interactive TUI or run direct CLI commands in your terminal.</p>
+            </div>
+
+            <div class="max-w-4xl mx-auto code-block rounded-2xl overflow-hidden border border-white/10 shadow-2xl">
+                <!-- Window Titlebar -->
+                <div class="px-5 py-3.5 bg-white/5 border-b border-white/10 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-rose-500/80"></span>
+                        <span class="w-3 h-3 rounded-full bg-amber-500/80"></span>
+                        <span class="w-3 h-3 rounded-full bg-emerald-500/80"></span>
+                        <span class="ml-2 font-mono text-xs text-slate-400">terminal — localpilot doctor</span>
+                    </div>
+                    <span class="text-xs text-brand font-mono font-medium">LocalPilot TUI Ready</span>
+                </div>
+
+                <!-- Terminal Content -->
+                <div class="p-6 font-mono text-xs sm:text-sm text-slate-300 space-y-4 overflow-x-auto leading-relaxed">
+                    <div>
+                        <span class="text-brand font-bold">$</span> localpilot doctor
+                    </div>
+                    <div class="text-slate-400">
+                        ┌── Computer Diagnostic Summary ────────────────────────────────────────┐<br>
+                        │ <span class="text-white font-semibold">Operating System</span> : Linux 6.8.0 (x86_64)                               │<br>
+                        │ <span class="text-white font-semibold">Processor</span>        : 8 cores (AVX2, FMA, SSE4.2 supported)               │<br>
+                        │ <span class="text-white font-semibold">System Memory</span>    : 9.5 GB available (<span class="text-brand">Safe budget: 4.5 GB</span>)               │<br>
+                        │ <span class="text-white font-semibold">Graphics / GPU</span>   : NVIDIA GeForce RTX 3060 (12 GB VRAM, CUDA)          │<br>
+                        │ <span class="text-white font-semibold">Supporting Apps</span>  : Ollama (service running: 127.0.0.1:11434)            │<br>
+                        └───────────────────────────────────────────────────────────────────────┘
+                    </div>
+                    <div>
+                        <span class="text-brand font-bold">$</span> localpilot discover --task coding
+                    </div>
+                    <div class="text-emerald-400">
+                        Top Recommendation: Qwen 2.5 Coder 1.5B (GGUF Q4_K_M) • Score: 92/100<br>
+                        <span class="text-slate-400">Calm setup: LocalPilot found Ollama already installed. We can use it to run this model.</span>
+                    </div>
+                    <div>
+                        <span class="text-brand font-bold">$</span> localpilot run qwen2.5-coder
+                    </div>
+                    <div class="text-slate-400 italic">
+                        Connected to model via direct worker process. Type your question below...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Architecture & Platform Matrix -->
+    <section id="architecture" class="py-20 bg-dark-800/40 border-t border-white/5">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center max-w-2xl mx-auto mb-16">
+                <h2 class="text-3xl font-bold tracking-tight text-white mb-4">Supported Matrix</h2>
+                <p class="text-slate-400">Explicit compatibility relationships across backends and execution services.</p>
+            </div>
+
+            <div class="max-w-4xl mx-auto overflow-x-auto">
+                <table class="w-full text-left text-sm border-collapse">
+                    <thead>
+                        <tr class="border-b border-white/10 text-slate-300 font-mono text-xs">
+                            <th class="py-4 px-4 font-semibold">Identity</th>
+                            <th class="py-4 px-4 font-semibold">Type</th>
+                            <th class="py-4 px-4 font-semibold">Supported Platforms</th>
+                            <th class="py-4 px-4 font-semibold">Hardware Acceleration</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/5 text-slate-400">
+                        <tr>
+                            <td class="py-4 px-4 font-mono font-medium text-white">llama.cpp</td>
+                            <td class="py-4 px-4">Inference Backend</td>
+                            <td class="py-4 px-4">Linux, macOS (Apple Silicon / Intel)</td>
+                            <td class="py-4 px-4 text-brand">CPU, Metal, CUDA, ROCm</td>
+                        </tr>
+                        <tr>
+                            <td class="py-4 px-4 font-mono font-medium text-white">vLLM</td>
+                            <td class="py-4 px-4">Inference Backend (Advanced)</td>
+                            <td class="py-4 px-4">Linux only</td>
+                            <td class="py-4 px-4 text-brand">NVIDIA CUDA, ROCm GPU</td>
+                        </tr>
+                        <tr>
+                            <td class="py-4 px-4 font-mono font-medium text-white">Ollama</td>
+                            <td class="py-4 px-4">Managed Service</td>
+                            <td class="py-4 px-4">Linux, macOS</td>
+                            <td class="py-4 px-4 text-slate-300">Auto-detected via daemon</td>
+                        </tr>
+                        <tr>
+                            <td class="py-4 px-4 font-mono font-medium text-white">LM Studio / llmster</td>
+                            <td class="py-4 px-4">Managed Service</td>
+                            <td class="py-4 px-4">Linux, macOS</td>
+                            <td class="py-4 px-4 text-slate-300">External app/daemon managed</td>
+                        </tr>
+                        <tr>
+                            <td class="py-4 px-4 font-mono font-medium text-white">Docker Model Runner</td>
+                            <td class="py-4 px-4">Managed Service</td>
+                            <td class="py-4 px-4">Linux, macOS</td>
+                            <td class="py-4 px-4 text-slate-300">Container environment</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </section>
+
+    <!-- Maintainer / Author Section -->
+    <section id="author" class="py-20 border-t border-white/5">
+        <div class="max-w-4xl mx-auto px-6">
+            <div class="bg-gradient-to-br from-dark-800 to-dark-900 border border-white/10 rounded-3xl p-8 sm:p-12 shadow-2xl flex flex-col sm:flex-row items-center gap-8 text-center sm:text-left glow-effect">
+                <img src="https://avatars.githubusercontent.com/u/1162549?v=4" alt="Mohamed Fouad Fakhruldeen" class="w-32 h-32 rounded-2xl object-cover border-2 border-brand/40 shadow-xl shrink-0">
+                <div class="space-y-4">
+                    <div>
+                        <span class="text-xs uppercase tracking-wider text-brand font-bold font-mono">Creator & Maintainer</span>
+                        <h3 class="text-2xl sm:text-3xl font-bold text-white mt-1">Mohamed Fouad Fakhruldeen</h3>
+                    </div>
+                    <p class="text-slate-300 text-sm leading-relaxed">
+                        Working across PMO governance, AI systems, and agile enterprise operating systems. Building friendly, deterministic tools that put powerful local models directly into the hands of users.
+                    </p>
+                    <div class="flex flex-wrap items-center justify-center sm:justify-start gap-4 pt-2">
+                        <a href="https://fakhr.me/" target="_blank" class="inline-flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-colors">
+                            🌐 fakhr.me
+                        </a>
+                        <a href="https://www.linkedin.com/in/fakhruldeen" target="_blank" class="inline-flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-xl bg-[#0077b5]/10 hover:bg-[#0077b5]/20 border border-[#0077b5]/30 text-white transition-colors">
+                            LinkedIn
+                        </a>
+                        <a href="https://github.com/fakhruldeen" target="_blank" class="inline-flex items-center gap-2 text-xs font-semibold px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white transition-colors">
+                            GitHub
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="mt-auto border-t border-white/5 py-10 bg-dark-900">
+        <div class="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-400">
+            <div class="flex items-center gap-3">
+                <img src="docs/img/logo.png" alt="LocalPilot" class="w-6 h-6 rounded-md object-contain opacity-75">
+                <span>© 2026 LocalPilot • Licensed under GNU GPLv3</span>
+            </div>
+            <div class="flex items-center gap-6">
+                <a href="https://github.com/fakhruldeen/LocalPilot" class="hover:text-white transition-colors">Source Code</a>
+                <a href="https://pypi.org/project/localpilot/" class="hover:text-white transition-colors">PyPI Release</a>
+                <a href="https://fakhr.me/" class="hover:text-white transition-colors">fakhr.me</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function copyInstall() {
+            const text = document.getElementById('install-cmd').innerText;
+            navigator.clipboard.writeText(text);
+            const btn = document.getElementById('copy-text');
+            btn.innerText = 'Copied!';
+            setTimeout(() => {
+                btn.innerText = 'Copy';
+            }, 2000);
+        }
+    </script>
+</body>
+</html>
