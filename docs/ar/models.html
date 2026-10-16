@@ -49,7 +49,97 @@
             background-size: cover;
             background-position: center;
         }
+    
+        :root, [data-theme="dark"] {
+            --bg-main: #070A0F;
+            --bg-card: #0B0F17;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-main: #f8fafc;
+            --btn-utility-bg: rgba(255, 255, 255, 0.05);
+            --btn-utility-border: rgba(255, 255, 255, 0.1);
+            --hero-gradient: linear-gradient(to bottom, rgba(11, 15, 23, 0.85), rgba(7, 10, 15, 0.98));
+        }
+        [data-theme="light"] {
+            --bg-main: #f8fafc;
+            --bg-card: #ffffff;
+            --border-color: #e2e8f0;
+            --text-main: #0f172a;
+            --btn-utility-bg: #f1f5f9;
+            --btn-utility-border: #cbd5e1;
+            --hero-gradient: linear-gradient(to bottom, rgba(248, 250, 252, 0.88), rgba(241, 245, 249, 0.98));
+        }
+        [data-theme="light"] body { background-color: var(--bg-main) !important; color: var(--text-main) !important; }
+        [data-theme="light"] .bg-dark-950 { background-color: #f8fafc !important; }
+        [data-theme="light"] .bg-dark-900 { background-color: #ffffff !important; }
+        [data-theme="light"] .bg-dark-850 { background-color: #f1f5f9 !important; }
+        [data-theme="light"] .text-white { color: #0f172a !important; }
+        [data-theme="light"] .text-slate-100 { color: #0f172a !important; }
+        [data-theme="light"] .text-slate-200 { color: #1e293b !important; }
+        [data-theme="light"] .text-slate-300 { color: #334155 !important; }
+        [data-theme="light"] .text-slate-400 { color: #475569 !important; }
+        [data-theme="light"] .border-white\/5, [data-theme="light"] .border-white\/10 { border-color: #e2e8f0 !important; }
+        [data-theme="light"] .code-box, [data-theme="light"] .code-block { background-color: #ffffff !important; border-color: #e2e8f0 !important; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        [data-theme="light"] header { background-color: rgba(255, 255, 255, 0.92) !important; border-color: #e2e8f0 !important; }
+        [data-theme="light"] footer { background-color: #ffffff !important; border-color: #e2e8f0 !important; }
+        [data-theme="light"] .text-brand { color: #008775 !important; }
+
+        .btn-utility {
+            background: var(--btn-utility-bg);
+            color: inherit;
+            border: 1px solid var(--btn-utility-border);
+            padding: 0.45rem 0.65rem;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            transition: all 0.2s ease;
+            line-height: 1;
+            text-decoration: none;
+        }
+        .btn-utility:hover {
+            border-color: #00D2B4;
+            color: #00D2B4;
+            text-decoration: none;
+        }
+        .header-author-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            border-radius: 50%;
+            line-height: 1;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .header-author-link:hover {
+            transform: scale(1.08);
+            box-shadow: 0 0 0 2px #00D2B4;
+            text-decoration: none;
+        }
+        .header-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid var(--btn-utility-border);
+            object-fit: cover;
+            display: block;
+            transition: border-color 0.2s ease;
+        }
+        .header-author-link:hover .header-avatar {
+            border-color: #00D2B4;
+        }
+        [data-theme="light"] .hero-bg { background-image: var(--hero-gradient), url('../img/bg.jpeg') !important; }
+
     </style>
+    <script>
+        (function() {
+            const saved = localStorage.getItem('localpilot-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'dark');
+            document.documentElement.setAttribute('data-theme', saved);
+        })();
+    </script>
 </head>
 <body class="bg-dark-950 text-slate-100 font-sans antialiased selection:bg-brand selection:text-dark-900 min-h-screen flex flex-col">
 
@@ -73,14 +163,30 @@
                 <a href="architecture.html" class="hover:text-brand transition-colors">المعمارية التقنية</a>
             </nav>
 
-            <div class="flex items-center gap-3">
-                <a href="../models.html" class="inline-flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 transition-colors">
-                    English 🌐
+                        <div class="nav-actions flex items-center gap-2.5">
+                <a href="../models.html" class="btn-utility" aria-label="تغيير اللغة إلى الإنجليزية" title="Switch Language to English">🌐 English</a>
+                <button id="theme-toggle" class="btn-utility" aria-label="تبديل الوضع الليلي / النهاري" title="تبديل الوضع الليلي / النهاري">🌓</button>
+                <a href="https://github.com/fakhruldeen/LocalPilot" target="_blank" rel="noopener" class="btn-utility" aria-label="مستودع جيت هب" title="مستودع جيت هب" style="display:inline-flex;align-items:center;justify-content:center;padding:0.45rem 0.6rem;">
+                    <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.01 8.01 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27s-1.36.09-2 .27c-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9 1.48 1.35.39.24.96.2 1.44.15 0 .69.01 1.25.01 1.44 0 .21-.15.46-.55.38A8.01 8.01 0 0 1 0 8c0-4.42 3.58-8 8-8z"/></svg>
                 </a>
-                <a href="https://github.com/fakhruldeen/LocalPilot" target="_blank" class="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl bg-brand text-dark-900 hover:bg-brand-400 transition-all font-bold">
-                    GitHub
+                <a href="https://fakhr.me" target="_blank" rel="noopener" class="header-author-link" aria-label="موقع محمد فخرالدين" title="محمد فخرالدين (fakhr.me)">
+                    <img src="https://avatars.githubusercontent.com/u/1162549?v=4" alt="محمد فخرالدين" class="header-avatar" loading="lazy">
                 </a>
+                <button onclick="toggleMobileMenu()" class="md:hidden p-2 text-slate-400 hover:text-white rounded-lg" aria-label="تبديل القائمة">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
             </div>
+        </div>
+    
+        <!-- Mobile Dropdown Menu -->
+        <div id="mobile-menu" class="hidden md:hidden px-6 pt-3 pb-6 border-t border-white/5 bg-dark-900/95 flex flex-col gap-3 text-sm font-medium text-slate-300">
+            <a href="index.html" class="hover:text-brand py-1">الرئيسية</a>
+            <a href="guide.html" class="hover:text-brand py-1">دليل المبتدئين</a>
+            <a href="install.html" class="hover:text-brand py-1">التثبيت</a>
+            <a href="models.html" class="hover:text-brand py-1">دليل النماذج</a>
+            <a href="faq.html" class="hover:text-brand py-1">الأسئلة الشائعة</a>
+            <a href="architecture.html" class="hover:text-brand py-1">المعمارية التقنية</a>
+            <a href="../models.html" class="text-slate-400 hover:text-white py-1">English 🌐</a>
         </div>
     </header>
 
@@ -306,5 +412,17 @@
             </div>
         </div>
     </footer>
+    <script>
+        const themeToggle = document.getElementById('theme-toggle');
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => {
+                const current = document.documentElement.getAttribute('data-theme') || 'dark';
+                const next = current === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', next);
+                localStorage.setItem('localpilot-theme', next);
+            });
+        }
+    </script>
+
 </body>
 </html>
