@@ -76,7 +76,8 @@
                 <a href="guide.html" class="hover:text-brand transition-colors">Beginner Guide</a>
                 <a href="install.html" class="hover:text-brand transition-colors">Installation</a>
                 <a href="models.html" class="text-brand font-semibold">Model Catalog</a>
-                <a href="architecture.html" class="hover:text-brand transition-colors">Architecture & FAQ</a>
+                <a href="faq.html" class="hover:text-brand transition-colors">FAQ</a>
+                <a href="architecture.html" class="hover:text-brand transition-colors">Technical</a>
             </nav>
 
             <div class="flex items-center gap-3">
@@ -96,7 +97,8 @@
             <a href="guide.html" class="hover:text-brand py-1">Beginner Guide</a>
             <a href="install.html" class="hover:text-brand py-1">Installation</a>
             <a href="models.html" class="text-brand font-semibold py-1">Model Catalog</a>
-            <a href="architecture.html" class="hover:text-brand py-1">Architecture & FAQ</a>
+            <a href="faq.html" class="hover:text-brand py-1">FAQ</a>
+            <a href="architecture.html" class="hover:text-brand py-1">Technical</a>
         </div>
     </header>
 
@@ -104,13 +106,13 @@
     <section class="relative pt-16 pb-20 overflow-hidden hero-bg border-b border-white/5">
         <div class="max-w-4xl mx-auto px-6 text-center relative z-10">
             <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand/10 border border-brand/20 text-brand text-xs font-semibold mb-6">
-                🦙 Model Catalog &amp; Sizing
+                🦙 Understanding AI Models &amp; Hardware Sizing
             </div>
             <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white mb-6 leading-tight">
-                Find the AI That Fits Your Computer
+                Everything About AI Models: Frontier, Cloud &amp; Local
             </h1>
             <p class="text-base sm:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
-                Different models have different strengths and memory requirements. Here is how to choose the right one for your machine.
+                What are models? How do multi-billion-dollar frontier systems differ from the models running on your laptop? Here is the complete breakdown.
             </p>
         </div>
     </section>
@@ -118,9 +120,133 @@
     <!-- Main Content -->
     <main class="py-16 max-w-5xl mx-auto px-6 space-y-16">
 
+        <!-- Deep Dive: What Are Models? -->
+        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">1</span>
+                <h2 class="text-2xl font-bold text-white">What Exactly is an "AI Model"?</h2>
+            </div>
+            
+            <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+                An AI model is <strong>not a traditional computer program</strong> with lines of code telling it "if this, do that." Instead, it is a massive statistical mathematical network trained to understand relationships between words, concepts, and logic.
+            </p>
+
+            <div class="grid sm:grid-cols-3 gap-4 text-xs">
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <span class="text-brand font-bold text-sm block">1. The Architecture</span>
+                    <p class="text-slate-400 leading-relaxed">The structural blueprint. Modern Large Language Models (LLMs) use the <em>Transformer</em> architecture, which allows the AI to pay attention to multiple words across a page simultaneously rather than reading one word at a time.</p>
+                </div>
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <span class="text-brand font-bold text-sm block">2. The Weights (Parameters)</span>
+                    <p class="text-slate-400 leading-relaxed">The learned knowledge. During training on billions of books and articles, the model calculates billions of numerical "weights" that store grammar, factual connections, reasoning steps, and idioms.</p>
+                </div>
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <span class="text-brand font-bold text-sm block">3. The Tokenizer</span>
+                    <p class="text-slate-400 leading-relaxed">The translator. Computers cannot read letters; the tokenizer converts your human words into numbers (tokens), feeds them through the weights, and translates the output numbers back into fluent English.</p>
+                </div>
+            </div>
+        </article>
+
+        <!-- Deep Dive: What Are Frontier Models? -->
+        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">2</span>
+                <h2 class="text-2xl font-bold text-white">What Are "Frontier Models"?</h2>
+            </div>
+            
+            <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+                In the AI research world, the term <strong>"Frontier Model"</strong> refers to the largest, most capable systems operating at the absolute cutting edge of human technology. They represent state-of-the-art reasoning, vision, and problem-solving.
+            </p>
+
+            <div class="grid sm:grid-cols-2 gap-4 text-xs">
+                <div class="p-5 rounded-2xl bg-dark-850 border border-purple-500/20 space-y-2">
+                    <span class="text-purple-400 font-bold text-sm flex items-center gap-2">🌌 Frontier Model Hall of Fame</span>
+                    <ul class="text-slate-300 space-y-2 leading-relaxed">
+                        <li>• <strong class="text-white">OpenAI GPT-4o &amp; o1:</strong> Massive multimodal reasoning models powering ChatGPT Plus.</li>
+                        <li>• <strong class="text-white">Anthropic Claude 3.5 Sonnet:</strong> Industry-leading coding, synthesis, and nuanced prose.</li>
+                        <li>• <strong class="text-white">Google Gemini 1.5 Pro:</strong> Million-token context window processing hours of video and whole codebases.</li>
+                        <li>• <strong class="text-white">Meta Llama 3.1 405B:</strong> The world's largest open-weights model, trained on 16,000 GPUs.</li>
+                    </ul>
+                </div>
+                <div class="p-5 rounded-2xl bg-dark-850 border border-amber-500/20 space-y-2">
+                    <span class="text-amber-400 font-bold text-sm flex items-center gap-2">⚡ Why Frontier Models Live in the Cloud</span>
+                    <p class="text-slate-300 leading-relaxed">
+                        A frontier model like Llama 3.1 405B has 405 billion parameters and requires over <strong class="text-white">800 Gigabytes of pure VRAM</strong> just to load into memory!
+                    </p>
+                    <p class="text-slate-400 leading-relaxed">
+                        To run one query, it requires a room of 8 to 16 high-end enterprise server GPUs (such as NVIDIA H100s or B200s costing \$40,000 each), thousands of watts of power, and liquid cooling. No laptop in the world can run them.
+                    </p>
+                </div>
+            </div>
+        </article>
+
+        <!-- Deep Dive: Cloud vs Local Comparison -->
+        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">3</span>
+                <h2 class="text-2xl font-bold text-white">Cloud vs. Local Models: The Honest Comparison</h2>
+            </div>
+            
+            <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+                Should you use cloud chatbots (ChatGPT, Claude) or local models (via LocalPilot)? Both have unique superpowers. Here is how they compare across critical dimensions:
+            </p>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-left text-xs border-collapse">
+                    <thead>
+                        <tr class="border-b border-white/10 text-slate-400 uppercase tracking-wider font-mono text-[11px]">
+                            <th class="py-3 px-4">Feature</th>
+                            <th class="py-3 px-4 text-rose-400">Cloud AI (ChatGPT / Claude)</th>
+                            <th class="py-3 px-4 text-brand">Local AI (LocalPilot)</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-white/5 text-slate-300">
+                        <tr>
+                            <td class="py-3.5 px-4 font-bold text-white">Where Your Data Goes</td>
+                            <td class="py-3.5 px-4 text-rose-300/90">Sent over the internet to remote corporate data centers</td>
+                            <td class="py-3.5 px-4 text-emerald-300 font-semibold">100% physically stays on your computer's RAM and disk</td>
+                        </tr>
+                        <tr>
+                            <td class="py-3.5 px-4 font-bold text-white">Cost &amp; Billing</td>
+                            <td class="py-3.5 px-4">\$20/month per user or ongoing pay-per-token API bills</td>
+                            <td class="py-3.5 px-4 text-emerald-300 font-semibold">\$0.00 forever &bull; Zero subscriptions, zero API keys</td>
+                        </tr>
+                        <tr>
+                            <td class="py-3.5 px-4 font-bold text-white">Offline Functionality</td>
+                            <td class="py-3.5 px-4 text-rose-300/90">0% &bull; Completely broken without active Wi-Fi/cellular</td>
+                            <td class="py-3.5 px-4 text-emerald-300 font-semibold">100% &bull; Works on airplanes, subways, and off the grid</td>
+                        </tr>
+                        <tr>
+                            <td class="py-3.5 px-4 font-bold text-white">Confidential / Sensitive Data</td>
+                            <td class="py-3.5 px-4 text-amber-300/90">May be reviewed or logged under company terms</td>
+                            <td class="py-3.5 px-4 text-emerald-300 font-semibold">Completely safe for trade secrets, medical notes, &amp; NDAs</td>
+                        </tr>
+                        <tr>
+                            <td class="py-3.5 px-4 font-bold text-white">Speed &amp; Latency</td>
+                            <td class="py-3.5 px-4">Fast, but throttled during global peak traffic spikes</td>
+                            <td class="py-3.5 px-4">Immediate start, zero server queues, consistent speeds</td>
+                        </tr>
+                        <tr>
+                            <td class="py-3.5 px-4 font-bold text-white">World Knowledge Breadth</td>
+                            <td class="py-3.5 px-4 text-emerald-300 font-semibold">Encyclopedic recall across hundreds of billions of facts</td>
+                            <td class="py-3.5 px-4">Excellent for writing, synthesis, and reasoning; narrower trivia</td>
+                        </tr>
+                        <tr>
+                            <td class="py-3.5 px-4 font-bold text-white">Control &amp; Ownership</td>
+                            <td class="py-3.5 px-4 text-rose-300/90">Company can change, censor, or shut down models anytime</td>
+                            <td class="py-3.5 px-4 text-emerald-300 font-semibold">You own the file forever &bull; No one can remove or restrict it</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </article>
+
         <!-- Sizing Explanation -->
         <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-4">
-            <h2 class="text-2xl font-bold text-white">What Does "3B", "7B", or "8B" Mean?</h2>
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">4</span>
+                <h2 class="text-2xl font-bold text-white">What Does "3B", "7B", or "8B" Mean?</h2>
+            </div>
             <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
                 The letter <strong>"B"</strong> stands for <em>Billion Parameters</em>. In simple terms, parameters are the connections in the AI's virtual neural network:
             </p>
@@ -404,7 +530,8 @@
                 <a href="guide.html" class="hover:text-brand transition-colors">Guide</a>
                 <a href="install.html" class="hover:text-brand transition-colors">Install</a>
                 <a href="models.html" class="text-brand transition-colors font-semibold">Models</a>
-                <a href="architecture.html" class="hover:text-brand transition-colors">Architecture</a>
+                <a href="faq.html" class="hover:text-brand transition-colors">FAQ</a>
+                <a href="architecture.html" class="hover:text-brand transition-colors">Technical</a>
             </div>
         </div>
     </footer>

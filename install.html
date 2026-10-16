@@ -76,7 +76,8 @@
                 <a href="guide.html" class="hover:text-brand transition-colors">Beginner Guide</a>
                 <a href="install.html" class="text-brand font-semibold">Installation</a>
                 <a href="models.html" class="hover:text-brand transition-colors">Model Catalog</a>
-                <a href="architecture.html" class="hover:text-brand transition-colors">Architecture & FAQ</a>
+                <a href="faq.html" class="hover:text-brand transition-colors">FAQ</a>
+                <a href="architecture.html" class="hover:text-brand transition-colors">Technical</a>
             </nav>
 
             <div class="flex items-center gap-3">
@@ -96,7 +97,8 @@
             <a href="guide.html" class="hover:text-brand py-1">Beginner Guide</a>
             <a href="install.html" class="text-brand font-semibold py-1">Installation</a>
             <a href="models.html" class="hover:text-brand py-1">Model Catalog</a>
-            <a href="architecture.html" class="hover:text-brand py-1">Architecture & FAQ</a>
+            <a href="faq.html" class="hover:text-brand py-1">FAQ</a>
+            <a href="architecture.html" class="hover:text-brand py-1">Technical</a>
         </div>
     </header>
 
@@ -238,6 +240,26 @@
                 <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">3</span>
                 <h2 class="text-2xl font-bold text-white">Alternative Methods (pipx or pip)</h2>
             </div>
+
+            <!-- Crucial Prerequisite Notice -->
+            <div class="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200/90 leading-relaxed space-y-2">
+                <div class="flex items-center gap-2 text-amber-100 font-bold text-sm">
+                    <span>⚠️</span> Prerequisite: Python &amp; Pip Must Be Installed Already
+                </div>
+                <p>
+                    Unlike the 1-click curl installer (which can bootstrap everything), installing via <code class="text-white font-mono">pipx</code> or <code class="text-white font-mono">pip</code> requires that <strong class="text-white">Python (version 3.10 or newer)</strong> and <strong class="text-white">pip</strong> are already set up on your machine.
+                </p>
+                <div class="p-3 rounded-xl bg-dark-950 font-mono text-[11px] text-slate-300 border border-white/5 space-y-1">
+                    <div class="text-slate-400 font-sans font-semibold">Verify if you have them:</div>
+                    <div>$ python3 --version</div>
+                    <div>$ pip --version</div>
+                </div>
+                <div class="text-[11px] text-amber-200/80 pt-1">
+                    <strong>Need to install Python &amp; pip first?</strong><br>
+                    &bull; <strong class="text-white">Ubuntu / Debian:</strong> <code class="text-white font-mono">sudo apt update &amp;&amp; sudo apt install -y python3 python3-pip python3-venv pipx</code><br>
+                    &bull; <strong class="text-white">macOS:</strong> <code class="text-white font-mono">brew install python pipx</code> (requires Homebrew)
+                </div>
+            </div>
             
             <div class="grid sm:grid-cols-2 gap-6">
                 <!-- pipx -->
@@ -246,7 +268,7 @@
                         📦 With pipx (Isolated App)
                     </h3>
                     <p class="text-slate-400 text-xs leading-relaxed">
-                        If you have <code class="text-brand">pipx</code> installed, this installs LocalPilot inside its own sandbox automatically:
+                        If you have <code class="text-brand">pipx</code> installed, this installs LocalPilot inside an isolated environment and links the CLI globally:
                     </p>
                     <div class="p-3 rounded-xl bg-dark-950 border border-white/10 font-mono text-xs text-brand">
                         <code>pipx install localpilot</code>
@@ -259,7 +281,7 @@
                         🐍 With standard pip
                     </h3>
                     <p class="text-slate-400 text-xs leading-relaxed">
-                        For developers and virtual environments:
+                        For developers working inside an existing active virtual environment:
                     </p>
                     <div class="p-3 rounded-xl bg-dark-950 border border-white/10 font-mono text-xs text-brand">
                         <code>pip install localpilot</code>
@@ -268,26 +290,155 @@
             </div>
         </article>
 
-        <!-- Updating & Clean Uninstallation -->
-        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-6">
+        <!-- Detailed Step-by-Step Guide After Installation -->
+        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-8">
             <div class="flex items-center gap-3">
                 <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">4</span>
-                <h2 class="text-2xl font-bold text-white">Updating &amp; Clean Removal (No Regrets)</h2>
+                <h2 class="text-2xl font-bold text-white">Comprehensive Step-by-Step Guide After Installation</h2>
+            </div>
+            
+            <p class="text-slate-300 text-sm leading-relaxed">
+                Follow these 6 detailed steps to go from a fresh installation to running private, offline conversations with complete confidence:
+            </p>
+
+            <div class="space-y-6">
+                <!-- Step 1 -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold font-mono text-brand uppercase">Step 1 &bull; Hardware Diagnostics</span>
+                        <span class="text-[11px] text-slate-400">Duration: ~3 seconds</span>
+                    </div>
+                    <h3 class="text-base font-bold text-white">Audit Your Computer's Hardware</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Before downloading models, run the built-in diagnostic doctor. It checks your CPU cores, free RAM, GPU acceleration (Metal on Mac, CUDA on Linux), and ensures there are no conflicting background services.
+                    </p>
+                    <div class="p-3 rounded-xl bg-dark-950 font-mono text-xs text-brand border border-white/5">
+                        $ localpilot doctor
+                    </div>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold font-mono text-brand uppercase">Step 2 &bull; Discovery &amp; Compatibility</span>
+                        <span class="text-[11px] text-slate-400">Duration: Instant</span>
+                    </div>
+                    <h3 class="text-base font-bold text-white">Find Which Models Fit Your RAM Safely</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Run discovery to see a ranked list of models specifically compatible with your machine. LocalPilot automatically excludes models that are too large to prevent your operating system from freezing.
+                    </p>
+                    <div class="p-3 rounded-xl bg-dark-950 font-mono text-xs text-brand border border-white/5">
+                        $ localpilot discover --task chat
+                    </div>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold font-mono text-brand uppercase">Step 3 &bull; Guided Setup &amp; Verification</span>
+                        <span class="text-[11px] text-slate-400">Duration: 2 to 4 minutes</span>
+                    </div>
+                    <h3 class="text-base font-bold text-white">Download &amp; Verify Your First Model</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Download your chosen model. LocalPilot streams the real download progress, verifies the SHA-256 cryptographic fingerprint, configures execution parameters, and tests real prompt inference before marking it ready:
+                    </p>
+                    <div class="p-3 rounded-xl bg-dark-950 font-mono text-xs text-brand border border-white/5">
+                        $ localpilot setup llama3.2:3b
+                    </div>
+                </div>
+
+                <!-- Step 4 -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold font-mono text-brand uppercase">Step 4 &bull; Private Chatting</span>
+                        <span class="text-[11px] text-slate-400">100% Offline</span>
+                    </div>
+                    <h3 class="text-base font-bold text-white">Start Your Offline Conversation</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        You can converse directly via the CLI, or open the visual terminal dashboard:
+                    </p>
+                    <div class="p-3 rounded-xl bg-dark-950 font-mono text-xs text-slate-300 border border-white/5 space-y-1">
+                        <div>$ localpilot chat llama3.2:3b &nbsp;&nbsp;<span class="text-slate-400"># Direct interactive chat</span></div>
+                        <div>$ localpilot tui &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="text-slate-400"># Full graphical terminal dashboard</span></div>
+                    </div>
+                </div>
+
+                <!-- Step 5 -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold font-mono text-brand uppercase">Step 5 &bull; Navigation &amp; Exiting</span>
+                        <span class="text-[11px] text-slate-400">Clean Memory Release</span>
+                    </div>
+                    <h3 class="text-base font-bold text-white">In-Chat Commands &amp; Clean Exit</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Inside the chat session, type <code class="text-brand font-mono">/help</code> to see shortcut options. When you want to exit, type <code class="text-brand font-mono">/exit</code> or press <kbd class="px-1.5 py-0.5 rounded bg-white/10 font-mono">Ctrl + C</kbd>. LocalPilot terminates the background inference process and returns 100% of the RAM back to your operating system immediately.
+                    </p>
+                </div>
+
+                <!-- Step 6 -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold font-mono text-brand uppercase">Step 6 &bull; Storage Management</span>
+                        <span class="text-[11px] text-slate-400">Total User Control</span>
+                    </div>
+                    <h3 class="text-base font-bold text-white">Review &amp; Reclaim Disk Space</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        See what models you have downloaded and how much storage they occupy:
+                    </p>
+                    <div class="p-3 rounded-xl bg-dark-950 font-mono text-xs text-slate-300 border border-white/5 space-y-1">
+                        <div>$ localpilot storage &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="text-slate-400"># Breakdown of storage usage</span></div>
+                        <div>$ localpilot remove llama3.2:3b --delete-files <span class="text-slate-400"># Cleanly delete model files</span></div>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- Updating Models & Catalogs Locally -->
+        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">5</span>
+                <h2 class="text-2xl font-bold text-white">Updating Models &amp; Catalogs Locally</h2>
+            </div>
+            
+            <p class="text-slate-300 text-sm leading-relaxed">
+                Can you update models and fetch newer revisions locally? <strong>Yes!</strong> Here is how model updates work:
+            </p>
+
+            <div class="grid sm:grid-cols-3 gap-4 text-xs">
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <span class="text-brand font-bold text-sm block">1. Refresh Catalog</span>
+                    <p class="text-slate-400 leading-relaxed">Running <code class="text-white font-mono">localpilot discover</code> contacts verified source registries (Ollama library and Hugging Face) and caches updated model metadata in your local SQLite store.</p>
+                </div>
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <span class="text-brand font-bold text-sm block">2. Pull Model Updates</span>
+                    <p class="text-slate-400 leading-relaxed">To pull a newer revision of an installed model, run <code class="text-white font-mono">localpilot setup &lt;model-id&gt;</code>. If using Ollama directly, you can also run <code class="text-white font-mono">ollama pull &lt;model-id&gt;</code>.</p>
+                </div>
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <span class="text-brand font-bold text-sm block">3. Atomic Staging &amp; Rollback</span>
+                    <p class="text-slate-400 leading-relaxed">LocalPilot stages model updates in a temporary backup folder first. If the new file fails inference or has an invalid hash, your existing working model is kept intact with zero downtime.</p>
+                </div>
+            </div>
+        </article>
+
+        <!-- Application Updates & Clean Uninstallation -->
+        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">6</span>
+                <h2 class="text-2xl font-bold text-white">Application Updates &amp; Clean Removal</h2>
             </div>
             
             <div class="grid sm:grid-cols-2 gap-6">
-                <!-- Updating -->
+                <!-- Updating App -->
                 <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
                     <h3 class="font-bold text-white text-base flex items-center gap-2">
-                        <span>🔄</span> How to Update
+                        <span>🔄</span> Update LocalPilot Application
                     </h3>
                     <p class="text-slate-400 text-xs leading-relaxed">
-                        To query PyPI for the newest version and update in place:
+                        To check PyPI for new releases of LocalPilot and upgrade in place:
                     </p>
                     <div class="p-3 rounded-xl bg-dark-950 border border-white/10 font-mono text-xs text-brand">
-                        <code>localpilot update</code>
+                        <code>localpilot self update</code>
                     </div>
-                    <p class="text-[11px] text-slate-500">Or run <code class="text-slate-400">pipx upgrade localpilot</code> if installed via pipx.</p>
                 </div>
 
                 <!-- Clean Uninstall -->
@@ -296,13 +447,13 @@
                         <span>🧹</span> 1-Command Clean Removal
                     </h3>
                     <p class="text-slate-400 text-xs leading-relaxed">
-                        If you ever decide to remove LocalPilot, run this single built-in command to cleanly reclaim all disk space:
+                        If you ever wish to uninstall LocalPilot completely, run:
                     </p>
                     <div class="p-3 rounded-xl bg-dark-950 border border-rose-500/20 font-mono text-xs text-rose-300">
-                        <code>localpilot self-uninstall</code>
+                        <code>localpilot self uninstall --purge-models</code>
                     </div>
                     <p class="text-[11px] text-slate-400 leading-relaxed">
-                        Deletes downloaded models, virtual environment, and settings. Zero hidden background files left on your computer.
+                        Removes the application sandbox, launcher shortcuts, and all stored model weights. Leaves zero background traces on your machine.
                     </p>
                 </div>
             </div>
@@ -335,7 +486,8 @@
                 <a href="guide.html" class="hover:text-brand transition-colors">Guide</a>
                 <a href="install.html" class="text-brand transition-colors font-semibold">Install</a>
                 <a href="models.html" class="hover:text-brand transition-colors">Models</a>
-                <a href="architecture.html" class="hover:text-brand transition-colors">Architecture</a>
+                <a href="faq.html" class="hover:text-brand transition-colors">FAQ</a>
+                <a href="architecture.html" class="hover:text-brand transition-colors">Technical</a>
             </div>
         </div>
     </footer>

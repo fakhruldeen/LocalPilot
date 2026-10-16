@@ -1,0 +1,593 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frequently Asked Questions — LocalPilot</title>
+    <meta name="description" content="Answers to every common question about LocalPilot: free usage, hardware requirements, RAM safety, true offline privacy, model storage, and troubleshooting.">
+    
+    <!-- Open Graph / Social -->
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://fakhr.me/LocalPilot/faq.html">
+    <meta property="og:title" content="LocalPilot FAQ — Answers for Normal Users">
+    <meta property="og:description" content="Everything you wanted to ask about running private AI on your laptop without the tech headaches.">
+    <meta property="og:image" content="https://raw.githubusercontent.com/fakhruldeen/LocalPilot/main/docs/img/banner-social.jpeg">
+
+    <link rel="icon" type="image/png" href="docs/img/logo.png">
+    
+    <!-- Google Fonts & Tailwind CDN -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            400: '#2dd4bf',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            DEFAULT: '#00D2B4',
+                        },
+                        dark: {
+                            950: '#070A0F',
+                            900: '#0B0F17',
+                            850: '#0E1420',
+                            800: '#111827',
+                            700: '#1F2937',
+                            600: '#374151',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .hero-bg {
+            background-image: linear-gradient(to bottom, rgba(11, 15, 23, 0.88), rgba(7, 10, 15, 0.98)), url('docs/img/bg.jpeg');
+            background-size: cover;
+            background-position: center;
+        }
+        details summary::-webkit-details-marker {
+            display: none;
+        }
+    </style>
+</head>
+<body class="bg-dark-950 text-slate-100 font-sans antialiased selection:bg-brand selection:text-dark-900 min-h-screen flex flex-col">
+
+    <!-- Header Navigation -->
+    <header class="sticky top-0 z-50 backdrop-blur-md bg-dark-900/85 border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-3 group">
+                <img src="docs/img/logo.png" alt="LocalPilot Logo" class="w-10 h-10 rounded-xl object-contain border border-white/10 group-hover:scale-105 transition-transform duration-300">
+                <span class="font-bold text-xl tracking-tight text-white flex items-center gap-2">
+                    LocalPilot
+                    <span class="text-xs bg-brand/10 text-brand px-2 py-0.5 rounded-full border border-brand/20 font-mono font-medium">v0.1.1</span>
+                </span>
+            </a>
+
+            <nav class="hidden md:flex items-center gap-7 text-sm font-medium text-slate-300">
+                <a href="index.html" class="hover:text-brand transition-colors">Home</a>
+                <a href="guide.html" class="hover:text-brand transition-colors">Beginner Guide</a>
+                <a href="install.html" class="hover:text-brand transition-colors">Installation</a>
+                <a href="models.html" class="hover:text-brand transition-colors">Model Catalog</a>
+                <a href="faq.html" class="text-brand font-semibold">FAQ</a>
+                <a href="architecture.html" class="hover:text-brand transition-colors">Technical</a>
+            </nav>
+
+            <div class="flex items-center gap-3">
+                <a href="install.html" class="hidden sm:inline-flex items-center gap-2 text-xs font-semibold px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 transition-colors">
+                    Install Now
+                </a>
+                <a href="https://github.com/fakhruldeen/LocalPilot" target="_blank" class="inline-flex items-center gap-2 text-sm font-semibold px-4 py-2 rounded-xl bg-brand text-dark-900 hover:bg-brand-400 transition-all font-bold">
+                    GitHub
+                </a>
+                <button onclick="toggleMobileMenu()" class="md:hidden p-2 text-slate-400 hover:text-white rounded-lg" aria-label="Toggle Navigation">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+            </div>
+        </div>
+        <div id="mobile-menu" class="hidden md:hidden px-6 pt-3 pb-6 border-t border-white/5 bg-dark-900/95 flex flex-col gap-3 text-sm font-medium text-slate-300">
+            <a href="index.html" class="hover:text-brand py-1">Home</a>
+            <a href="guide.html" class="hover:text-brand py-1">Beginner Guide</a>
+            <a href="install.html" class="hover:text-brand py-1">Installation</a>
+            <a href="models.html" class="hover:text-brand py-1">Model Catalog</a>
+            <a href="faq.html" class="text-brand font-semibold py-1">FAQ</a>
+            <a href="architecture.html" class="hover:text-brand py-1">Technical</a>
+        </div>
+    </header>
+
+    <!-- FAQ Hero with bg.jpeg texture -->
+    <section class="relative pt-16 pb-20 overflow-hidden hero-bg border-b border-white/5">
+        <div class="max-w-4xl mx-auto px-6 text-center relative z-10">
+            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand/10 border border-brand/20 text-brand text-xs font-semibold mb-6">
+                ❓ Frequently Asked Questions
+            </div>
+            <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white mb-6 leading-tight">
+                Answers to Questions Real Users Ask
+            </h1>
+            <p class="text-base sm:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed mb-8">
+                No jargon, no technical deflection. Clear, direct answers about pricing, hardware, privacy, storage, and how LocalPilot works.
+            </p>
+
+            <!-- Instant Search Input -->
+            <div class="max-w-xl mx-auto relative">
+                <input 
+                    type="text" 
+                    id="faqSearch" 
+                    oninput="filterFAQ()"
+                    placeholder="Search questions (e.g. 'battery', 'RAM', 'mac', 'delete', 'offline')..." 
+                    class="w-full px-5 py-3.5 pl-11 rounded-2xl bg-dark-900/90 border border-white/15 text-sm text-white placeholder-slate-400 focus:outline-none focus:border-brand focus:ring-1 focus:ring-brand shadow-xl"
+                >
+                <svg class="w-5 h-5 absolute left-3.5 top-4 text-slate-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+            </div>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="py-16 max-w-4xl mx-auto px-6 space-y-16">
+
+        <!-- Category 1: Getting Started & Pricing -->
+        <section class="faq-category space-y-4">
+            <div class="flex items-center gap-3 mb-2">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">1</span>
+                <h2 class="text-xl sm:text-2xl font-bold text-white">Getting Started &amp; Cost</h2>
+            </div>
+
+            <div class="space-y-3">
+                <details name="faq" class="faq-item group bg-dark-900 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>Is LocalPilot really 100% free? Are there any hidden fees or limits?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45 shrink-0 ml-4">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            <strong>Yes, LocalPilot is completely free and open-source under the GNU General Public License (GPLv3).</strong>
+                        </p>
+                        <p>
+                            There are zero monthly subscription charges, zero pay-per-token API fees, no premium tier, and no credit card required. Because the AI runs entirely on your own computer hardware, there are no cloud server bills to pass on to you.
+                        </p>
+                    </div>
+                </details>
+
+                <details name="faq" class="faq-item group bg-dark-900 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>Do I need to know how to code or be a tech expert?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45 shrink-0 ml-4">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            <strong>Not at all.</strong> LocalPilot was specifically built for students, writers, researchers, and everyday professionals who don't want to fiddle with command-line switches or server setups.
+                        </p>
+                        <p>
+                            You only need to paste one install command into your terminal once. From then on, typing <code class="text-brand font-mono">localpilot</code> opens an interactive visual menu with numbers you can choose from, or a friendly chat screen.
+                        </p>
+                    </div>
+                </details>
+
+                <details name="faq" class="faq-item group bg-dark-900 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>What operating systems are supported?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45 shrink-0 ml-4">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            LocalPilot currently provides tested and certified support for:
+                        </p>
+                        <ul class="list-disc list-inside space-y-1 text-slate-300">
+                            <li><strong class="text-white">Apple macOS:</strong> macOS Sonoma, Ventura, Monterey on Apple Silicon (M1, M2, M3, M4) as well as modern Intel Macs.</li>
+                            <li><strong class="text-white">Linux:</strong> Ubuntu 20.04+, Debian 11+, Fedora 38+, Arch Linux, and all standard distributions on x86_64 or aarch64.</li>
+                        </ul>
+                    </div>
+                </details>
+
+                <details name="faq" class="faq-item group bg-dark-900 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>How is LocalPilot different from downloading Ollama or LM Studio directly?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45 shrink-0 ml-4">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            Tools like Ollama and LM Studio are fantastic raw engines, but they expect you to know what models fit, how many gigabytes you have available, and how to manage services yourself. If you pick a model that's too big, your computer can lock up.
+                        </p>
+                        <p>
+                            <strong>LocalPilot acts as your protective co-pilot:</strong> it measures your computer's RAM, recommends only models that safely fit, verifies your hardware compatibility, tests inference before saying a model is ready, and allows you to chat immediately without managing servers.
+                        </p>
+                    </div>
+                </details>
+            </div>
+        </section>
+
+        <!-- Category 2: Hardware & Battery -->
+        <section class="faq-category space-y-4">
+            <div class="flex items-center gap-3 mb-2">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">2</span>
+                <h2 class="text-xl sm:text-2xl font-bold text-white">Hardware, Performance &amp; Battery</h2>
+            </div>
+
+            <div class="space-y-3">
+                <details name="faq" class="faq-item group bg-dark-900 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>Will running an AI model freeze or slow down my computer?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45 shrink-0 ml-4">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            <strong>No, because LocalPilot enforces strict RAM safety margins.</strong>
+                        </p>
+                        <p>
+                            Before launching any model, LocalPilot computes your real-time available memory and ensures at least 2.0 to 4.0 GB of RAM remains free for your web browser, video calls, and operating system. If memory is tight, it refuses to load the model and warns you safely.
+                        </p>
+                    </div>
+                </details>
+
+                <details name="faq" class="faq-item group bg-dark-900 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>Do I need an expensive dedicated gaming GPU?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45 shrink-0 ml-4">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            No. Compact 3B models (like Llama 3.2 3B or Phi-3 Mini) run smoothly on normal Intel or AMD laptop CPUs. If you have an Apple Silicon Mac (M1, M2, M3, M4), its Unified Memory acts as a GPU natively, delivering rapid speeds out of the box.
+                        </p>
+                    </div>
+                </details>
+
+                <details name="faq" class="faq-item group bg-dark-900 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>Does running local AI drain my laptop's battery?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45 shrink-0 ml-4">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            While the model is actively thinking and streaming words (usually 3 to 10 seconds per response), it engages your processor cores. As soon as it finishes printing the answer, it returns to an idle sleep state using almost zero battery.
+                        </p>
+                        <p>
+                            On modern Apple Silicon MacBooks, battery impact is so small that you can easily chat for several hours on a single battery charge.
+                        </p>
+                    </div>
+                </details>
+
+                <details name="faq" class="faq-item group bg-dark-900 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>Will my laptop get hot or make loud fan noise?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45 shrink-0 ml-4">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            For quick questions and email drafts, generation takes just a few seconds, so your laptop fans will rarely spin up. If you ask the model to analyze a 20-page document or write an entire novel chapter on an Intel laptop, your fans may briefly turn on while processing, which is completely normal.
+                        </p>
+                    </div>
+                </details>
+            </div>
+        </section>
+
+        <!-- Category 3: Privacy, Security & Safety -->
+        <section class="faq-category space-y-4">
+            <div class="flex items-center gap-3 mb-2">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">3</span>
+                <h2 class="text-xl sm:text-2xl font-bold text-white">Privacy, Security &amp; Data Safety</h2>
+            </div>
+
+            <div class="space-y-3">
+                <details name="faq" class="faq-item group bg-dark-900 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>Can anyone see my chats, prompts, or documents?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45 shrink-0 ml-4">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            <strong>Nobody. Not even LocalPilot.</strong>
+                        </p>
+                        <p>
+                            When you chat with a local model, your text never leaves your computer's RAM. There are no servers, no telemetry, no tracking analytics, and no logs uploaded anywhere. You can verify this yourself by turning off your Wi-Fi completely and chatting in Airplane mode!
+                        </p>
+                    </div>
+                </details>
+
+                <details name="faq" class="faq-item group bg-dark-900 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>Are downloaded model files safe from viruses or malware?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45 shrink-0 ml-4">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            Yes. AI model files (<code class="text-brand font-mono">.gguf</code>) are static mathematical data files containing weight matrices (millions of numbers), not executable programs like <code class="font-mono text-slate-300">.exe</code> or <code class="font-mono text-slate-300">.sh</code> scripts. They cannot execute unauthorized instructions or install software on your machine.
+                        </p>
+                        <p>
+                            Additionally, LocalPilot verifies SHA-256 cryptographic hashes on official downloads to guarantee that the file matches the exact bytes published by verified research labs (Meta, Google, Microsoft).
+                        </p>
+                    </div>
+                </details>
+
+                <details name="faq" class="faq-item group bg-dark-900 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>Can LocalPilot touch, delete, or read my personal files?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45 shrink-0 ml-4">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            <strong>No.</strong> LocalPilot operates strictly within its own designated application folder (<code class="text-slate-300 font-mono">~/.local/share/localpilot</code> on Linux or <code class="text-slate-300 font-mono">~/Library/Application Support/localpilot</code> on macOS).
+                        </p>
+                        <p>
+                            It runs under your normal user account without administrator or root privileges, meaning it physically cannot modify system settings or touch files outside its managed directory.
+                        </p>
+                    </div>
+                </details>
+            </div>
+        </section>
+
+        <!-- Category 4: Models, Downloads & Storage -->
+        <section class="faq-category space-y-4">
+            <div class="flex items-center gap-3 mb-2">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">4</span>
+                <h2 class="text-xl sm:text-2xl font-bold text-white">Models, Downloads &amp; Storage</h2>
+            </div>
+
+            <div class="space-y-3">
+                <details name="faq" class="faq-item group bg-dark-900 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>How large are the model files, and how long does downloading take?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45 shrink-0 ml-4">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            Compact models like <strong>Llama 3.2 3B</strong> or <strong>Qwen 2.5 3B</strong> are around <strong class="text-white">2.0 GB to 2.3 GB</strong> in download size. On a typical 100 Mbps home Wi-Fi connection, download takes about 2 to 4 minutes.
+                        </p>
+                        <p>
+                            Larger 8B models (like Llama 3.1 8B) are roughly <strong class="text-white">4.7 GB</strong>, taking around 5 to 8 minutes to download once. Remember: you only download a model once, and then it is yours forever.
+                        </p>
+                    </div>
+                </details>
+
+                <details name="faq" class="faq-item group bg-dark-900 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>Which model should I download first as a complete beginner?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45 shrink-0 ml-4">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            We recommend starting with <strong class="text-brand font-semibold">Llama 3.2 (3B)</strong>:
+                        </p>
+                        <div class="p-3 rounded-xl bg-dark-950 font-mono text-xs text-brand border border-white/5">
+                            localpilot setup llama3.2:3b
+                        </div>
+                        <p>
+                            It is lightweight, extremely responsive, and excels at everyday tasks like summarizing notes, proofreading emails, and answering general questions.
+                        </p>
+                    </div>
+                </details>
+
+                <details name="faq" class="faq-item group bg-dark-900 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>How do I delete a model and reclaim hard drive space?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45 shrink-0 ml-4">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            You have total control over your disk space. To view stored models and their file sizes, run:
+                        </p>
+                        <div class="p-3 rounded-xl bg-dark-950 font-mono text-xs text-brand border border-white/5">
+                            localpilot storage
+                        </div>
+                        <p>
+                            To completely delete a model file and return its gigabytes to your hard drive, simply run:
+                        </p>
+                        <div class="p-3 rounded-xl bg-dark-950 font-mono text-xs text-brand border border-white/5">
+                            localpilot remove llama3.2:3b
+                        </div>
+                    </div>
+                </details>
+
+                <details name="faq" class="faq-item group bg-dark-900 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>How do I update models when newer revisions are released?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45 shrink-0 ml-4">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            Running <code class="text-brand font-mono">localpilot discover</code> automatically queries online registries and checks for new compatible candidates and updated revisions.
+                        </p>
+                        <p>
+                            If an updated model is available through Ollama or Hugging Face, LocalPilot downloads the new version to a staged recovery folder first, tests it, and ensures your previous working version remains intact if anything goes wrong.
+                        </p>
+                    </div>
+                </details>
+            </div>
+        </section>
+
+        <!-- Category 5: Runtimes & Technical Details Simplified -->
+        <section class="faq-category space-y-4">
+            <div class="flex items-center gap-3 mb-2">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">5</span>
+                <h2 class="text-xl sm:text-2xl font-bold text-white">Runtimes, Ollama &amp; Docker Simplified</h2>
+            </div>
+
+            <div class="space-y-3">
+                <details name="faq" class="faq-item group bg-dark-900 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>What is an "inference runtime" or "backend"?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45 shrink-0 ml-4">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            Think of a model file like a digital cookbook. The "inference runtime" (like <code class="text-brand font-mono">llama.cpp</code>) is the chef that reads the recipes, mixes the numbers, and serves the finished text. LocalPilot automatically chooses and configures the best chef for your specific computer.
+                        </p>
+                    </div>
+                </details>
+
+                <details name="faq" class="faq-item group bg-dark-900 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>What is Docker, and do I need to install it?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45 shrink-0 ml-4">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            <strong>No, you do not need Docker at all.</strong>
+                        </p>
+                        <p>
+                            Docker is a tool that software developers use to isolate apps in virtual containers. LocalPilot runs 100% natively on macOS and Linux without containers. If you don't have Docker installed, you can completely ignore it.
+                        </p>
+                    </div>
+                </details>
+
+                <details name="faq" class="faq-item group bg-dark-900 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>What if I already have Ollama or LM Studio running?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45 shrink-0 ml-4">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            LocalPilot follows a strict <em>Golden Rule of Ownership</em>: <strong>it will never stop, restart, or delete files belonging to external software.</strong>
+                        </p>
+                        <p>
+                            If it discovers a running Ollama service, it can connect to it to run models, but it will never interfere with your existing models or settings.
+                        </p>
+                    </div>
+                </details>
+            </div>
+        </section>
+
+        <!-- Category 6: Troubleshooting & Support -->
+        <section class="faq-category space-y-4">
+            <div class="flex items-center gap-3 mb-2">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">6</span>
+                <h2 class="text-xl sm:text-2xl font-bold text-white">Troubleshooting &amp; Support</h2>
+            </div>
+
+            <div class="space-y-3">
+                <details name="faq" class="faq-item group bg-dark-900 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>How do I check if my computer is healthy and ready?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45 shrink-0 ml-4">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            Run the built-in diagnostic doctor:
+                        </p>
+                        <div class="p-3 rounded-xl bg-dark-950 font-mono text-xs text-brand border border-white/5">
+                            localpilot doctor
+                        </div>
+                        <p>
+                            It performs a non-invasive scan of your RAM, processor, storage, and acceleration libraries (Metal / CUDA) and tells you if anything needs attention.
+                        </p>
+                    </div>
+                </details>
+
+                <details name="faq" class="faq-item group bg-dark-900 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>How do I completely remove LocalPilot if I change my mind?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45 shrink-0 ml-4">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            LocalPilot provides a clean 1-command self-uninstall:
+                        </p>
+                        <div class="p-3 rounded-xl bg-dark-950 font-mono text-xs text-brand border border-white/5">
+                            localpilot self uninstall --purge-models
+                        </div>
+                        <p>
+                            This cleanly deletes the application virtual environment, desktop shortcuts, and stored models, leaving zero leftover files or background services behind.
+                        </p>
+                    </div>
+                </details>
+
+                <details name="faq" class="faq-item group bg-dark-900 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
+                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
+                        <span>How do I get help or submit a diagnostic report safely?</span>
+                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45 shrink-0 ml-4">+</span>
+                    </summary>
+                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
+                        <p>
+                            If you run into an unexpected issue, generate an anonymized, redacted support bundle:
+                        </p>
+                        <div class="p-3 rounded-xl bg-dark-950 font-mono text-xs text-brand border border-white/5">
+                            localpilot support
+                        </div>
+                        <p>
+                            It exports hardware diagnostics and error logs with all personal paths and names stripped out so you can safely paste it into a GitHub Issue for developer assistance.
+                        </p>
+                    </div>
+                </details>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- Prominent Disclaimer Banner -->
+    <aside class="py-12 bg-dark-950 border-t border-b border-white/5">
+        <div class="max-w-4xl mx-auto px-6">
+            <div class="rounded-2xl bg-amber-500/10 border border-amber-500/20 p-6 flex flex-col sm:flex-row items-start gap-4">
+                <span class="text-2xl">⚠️</span>
+                <div class="text-xs text-amber-200/90 leading-relaxed">
+                    <strong class="text-amber-100 font-semibold block mb-1">Disclaimer &amp; Important Notice:</strong>
+                    LocalPilot is intended for non-professional users, students, and hobbyists for personal use and testing purposes only. Local AI model inference is an edge technology that requires substantial hardware resources and domain knowledge. This project is provided "as is" without warranty of any kind. The creator and maintainers hold no liabilities or responsibilities for any misuse, data loss, performance degradation, or issues that may arise in production or improper usage.
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Footer -->
+    <footer class="mt-auto border-t border-white/5 py-10 bg-dark-900">
+        <div class="max-w-7xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-300">
+            <div class="flex items-center gap-3">
+                <img src="docs/img/logo.png" alt="LocalPilot" class="w-6 h-6 rounded-md object-contain opacity-75">
+                <span>&copy; 2026 LocalPilot &bull; Licensed under GNU GPLv3</span>
+            </div>
+            <div class="flex items-center gap-6">
+                <a href="index.html" class="hover:text-brand transition-colors">Home</a>
+                <a href="guide.html" class="hover:text-brand transition-colors">Guide</a>
+                <a href="install.html" class="hover:text-brand transition-colors">Install</a>
+                <a href="models.html" class="hover:text-brand transition-colors">Models</a>
+                <a href="faq.html" class="text-brand transition-colors font-semibold">FAQ</a>
+                <a href="architecture.html" class="hover:text-brand transition-colors">Technical</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        }
+
+        function filterFAQ() {
+            const query = document.getElementById('faqSearch').value.toLowerCase().trim();
+            const items = document.querySelectorAll('.faq-item');
+            const categories = document.querySelectorAll('.faq-category');
+
+            items.forEach(item => {
+                const text = item.innerText.toLowerCase();
+                if (!query || text.includes(query)) {
+                    item.style.display = 'block';
+                    if (query) {
+                        item.setAttribute('open', '');
+                    }
+                } else {
+                    item.style.display = 'none';
+                    item.removeAttribute('open');
+                }
+            });
+
+            categories.forEach(cat => {
+                const visibleItems = cat.querySelectorAll('.faq-item:not([style*="display: none"])');
+                if (visibleItems.length === 0 && query) {
+                    cat.style.display = 'none';
+                } else {
+                    cat.style.display = 'block';
+                }
+            });
+        }
+    </script>
+</body>
+</html>

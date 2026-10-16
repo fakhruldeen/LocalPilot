@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Architecture &amp; In-Depth FAQ — LocalPilot</title>
-    <meta name="description" content="Detailed overview of LocalPilot's 3-axis architecture (Backends, Execution Services, Deployment Methods), safety boundaries, and comprehensive FAQ.">
+    <title>Technical Architecture &amp; CLI Manual — LocalPilot</title>
+    <meta name="description" content="In-depth engineering documentation for LocalPilot: Hexagonal Clean Architecture, 3-Axis execution dispatch, complete CLI command and argument reference, process ownership boundaries, GGUF quantization, and developer workflows.">
     
     <!-- Open Graph / Social -->
     <meta property="og:type" content="article">
     <meta property="og:url" content="https://fakhr.me/LocalPilot/architecture.html">
-    <meta property="og:title" content="LocalPilot Architecture &amp; FAQ">
-    <meta property="og:description" content="Learn how LocalPilot's 3-axis architecture protects external tools, manages memory, and ensures 100% private offline AI.">
+    <meta property="og:title" content="LocalPilot Technical Architecture &amp; Developer Reference">
+    <meta property="og:description" content="Engineering deep-dive into LocalPilot's 3-axis execution engine, CLI arguments, process safety, and Hexagonal architecture.">
     <meta property="og:image" content="https://raw.githubusercontent.com/fakhruldeen/LocalPilot/main/docs/img/banner-social.jpeg">
 
     <link rel="icon" type="image/png" href="docs/img/logo.png">
@@ -76,7 +76,8 @@
                 <a href="guide.html" class="hover:text-brand transition-colors">Beginner Guide</a>
                 <a href="install.html" class="hover:text-brand transition-colors">Installation</a>
                 <a href="models.html" class="hover:text-brand transition-colors">Model Catalog</a>
-                <a href="architecture.html" class="text-brand font-semibold">Architecture & FAQ</a>
+                <a href="faq.html" class="hover:text-brand transition-colors">FAQ</a>
+                <a href="architecture.html" class="text-brand font-semibold">Technical</a>
             </nav>
 
             <div class="flex items-center gap-3">
@@ -96,7 +97,8 @@
             <a href="guide.html" class="hover:text-brand py-1">Beginner Guide</a>
             <a href="install.html" class="hover:text-brand py-1">Installation</a>
             <a href="models.html" class="hover:text-brand py-1">Model Catalog</a>
-            <a href="architecture.html" class="text-brand font-semibold py-1">Architecture & FAQ</a>
+            <a href="faq.html" class="hover:text-brand py-1">FAQ</a>
+            <a href="architecture.html" class="text-brand font-semibold py-1">Technical</a>
         </div>
     </header>
 
@@ -104,207 +106,370 @@
     <section class="relative pt-16 pb-20 overflow-hidden hero-bg border-b border-white/5">
         <div class="max-w-4xl mx-auto px-6 text-center relative z-10">
             <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand/10 border border-brand/20 text-brand text-xs font-semibold mb-6">
-                ⚙️ Deep Dive &amp; Core Principles
+                🛠️ Engineering Manual &amp; Specifications
             </div>
             <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white mb-6 leading-tight">
-                Architecture &amp; Safety Design
+                Technical Architecture &amp; CLI Reference
             </h1>
             <p class="text-base sm:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
-                How LocalPilot cleanly isolates inference backends, external execution services, and deployment methods without compromising user safety.
+                A complete reference for developers, DevOps engineers, and power users: hexagonal domain separation, 3-axis execution dispatch, process boundaries, and full CLI syntax.
             </p>
         </div>
     </section>
 
     <!-- Main Content -->
-    <main class="py-16 max-w-4xl mx-auto px-6 space-y-16">
+    <main class="py-16 max-w-5xl mx-auto px-6 space-y-16">
 
-        <!-- 3-Axis Architecture Framed as 3 Protective Shields -->
-        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-8">
-            <div>
-                <span class="text-brand font-mono text-xs uppercase tracking-wider font-semibold">Under The Hood &bull; Built For Trust</span>
-                <h2 class="text-2xl sm:text-3xl font-bold text-white mt-1">How LocalPilot Protects Your Computer</h2>
-                <p class="text-slate-300 text-sm mt-2 leading-relaxed">
-                    Most tools treat local AI like a single chaotic script that can crash your computer or overwrite your files. LocalPilot divides execution into three strictly isolated safety shields:
-                </p>
+        <!-- Section 1: Hexagonal Clean Architecture -->
+        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">1</span>
+                <h2 class="text-2xl font-bold text-white">Hexagonal Clean Architecture (Ports &amp; Adapters)</h2>
+            </div>
+            
+            <p class="text-slate-300 text-sm leading-relaxed">
+                LocalPilot is engineered using strict domain-driven hexagonal boundaries. The core business rules and verification logic have zero dependencies on CLI frameworks, TUI libraries, or specific runtime binaries.
+            </p>
+
+            <div class="p-6 rounded-2xl bg-dark-950 font-mono text-xs text-slate-300 border border-white/10 overflow-x-auto leading-relaxed">
+┌────────────────────────────────────────────────────────────────────────┐
+│                        PRESENTATION LAYER                              │
+│       Typer CLI (localpilot)     │       Textual TUI (Visual Hub)      │
+└─────────────────────────────────┬──────────────────────────────────────┘
+                                  ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                        APPLICATION LAYER                               │
+│  SetupWorkflow  │  UpdateWorkflow  │  JobManager  │  ActivityService   │
+└─────────────────────────────────┬──────────────────────────────────────┘
+                                  ▼
+┌────────────────────────────────────────────────────────────────────────┐
+│                          DOMAIN LAYER                                  │
+│  CompatibilityPolicy │ ScoringPolicy │ ExecutionPlan │ VerifiedState   │
+└──────────────┬──────────────────┬──────────────────────┬───────────────┘
+               ▼                  ▼                      ▼
+┌──────────────────────┐ ┌──────────────────┐ ┌─────────────────────────┐
+│   PLATFORM ADAPTERS  │ │  SOURCE ADAPTERS │ │    RUNTIME ADAPTERS     │
+│  Linux / Darwin      │ │  Ollama Registry │ │  llama.cpp runner       │
+│  Hardware Inspector  │ │  HuggingFace Hub │ │  Ollama API Client      │
+│  Metal / CUDA check  │ │  Local Seed DB   │ │  LM Studio Client       │
+└──────────────────────┘ └──────────────────┘ └─────────────────────────┘
             </div>
 
-            <div class="grid md:grid-cols-3 gap-6">
-                <!-- Shield A -->
-                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
-                    <div class="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center text-lg font-bold">1</div>
-                    <span class="text-xs font-mono font-bold text-brand uppercase block">Shield 1: The Engine</span>
-                    <h3 class="text-lg font-bold text-white">Inference Backend</h3>
-                    <p class="text-slate-400 text-xs leading-relaxed">
-                        The pure math engine that does the neural network calculations. LocalPilot only routes to backends that have been tested and verified for your exact CPU/GPU chips.
-                    </p>
-                    <div class="pt-2 text-[11px] font-mono text-slate-300">
-                        llama.cpp &bull; Apple Metal &bull; CUDA
-                    </div>
+            <div class="grid sm:grid-cols-3 gap-4 text-xs pt-2">
+                <div class="p-4 rounded-xl bg-dark-850 border border-white/5">
+                    <span class="text-brand font-bold block mb-1 font-mono">localpilot.domain</span>
+                    <p class="text-slate-400">Pure Python entities: <code class="text-slate-300">HardwareSnapshot</code>, <code class="text-slate-300">ExecutionPlan</code>, <code class="text-slate-300">CompatibilityCheckResult</code>, scoring heuristics, and evidence-based state transitions.</p>
                 </div>
-
-                <!-- Shield B -->
-                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
-                    <div class="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center text-lg font-bold">2</div>
-                    <span class="text-xs font-mono font-bold text-brand uppercase block">Shield 2: Process Boundary</span>
-                    <h3 class="text-lg font-bold text-white">Execution Service</h3>
-                    <p class="text-slate-400 text-xs leading-relaxed">
-                        If you already have tools like Ollama or LM Studio running, LocalPilot never hijacks, shuts down, or messes with their configuration. It respects other software.
-                    </p>
-                    <div class="pt-2 text-[11px] font-mono text-slate-300">
-                        Ollama &bull; LocalPilot Managed &bull; LM Studio
-                    </div>
+                <div class="p-4 rounded-xl bg-dark-850 border border-white/5">
+                    <span class="text-brand font-bold block mb-1 font-mono">localpilot.application</span>
+                    <p class="text-slate-400">Transactional use cases: multi-step model staging, atomic download rollback, non-destructive inventory reconciliation, and background job state.</p>
                 </div>
-
-                <!-- Shield C -->
-                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
-                    <div class="w-10 h-10 rounded-xl bg-brand/10 text-brand flex items-center justify-center text-lg font-bold">3</div>
-                    <span class="text-xs font-mono font-bold text-brand uppercase block">Shield 3: User Space</span>
-                    <h3 class="text-lg font-bold text-white">Deployment Sandbox</h3>
-                    <p class="text-slate-400 text-xs leading-relaxed">
-                        Runs strictly inside your regular user permissions. It never asks for administrative or root passwords, keeping your core operating system protected.
-                    </p>
-                    <div class="pt-2 text-[11px] font-mono text-slate-300">
-                        Direct Process &bull; No Sudo Needed
-                    </div>
-                </div>
-            </div>
-
-            <div class="p-5 rounded-2xl bg-dark-950 border border-brand/20 text-xs text-slate-300 leading-relaxed flex items-start gap-3">
-                <span class="text-lg">🛡️</span>
-                <div>
-                    <strong class="text-brand font-semibold block mb-0.5">The LocalPilot Golden Rule of Ownership:</strong>
-                    "If LocalPilot didn't create a process or download a file, it will never delete, terminate, or silently alter it."
+                <div class="p-4 rounded-xl bg-dark-850 border border-white/5">
+                    <span class="text-brand font-bold block mb-1 font-mono">localpilot.runtimes</span>
+                    <p class="text-slate-400">Isolated infrastructure adapters: socket probes, subprocess launchers, PID isolation, and HTTP API clients with strict timeouts.</p>
                 </div>
             </div>
         </article>
 
-        <!-- Comprehensive FAQ with Native Details Accordion -->
+        <!-- Section 2: The 3-Axis Execution Dispatch Matrix -->
         <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-6">
-            <div>
-                <span class="text-brand font-mono text-xs uppercase tracking-wider font-semibold">Everything You Wondered</span>
-                <h2 class="text-2xl sm:text-3xl font-bold text-white mt-1">Frequently Asked Questions</h2>
-                <p class="text-slate-400 text-sm mt-1">Click any question to view the plain-English answer.</p>
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">2</span>
+                <h2 class="text-2xl font-bold text-white">The 3-Axis Execution Dispatch Engine</h2>
+            </div>
+            
+            <p class="text-slate-300 text-sm leading-relaxed">
+                Most naive tools treat local AI as a monolithic "runtime" string (e.g. just <code class="text-slate-300 font-mono">"ollama"</code> or <code class="text-slate-300 font-mono">"llamacpp"</code>). LocalPilot decomposes execution into three mathematically orthogonal dimensions:
+            </p>
+
+            <div class="grid md:grid-cols-3 gap-4 text-xs">
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="font-mono text-brand font-bold">AXIS A</span>
+                        <span class="text-[10px] bg-brand/10 text-brand px-2 py-0.5 rounded">Compute</span>
+                    </div>
+                    <h3 class="font-bold text-white text-sm">Inference Backend</h3>
+                    <p class="text-slate-400 leading-relaxed">The raw computation library that loads tensors into memory and executes matrix multiplication on CPU or GPU.</p>
+                    <div class="font-mono text-[11px] text-slate-300 bg-dark-950 p-2.5 rounded-lg border border-white/5 space-y-0.5">
+                        <div>&bull; llama.cpp (GGUF)</div>
+                        <div>&bull; vLLM (Advanced)</div>
+                        <div>&bull; service-managed</div>
+                    </div>
+                </div>
+
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="font-mono text-brand font-bold">AXIS B</span>
+                        <span class="text-[10px] bg-brand/10 text-brand px-2 py-0.5 rounded">Service</span>
+                    </div>
+                    <h3 class="font-bold text-white text-sm">Execution Service</h3>
+                    <p class="text-slate-400 leading-relaxed">The supervisor daemon or manager responsible for model residency, caching, and serving API requests.</p>
+                    <div class="font-mono text-[11px] text-slate-300 bg-dark-950 p-2.5 rounded-lg border border-white/5 space-y-0.5">
+                        <div>&bull; Ollama</div>
+                        <div>&bull; LocalPilot Managed</div>
+                        <div>&bull; LM Studio / llmster</div>
+                        <div>&bull; Docker Model Runner</div>
+                    </div>
+                </div>
+
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="font-mono text-brand font-bold">AXIS C</span>
+                        <span class="text-[10px] bg-brand/10 text-brand px-2 py-0.5 rounded">Process</span>
+                    </div>
+                    <h3 class="font-bold text-white text-sm">Deployment Method</h3>
+                    <p class="text-slate-400 leading-relaxed">The process boundary and sandboxing model through which LocalPilot interfaces with the service.</p>
+                    <div class="font-mono text-[11px] text-slate-300 bg-dark-950 p-2.5 rounded-lg border border-white/5 space-y-0.5">
+                        <div>&bull; Direct Worker Subprocess</div>
+                        <div>&bull; Local Loopback HTTP API</div>
+                        <div>&bull; Container Runtime</div>
+                    </div>
+                </div>
             </div>
 
-            <div class="space-y-3 pt-2">
-                <!-- FAQ 1 -->
-                <details name="faq" class="group bg-dark-850 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
-                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
-                        <span>Will running an AI model freeze or slow down my computer?</span>
-                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45">+</span>
-                    </summary>
-                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
-                        <p>
-                            Not with LocalPilot. Traditional tools attempt to load models without checking how much RAM you have left, which can freeze your machine.
-                        </p>
-                        <p>
-                            LocalPilot scans your real-time available memory and refuses to launch models that don't leave comfortable breathing room for your browser, Spotify, and operating system.
-                        </p>
-                    </div>
-                </details>
+            <div class="p-4 rounded-xl bg-dark-950 border border-emerald-500/20 text-xs text-slate-300 space-y-1">
+                <strong class="text-emerald-400 font-semibold block">Engineering Dispatch Rule:</strong>
+                "LocalPilot resolves actual adapters from the full execution triplet. An Ollama plan connects to Ollama's HTTP daemon; a standalone GGUF plan routes to direct llama.cpp. It will never silently route LM Studio or vLLM to llama.cpp."
+            </div>
+        </article>
 
-                <!-- FAQ 2 -->
-                <details name="faq" class="group bg-dark-850 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
-                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
-                        <span>Can I use LocalPilot on an airplane with no Wi-Fi?</span>
-                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45">+</span>
-                    </summary>
-                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
-                        <p>
-                            <strong>Yes, 100%!</strong> You only need an internet connection once to download the model file. After that, you can turn off Wi-Fi, go into airplane mode, or take your laptop into the woods. LocalPilot will converse, brainstorm, and summarize at full speed completely offline.
-                        </p>
-                    </div>
-                </details>
+        <!-- Section 3: Full CLI Command Reference -->
+        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-8">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">3</span>
+                <h2 class="text-2xl font-bold text-white">Complete CLI Command &amp; Argument Reference</h2>
+            </div>
+            
+            <p class="text-slate-300 text-sm leading-relaxed">
+                The <code class="text-brand font-mono">localpilot</code> binary is built with Typer and Rich, supporting structured terminal tables, plaintext scripts (<code class="text-slate-300">--plain</code>), and JSON piping (<code class="text-slate-300">--json</code>).
+            </p>
 
-                <!-- FAQ 3 -->
-                <details name="faq" class="group bg-dark-850 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
-                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
-                        <span>Does running local AI drain my laptop battery fast?</span>
-                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45">+</span>
-                    </summary>
-                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
-                        <p>
-                            While an AI is generating text, it actively exercises your processor cores, which uses more power than browsing a webpage. However, compact models (like Llama 3.2 3B) generate text in seconds and immediately drop back to zero power consumption when idle.
-                        </p>
-                        <p>
-                            On Apple Silicon Macs (M1/M2/M3/M4), energy efficiency is so good that you can easily chat for hours on battery.
-                        </p>
+            <div class="space-y-6">
+                <!-- Command 1: Main / TUI -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <code class="text-brand font-bold text-sm font-mono">localpilot [COMMAND]</code>
+                        <span class="text-[11px] text-slate-400 font-mono">Interactive Default</span>
                     </div>
-                </details>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        When invoked without subcommands, opens the numbered interactive home menu or full-screen dashboard.
+                    </p>
+                    <div class="bg-dark-950 p-3 rounded-xl font-mono text-xs text-slate-300 border border-white/5">
+                        $ localpilot tui &nbsp;&nbsp;<span class="text-slate-300"># Direct launcher for the Textual terminal GUI</span>
+                    </div>
+                </div>
 
-                <!-- FAQ 4 -->
-                <details name="faq" class="group bg-dark-850 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
-                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
-                        <span>Will LocalPilot touch or delete my existing Ollama or LM Studio models?</span>
-                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45">+</span>
-                    </summary>
-                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
-                        <p>
-                            <strong>No, never.</strong> LocalPilot enforces strict process and storage ownership boundaries. Discovered external services on your computer are treated with absolute respect: LocalPilot can connect and talk to them if you wish, but will never terminate external services or touch external files.
-                        </p>
+                <!-- Command 2: Doctor -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <code class="text-brand font-bold text-sm font-mono">localpilot doctor</code>
+                        <span class="text-[11px] text-slate-400 font-mono">Hardware Diagnostics</span>
                     </div>
-                </details>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Runs non-invasive hardware probing: CPU architecture, available cores, physical RAM, GPU acceleration (Metal / CUDA / ROCm), storage headroom, and port availability.
+                    </p>
+                    <div class="bg-dark-950 p-3 rounded-xl font-mono text-xs text-slate-300 border border-white/5">
+                        $ localpilot doctor
+                    </div>
+                </div>
 
-                <!-- FAQ 5 -->
-                <details name="faq" class="group bg-dark-850 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
-                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
-                        <span>What is Docker, and do I need to install it?</span>
-                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45">+</span>
-                    </summary>
-                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
-                        <p>
-                            Docker is a virtualization system used by software engineers to package apps. <strong>You do NOT need Docker to use LocalPilot.</strong> LocalPilot runs directly and natively on your operating system without containers. If you don't know what Docker is, you can completely ignore it.
-                        </p>
+                <!-- Command 3: Discover -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <code class="text-brand font-bold text-sm font-mono">localpilot discover [OPTIONS]</code>
+                        <span class="text-[11px] text-slate-400 font-mono">Model Sizing &amp; Ranking</span>
                     </div>
-                </details>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Queries local and registry catalogs, filters out models that exceed available memory, scores candidates using the agreed scoring policy, and selects the recommended execution plan.
+                    </p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr class="text-slate-400 font-mono border-b border-white/10">
+                                    <th class="py-2">Option / Flag</th>
+                                    <th class="py-2">Type</th>
+                                    <th class="py-2">Description</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-white/5 text-slate-300 font-mono text-[11px]">
+                                <tr>
+                                    <td class="py-2 text-brand">--task</td>
+                                    <td class="py-2">string</td>
+                                    <td>Filter by task category: <code class="text-white">chat</code>, <code class="text-white">coding</code></td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 text-brand">-q, --query</td>
+                                    <td class="py-2">string</td>
+                                    <td>Case-insensitive search across model name, family, or ID</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 text-brand">--plain</td>
+                                    <td class="py-2">flag</td>
+                                    <td>Output plain space-separated text for shell scripts</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 text-brand">--json</td>
+                                    <td class="py-2">flag</td>
+                                    <td>Emit full candidate and execution plan metadata in JSON</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="bg-dark-950 p-3 rounded-xl font-mono text-xs text-slate-300 border border-white/5">
+                        $ localpilot discover --task chat --query llama
+                    </div>
+                </div>
 
-                <!-- FAQ 6 -->
-                <details name="faq" class="group bg-dark-850 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
-                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
-                        <span>How do I delete models or reclaim hard drive space?</span>
-                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45">+</span>
-                    </summary>
-                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
-                        <p>
-                            You have total control. To remove a model and free up its disk space, simply run:
-                        </p>
-                        <div class="p-3 rounded-xl bg-dark-950 font-mono text-xs text-brand border border-white/5">
-                            localpilot remove llama3.2:3b
-                        </div>
-                        <p>
-                            LocalPilot immediately deletes the model file and reports exactly how many gigabytes were returned to your hard drive.
-                        </p>
+                <!-- Command 4: Setup -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <code class="text-brand font-bold text-sm font-mono">localpilot setup &lt;candidate_id&gt; [OPTIONS]</code>
+                        <span class="text-[11px] text-slate-400 font-mono">Guided Installation</span>
                     </div>
-                </details>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Executes guided installation: validates compatibility, downloads real weight artifacts, verifies SHA-256 hashes, provisions local runtime adapters, and performs verified smoke inference.
+                    </p>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left text-xs border-collapse">
+                            <thead>
+                                <tr class="text-slate-400 font-mono border-b border-white/10">
+                                    <th class="py-2">Argument / Option</th>
+                                    <th class="py-2">Type</th>
+                                    <th class="py-2">Description</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-white/5 text-slate-300 font-mono text-[11px]">
+                                <tr>
+                                    <td class="py-2 text-brand">&lt;candidate_id&gt;</td>
+                                    <td class="py-2">string</td>
+                                    <td>Target model candidate ID (e.g. <code class="text-white">llama3.2:3b</code>)</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 text-brand">-y, --yes</td>
+                                    <td class="py-2">flag</td>
+                                    <td>Accept proposed execution plan without interactive confirmation</td>
+                                </tr>
+                                <tr>
+                                    <td class="py-2 text-brand">--scope</td>
+                                    <td class="py-2">string</td>
+                                    <td>Installation boundary: <code class="text-white">isolated</code> (default), <code class="text-white">user</code>, <code class="text-white">system</code></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="bg-dark-950 p-3 rounded-xl font-mono text-xs text-slate-300 border border-white/5">
+                        $ localpilot setup llama3.2:3b --yes
+                    </div>
+                </div>
 
-                <!-- FAQ 7 -->
-                <details name="faq" class="group bg-dark-850 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
-                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
-                        <span>Is it safe to run open-source models downloaded from the internet?</span>
-                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45">+</span>
-                    </summary>
-                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
-                        <p>
-                            Yes. Unlike downloaded programs or scripts (<code class="text-slate-300">.exe</code>, <code class="text-slate-300">.sh</code>, or <code class="text-slate-300">.bat</code>), model weight files (<code class="text-slate-300">.gguf</code>) are static data files containing numerical matrices. They do not execute arbitrary instructions. Furthermore, LocalPilot validates SHA-256 cryptographic hashes on official downloads to guarantee file integrity.
-                        </p>
+                <!-- Command 5: Installed & Running -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <code class="text-brand font-bold text-sm font-mono">localpilot installed | running</code>
+                        <span class="text-[11px] text-slate-400 font-mono">Inventory Management</span>
                     </div>
-                </details>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        <code class="text-brand">installed</code> lists models present on disk with their verification stage (<code class="text-emerald-400">TESTED_HERE</code>), size, and runtime. <code class="text-brand">running</code> probes live PID/service instances. Supports <code class="text-slate-300">--plain</code> and <code class="text-slate-300">--json</code>.
+                    </p>
+                    <div class="bg-dark-950 p-3 rounded-xl font-mono text-xs text-slate-300 border border-white/5">
+                        $ localpilot installed --json
+                    </div>
+                </div>
 
-                <!-- FAQ 8 -->
-                <details name="faq" class="group bg-dark-850 rounded-2xl border border-white/5 p-5 open:border-brand/30 transition-all cursor-pointer">
-                    <summary class="font-bold text-white text-sm sm:text-base flex items-center justify-between list-none select-none">
-                        <span>How does LocalPilot compare to ChatGPT or Claude?</span>
-                        <span class="text-brand font-mono text-lg transition-transform duration-200 group-open:rotate-45">+</span>
-                    </summary>
-                    <div class="pt-4 text-xs sm:text-sm text-slate-300 leading-relaxed border-t border-white/5 mt-4 space-y-2">
-                        <p>
-                            Cloud chatbots run on billion-dollar computing clusters; they have larger world knowledge databases but require monthly subscriptions, active internet connections, and send your private words to remote servers.
-                        </p>
-                        <p>
-                            LocalPilot runs right on your computer. It costs zero dollars, works without internet, never shares your notes or documents with any corporation, and gives you complete ownership of your AI tools.
-                        </p>
+                <!-- Command 6: Storage & Remove -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <code class="text-brand font-bold text-sm font-mono">localpilot storage | remove &lt;id&gt;</code>
+                        <span class="text-[11px] text-slate-400 font-mono">Space Reclamation</span>
                     </div>
-                </details>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        <code class="text-brand">storage</code> outputs total gigabytes used across model weights, SQLite databases, and logs. <code class="text-brand">remove &lt;id&gt;</code> safely deletes weights without touching third-party files.
+                    </p>
+                    <div class="bg-dark-950 p-3 rounded-xl font-mono text-xs text-slate-300 border border-white/5 space-y-1">
+                        <div>$ localpilot storage</div>
+                        <div>$ localpilot remove llama3.2:3b --delete-files -y</div>
+                    </div>
+                </div>
+
+                <!-- Command 7: Self Update & Uninstall -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <code class="text-brand font-bold text-sm font-mono">localpilot self update | uninstall</code>
+                        <span class="text-[11px] text-slate-400 font-mono">Application Lifecycle</span>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        <code class="text-brand">self update</code> queries PyPI and performs safe in-place upgrades. <code class="text-brand">self uninstall</code> cleanly purges symlinks and virtual environments with optional <code class="text-slate-300">--purge-models</code>.
+                    </p>
+                    <div class="bg-dark-950 p-3 rounded-xl font-mono text-xs text-slate-300 border border-white/5">
+                        $ localpilot self update
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- Section 4: Engineering Choices & Guarantees -->
+        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">4</span>
+                <h2 class="text-2xl font-bold text-white">Engineering Decisions &amp; Guarantees</h2>
+            </div>
+            
+            <div class="grid sm:grid-cols-2 gap-4 text-xs">
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <h3 class="font-bold text-brand text-sm flex items-center gap-2">🗜️ Why GGUF &amp; Q4_K_M?</h3>
+                    <p class="text-slate-300 leading-relaxed">
+                        GGUF is a single-file, mmap-capable binary format designed for high-performance CPU/GPU inference. <strong class="text-white">Q4_K_M</strong> uses 4-bit block quantization with medium k-quant coverage, preserving 99%+ of 16-bit float perplexity while slashing memory consumption by ~65%.
+                    </p>
+                </div>
+
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <h3 class="font-bold text-brand text-sm flex items-center gap-2">🛡️ Process Boundary Respect</h3>
+                    <p class="text-slate-300 leading-relaxed">
+                        LocalPilot enforces non-destructive process supervision. If an Ollama or LM Studio daemon is detected on port 11434 or 1234, LocalPilot connects as an unprivileged client. It will never send <code class="text-rose-400 font-mono">SIGTERM</code>, modify foreign config files, or alter third-party model stores.
+                    </p>
+                </div>
+
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <h3 class="font-bold text-brand text-sm flex items-center gap-2">🚫 Zero Synthetic Artifacts</h3>
+                    <p class="text-slate-300 leading-relaxed">
+                        Production code paths contain zero placeholder mock files. Model registration requires real HTTP/registry downloads, verified content lengths, and SHA-256 validation. A model is never marked <code class="text-emerald-400 font-mono">TESTED_HERE</code> until actual prompt inference passes.
+                    </p>
+                </div>
+
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <h3 class="font-bold text-brand text-sm flex items-center gap-2">🔄 Atomic Staging &amp; Rollback</h3>
+                    <p class="text-slate-300 leading-relaxed">
+                        Updates never overwrite working model weights in place. New versions are staged in a temporary directory (<code class="font-mono text-slate-300">~/.local/share/localpilot/backups/</code>), verified with smoke inference, and atomically swapped only upon verified success.
+                    </p>
+                </div>
+            </div>
+        </article>
+
+        <!-- Section 5: Developer Setup & Testing -->
+        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">5</span>
+                <h2 class="text-2xl font-bold text-white">Developer Setup &amp; Contributing</h2>
+            </div>
+            
+            <p class="text-slate-300 text-sm leading-relaxed">
+                LocalPilot is maintained on GitHub using modern Python tooling (<code class="text-slate-300">uv</code> / <code class="text-slate-300">venv</code>), full typing with Pydantic v2, and Pytest test coverage:
+            </p>
+
+            <div class="space-y-3 font-mono text-xs">
+                <div class="p-4 rounded-xl bg-dark-850 border border-white/5">
+                    <div class="text-slate-400 font-sans text-xs mb-1 font-semibold">1. Clone the repository</div>
+                    <code class="text-white">$ git clone https://github.com/fakhruldeen/LocalPilot.git &amp;&amp; cd LocalPilot</code>
+                </div>
+                <div class="p-4 rounded-xl bg-dark-850 border border-white/5">
+                    <div class="text-slate-400 font-sans text-xs mb-1 font-semibold">2. Create virtual environment &amp; install dependencies</div>
+                    <code class="text-white">$ python3 -m venv .venv &amp;&amp; source .venv/bin/activate</code><br>
+                    <code class="text-white">$ pip install -e ".[dev]"</code>
+                </div>
+                <div class="p-4 rounded-xl bg-dark-850 border border-white/5">
+                    <div class="text-slate-400 font-sans text-xs mb-1 font-semibold">3. Run the automated test suite</div>
+                    <code class="text-white">$ pytest -v</code>
+                </div>
             </div>
         </article>
 
@@ -335,7 +500,8 @@
                 <a href="guide.html" class="hover:text-brand transition-colors">Guide</a>
                 <a href="install.html" class="hover:text-brand transition-colors">Install</a>
                 <a href="models.html" class="hover:text-brand transition-colors">Models</a>
-                <a href="architecture.html" class="text-brand transition-colors font-semibold">Architecture</a>
+                <a href="faq.html" class="hover:text-brand transition-colors">FAQ</a>
+                <a href="architecture.html" class="text-brand transition-colors font-semibold">Technical</a>
             </div>
         </div>
     </footer>
