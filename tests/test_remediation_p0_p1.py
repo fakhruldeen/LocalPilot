@@ -7,7 +7,7 @@ import zipfile
 
 import pytest
 
-from localpilot.application.setup_workflow import SetupWorkflow
+from localpilot.application.setup_workflow import ApprovalRecord, SetupWorkflow
 from localpilot.application.update_workflow import UpdateWorkflow
 from localpilot.domain.compatibility import CompatibilityPolicy
 from localpilot.domain.models import (
@@ -70,8 +70,9 @@ async def test_no_synthetic_gguf_written_on_missing_file(tmp_path: Path, sample_
         return "/bin/true"
     workflow.llamacpp_adapter.prepare_runtime = mock_prepare
 
+    approval = ApprovalRecord.create_for_plan(plan)
     with pytest.raises(RuntimeError, match="LocalPilot does not create synthetic weights in production"):
-        await workflow.execute_setup(sample_candidate, plan)
+        await workflow.execute_setup(sample_candidate, plan, approval=approval)
 
     # Verify no fake GGUF file exists anywhere in managed storage
     created_files = list((tmp_path).rglob("*.gguf"))
@@ -102,8 +103,9 @@ async def test_inference_failure_retains_downloaded_prepared_and_preserves_file(
     # Mock test_inference to simulate inference failure (e.g. server crash or OOM)
     workflow.llamacpp_adapter.test_inference = AsyncMock(return_value=False)
 
+    approval = ApprovalRecord.create_for_plan(plan)
     with pytest.raises(RuntimeError, match="test inference verification failed"):
-        await workflow.execute_setup(sample_candidate, plan)
+        await workflow.execute_setup(sample_candidate, plan, approval=approval)
 
     # Readiness stage must be DOWNLOADED_PREPARED in DB, NOT tested_here
     conn = db.get_connection()

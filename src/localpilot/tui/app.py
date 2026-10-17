@@ -25,7 +25,7 @@ from textual.widgets import (
 )
 
 from localpilot.application.runtime_service import RuntimeLifecycleService
-from localpilot.application.setup_workflow import SetupWorkflow
+from localpilot.application.setup_workflow import ApprovalRecord, SetupWorkflow
 from localpilot.cli.formatting import HOME_ASCII_BANNER
 from localpilot.domain.documentation import DOCUMENTATION_TOPICS
 from localpilot.domain.models import TaskCategory
@@ -372,10 +372,20 @@ class LocalPilotTUI(App):
         active = self.runtime_svc.reconcile_running_instances()
 
         for r in active:
+            health = r.get("health_status", "healthy")
+            if health == "healthy":
+                status_label = "Running (Verified)"
+            elif health == "degraded":
+                status_label = "Running (Degraded)"
+            elif health == "unresponsive":
+                status_label = "Running (Unresponsive)"
+            else:
+                status_label = f"Running ({health})"
+
             table.add_row(
                 r.get("model_id", ""),
                 str(r.get("pid", "Service")),
-                "Running (Verified)",
+                status_label,
                 r.get("endpoint_url", "N/A"),
                 r.get("instance_id", ""),
                 key=r.get("instance_id", ""),
@@ -429,23 +439,47 @@ class LocalPilotTUI(App):
             row_idx = table.cursor_row
             if 0 <= row_idx < len(self._ranked_candidates):
                 item = self._ranked_candidates[row_idx]
+                workflow = SetupWorkflow()
+                built_plan = workflow.build_plan(
+                    item.candidate,
+                    execution_plan=item.recommended_plan,
+                    alternative_plans=item.alternative_plans,
+                )
 
                 def _on_confirm(confirmed: bool) -> None:
                     if confirmed:
+                        approval = ApprovalRecord.create_for_plan(built_plan, approved_by="user_tui")
                         self.notify(f"Starting setup for {item.candidate.name}...", title="Setup Started")
-                        self._run_setup_worker(item.candidate, item.recommended_plan, item.alternative_plans)
+                        self._run_setup_worker(item.candidate, built_plan, approval)
 
+                msg = (
+                    f"Set up {item.candidate.name}?\n\n"
+                    f"• Backend: {built_plan.inference_backend} ({built_plan.runtime_name})\n"
+                    f"• Download: ~{built_plan.download_bytes / (1024*1024):.0f} MB\n"
+                    f"• Storage: {built_plan.target_install_dir}\n"
+                    f"• Execution Mode: {built_plan.execution_mode}"
+                )
                 self.push_screen(
-                    ConfirmModal("Setup Model", f"Begin setup and download for {item.candidate.name}?"),
+                    ConfirmModal("Approve Model Setup", msg),
                     _on_confirm,
                 )
 
+        elif current_tab == "installed-tab":
+            table = self.query_one("#installed-table", DataTable)
+            if table.row_count == 0 or table.cursor_row < 0:
+                self.notify("No installed model selected.", title="Start Model")
+                return
+            row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
+            installation_id = str(row_key.value) if row_key else ""
+            if installation_id:
+                self.notify(f"Starting model {installation_id}...", title="Starting")
+                self._run_start_worker(installation_id)
+
     @work(exclusive=True, thread=True)
-    def _run_setup_worker(self, candidate, plan, alternatives) -> None:
+    def _run_setup_worker(self, candidate, plan, approval) -> None:
         workflow = SetupWorkflow()
-        built_plan = workflow.build_plan(candidate, execution_plan=plan, alternative_plans=alternatives)
         try:
-            res = asyncio.run(workflow.execute_setup(candidate, built_plan))
+            res = asyncio.run(workflow.execute_setup(candidate, plan, approval=approval))
             self.call_from_thread(self._on_setup_completed, res["installation_id"], candidate.name)
         except Exception as e:
             self.call_from_thread(self.notify, f"Setup failed: {e}", title="Error", severity="error")
@@ -454,6 +488,20 @@ class LocalPilotTUI(App):
         self.notify(f"Successfully set up {name} (ID: {inst_id})", title="Setup Finished")
         self._refresh_installed_table()
         self._refresh_storage()
+
+    @work(exclusive=True, thread=True)
+    def _run_start_worker(self, installation_id: str) -> None:
+        try:
+            res = asyncio.run(self.runtime_svc.start_installed_model(installation_id))
+            self.call_from_thread(self._on_start_completed, res)
+        except Exception as e:
+            self.call_from_thread(self.notify, f"Start failed: {e}", title="Error", severity="error")
+
+    def _on_start_completed(self, res: dict) -> None:
+        inst_id = res.get("instance_id", "")
+        ep = res.get("endpoint_url", "")
+        self.notify(f"Model running at {ep} (ID: {inst_id})", title="Started")
+        self.action_switch_to_running()
 
     def action_stop_action(self) -> None:
         current_tab = self.query_one("#main-tabs", TabbedContent).active
@@ -480,16 +528,20 @@ class LocalPilotTUI(App):
     @work(exclusive=True, thread=True)
     def _run_stop_worker(self, instance_id: str) -> None:
         try:
-            stopped = asyncio.run(self.runtime_svc.stop_running_instance(instance_id))
-            self.call_from_thread(self._on_stop_completed, instance_id, stopped)
+            res = asyncio.run(self.runtime_svc.stop_running_instance(instance_id))
+            self.call_from_thread(self._on_stop_completed, instance_id, res)
         except Exception as e:
             self.call_from_thread(self.notify, f"Failed to stop: {e}", title="Error", severity="error")
 
-    def _on_stop_completed(self, instance_id: str, stopped: bool) -> None:
-        if stopped:
-            self.notify(f"Instance {instance_id} stopped.", title="Stopped")
+    def _on_stop_completed(self, instance_id: str, res: Any) -> None:
+        succeeded = getattr(res, "request_succeeded", bool(res))
+        outcome = getattr(res, "observed_outcome", None)
+        outcome_val = getattr(outcome, "value", str(outcome)) if outcome else ""
+        if succeeded:
+            self.notify(f"Instance {instance_id} stopped ({outcome_val or 'success'}).", title="Stopped")
         else:
-            self.notify(f"Instance {instance_id} was already inactive.", title="Status")
+            reason = getattr(res, "reason", "Stop failed")
+            self.notify(f"Instance {instance_id}: {reason}", title="Stop Failed", severity="warning")
         self._reconcile_and_populate_running()
 
     def action_remove_action(self) -> None:

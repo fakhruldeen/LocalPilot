@@ -1,6 +1,7 @@
 """Inventory tracking, storage categories, and safe removal policies (Section 18)."""
 
 from __future__ import annotations
+import asyncio
 import json
 import os
 import shutil
@@ -11,6 +12,8 @@ from pydantic import BaseModel
 
 from enum import Enum
 from localpilot.domain.ownership import OwnershipClass
+from localpilot.observability.events import ObservabilityHub, get_hub
+from localpilot.security import validate_path_within_root
 from localpilot.storage.db import DatabaseManager, get_db, get_default_data_dir
 
 
@@ -115,27 +118,23 @@ class StorageManager:
                 )
                 return artifact_id
 
-    def safe_remove_installation(
+    async def remove_installation_async(
         self,
         installation_id: str,
         delete_files: bool = True,
-        hub: Optional[Any] = None,
+        hub: Optional[ObservabilityHub] = None,
         ollama_adapter: Optional[Any] = None,
     ) -> Dict[str, Any]:
-        """Removes an installation record safely, preventing removal during active conflicting runs (D09, D10)."""
-        from localpilot.observability.events import ObservabilityHub, get_hub
-        from localpilot.security import validate_path_within_root
-        import asyncio
-
+        """Async implementation of safe model and artifact removal."""
         conn = self.db.get_connection()
         inst = conn.execute("SELECT * FROM installations WHERE installation_id = ?", (installation_id,)).fetchone()
         if not inst:
             return {"success": False, "error": f"Installation {installation_id} not found."}
 
-        # 1. Prevent removal during active running instances
+        # 1. Prevent removal of currently running models (D09)
         running = conn.execute(
-            "SELECT * FROM running_instances WHERE installation_id = ? OR model_id = ?",
-            (installation_id, inst["model_id"]),
+            "SELECT * FROM running_instances WHERE installation_id = ?",
+            (installation_id,),
         ).fetchall()
         if running:
             return {
@@ -168,6 +167,8 @@ class StorageManager:
         files_deleted = []
         files_preserved = []
         bytes_freed = 0
+        service_delete_failed = False
+        service_delete_err = ""
 
         # Plan removal actions per artifact
         for art_id in artifact_ids:
@@ -201,16 +202,17 @@ class StorageManager:
                             pass
 
                     try:
-                        loop = asyncio.get_event_loop()
-                        if loop.is_running():
-                            # If called in an existing loop, run via new task or thread
-                            import concurrent.futures
-                            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-                                deleted_service = pool.submit(asyncio.run, adapter.delete_model(endpoint, model_target)).result()
-                        else:
-                            deleted_service = asyncio.run(adapter.delete_model(endpoint, model_target))
+                        deleted_service = await adapter.delete_model(endpoint, model_target)
                     except Exception as e:
-                        return {"success": False, "error": f"Failed deleting model from service {endpoint}: {e}"}
+                        deleted_service = False
+                        service_delete_err = str(e)
+
+                    if not deleted_service:
+                        service_delete_failed = True
+                        if not service_delete_err:
+                            service_delete_err = f"Service at {endpoint} returned failure when deleting {model_target}"
+                        files_preserved.append(f"service:{endpoint}/{model_target}")
+                        break
 
                     if p.exists() and p.is_file():
                         p.unlink(missing_ok=True)
@@ -225,7 +227,7 @@ class StorageManager:
                             p.unlink()
                             bytes_freed += sz
                             files_deleted.append(str(p))
-                        except Exception as e:
+                        except Exception:
                             files_preserved.append(str(p))
                     else:
                         files_preserved.append(str(p))
@@ -239,6 +241,15 @@ class StorageManager:
                     conn.execute("UPDATE storage_artifacts SET ref_count = ? WHERE artifact_id = ?", (new_ref, art_id))
                 else:
                     conn.execute("DELETE FROM storage_artifacts WHERE artifact_id = ?", (art_id,))
+
+        if service_delete_failed:
+            return {
+                "success": False,
+                "error": f"Failed deleting model from service: {service_delete_err}. Model record preserved.",
+                "bytes_freed": bytes_freed,
+                "files_deleted": files_deleted,
+                "files_preserved": files_preserved,
+            }
 
         with conn:
             conn.execute("DELETE FROM installations WHERE installation_id = ?", (installation_id,))
@@ -257,3 +268,40 @@ class StorageManager:
             "files_deleted": files_deleted,
             "files_preserved": files_preserved,
         }
+
+    def remove_installation(
+        self,
+        installation_id: str,
+        delete_files: bool = True,
+        hub: Optional[ObservabilityHub] = None,
+        ollama_adapter: Optional[Any] = None,
+    ) -> Dict[str, Any]:
+        """Synchronous wrapper for remove_installation_async."""
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            loop = None
+
+        if loop and loop.is_running():
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+                return pool.submit(
+                    asyncio.run,
+                    self.remove_installation_async(
+                        installation_id,
+                        delete_files=delete_files,
+                        hub=hub,
+                        ollama_adapter=ollama_adapter,
+                    ),
+                ).result()
+        else:
+            return asyncio.run(
+                self.remove_installation_async(
+                    installation_id,
+                    delete_files=delete_files,
+                    hub=hub,
+                    ollama_adapter=ollama_adapter,
+                )
+            )
+
+    safe_remove_installation = remove_installation

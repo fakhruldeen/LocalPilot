@@ -129,3 +129,27 @@ class NormalizedCandidate(BaseModel):
             return num
         except ValueError:
             return 7.0
+
+
+class StopStatus(str, Enum):
+    STOPPED = "stopped"
+    UNLOADED_ONLY = "unloaded_only"
+    DAEMON_STOPPED = "daemon_stopped"
+    FAILED = "failed"
+    PERMISSION_DENIED = "permission_denied"
+    ALREADY_STOPPED = "already_stopped"
+    UNKNOWN = "unknown"
+
+
+class StopResult(BaseModel):
+    target_instance_id: str
+    model_id: Optional[str] = None
+    request_succeeded: bool
+    observed_outcome: StopStatus
+    reason: Optional[str] = None
+    remaining_state: Optional[str] = None
+
+    def __bool__(self) -> bool:
+        return self.request_succeeded
+
+

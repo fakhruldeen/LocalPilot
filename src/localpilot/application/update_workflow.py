@@ -23,7 +23,15 @@ class UpdateCheckResult(BaseModel):
     has_update: bool = False
     protection_level: ProtectionLevel = ProtectionLevel.RECOVERY_COPY_AVAILABLE
     impact_summary: str = "Update checking unavailable for this model configuration."
-    status_code: str = "UNKNOWN"
+    status_code: str = "unknown"
+
+    @property
+    def is_update_available(self) -> bool:
+        return self.has_update
+
+    @property
+    def details(self) -> str:
+        return self.impact_summary
 
 
 class UpdateWorkflow:
@@ -71,7 +79,7 @@ class UpdateWorkflow:
                 has_update=False,
                 protection_level=ProtectionLevel.RECOVERY_COPY_AVAILABLE,
                 impact_summary="Ollama model updates require explicit pull.",
-                status_code="OLLAMA_SERVICE_MANAGED",
+                status_code="service_managed",
             )
 
         # For static/local/llama.cpp models without active remote digest lookup
@@ -83,8 +91,10 @@ class UpdateWorkflow:
             has_update=False,
             protection_level=ProtectionLevel.RECOVERY_COPY_AVAILABLE,
             impact_summary="Update checking is unavailable for this artifact source.",
-            status_code="UPDATE_CHECK_UNAVAILABLE",
+            status_code="check_unavailable",
         )
+
+    check_for_updates = check_updates
 
     def apply_update(
         self,
@@ -104,7 +114,7 @@ class UpdateWorkflow:
         # D06: Refuse to claim success without actual update artifact
         check = self.check_updates(installation_id)
         if not staged_source_path and not simulate_failure_for_test:
-            if check.status_code in ("UPDATE_CHECK_UNAVAILABLE", "OLLAMA_SERVICE_MANAGED") or not check.has_update:
+            if check.status_code in ("check_unavailable", "service_managed", "UPDATE_CHECK_UNAVAILABLE", "OLLAMA_SERVICE_MANAGED") or not check.has_update:
                 return {
                     "success": False,
                     "updated": False,
@@ -227,7 +237,7 @@ class UpdateWorkflow:
             return {
                 "success": False,
                 "updated": False,
-                "rolled_back": rollback_performed or rollback_status in ("restored", "no_changes_made"),
+                "rolled_back": bool(rollback_performed and rollback_status == "restored"),
                 "rollback_status": rollback_status,
                 "error": str(e),
                 "target_version": target_version,

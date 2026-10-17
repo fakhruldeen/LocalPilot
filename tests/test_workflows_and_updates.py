@@ -1,11 +1,10 @@
-"""Tests for setup workflow, multi-scope runtime provisioning, and update rollback."""
-
+import json
 from pathlib import Path
 import pytest
 
 from unittest.mock import AsyncMock
 
-from localpilot.application.setup_workflow import SetupWorkflow
+from localpilot.application.setup_workflow import ApprovalRecord, SetupWorkflow
 from localpilot.application.update_workflow import UpdateWorkflow
 from localpilot.domain.models import (
     ConfidenceLevel,
@@ -14,8 +13,10 @@ from localpilot.domain.models import (
     TaskCategory,
     VerificationStage,
 )
+from localpilot.domain.ownership import OwnershipClass, ProcessIdentity
 from localpilot.runtimes.base import InstallationScope
 from localpilot.storage.db import DatabaseManager
+from localpilot.storage.inventory import StorageManager
 
 
 @pytest.fixture
@@ -56,6 +57,14 @@ async def test_setup_workflow_execution(tmp_path: Path, test_candidate: Normaliz
     async def mock_prepare(*args, **kwargs):
         return "/bin/true"
     workflow.llamacpp_adapter.prepare_runtime = mock_prepare
+    workflow.llamacpp_adapter.start_instance = AsyncMock(
+        return_value=ProcessIdentity(
+            pid=99999,
+            endpoint_url="http://127.0.0.1:8080",
+            ownership_class=OwnershipClass.LOCALPILOT_OWNED,
+        )
+    )
+    workflow.llamacpp_adapter.stop_instance = AsyncMock(return_value=True)
     workflow.llamacpp_adapter.test_inference = AsyncMock(return_value=True)
 
     # Pre-stage test model fixture file in target directory
@@ -65,7 +74,8 @@ async def test_setup_workflow_execution(tmp_path: Path, test_candidate: Normaliz
     test_file.write_bytes(b"TEST_FIXTURE_BYTES" * 100)
 
     # Execute setup
-    res = await workflow.execute_setup(test_candidate, plan)
+    approval = ApprovalRecord.create_for_plan(plan)
+    res = await workflow.execute_setup(test_candidate, plan, approval=approval)
     assert res["success"] is True
     assert "inst-" in res["installation_id"]
 
@@ -83,6 +93,15 @@ async def test_setup_workflow_execution(tmp_path: Path, test_candidate: Normaliz
 
 def test_update_rollback_on_failure(tmp_path: Path) -> None:
     db = DatabaseManager(tmp_path / "state.db")
+    art_file = tmp_path / "model_up.gguf"
+    art_file.write_bytes(b"ORIGINAL_BYTES")
+    storage = StorageManager(db=db, data_dir=tmp_path)
+    art_id = storage.register_artifact(
+        artifact_id="art-up-1",
+        physical_path=art_file,
+        bytes_size=len(b"ORIGINAL_BYTES"),
+    )
+
     conn = db.get_connection()
     with conn:
         conn.execute(
@@ -91,17 +110,19 @@ def test_update_rollback_on_failure(tmp_path: Path) -> None:
                 installation_id, model_id, name, runtime_name, artifact_ids_json,
                 readiness_stage, compatibility_status, update_status, ownership_class,
                 created_at, updated_at
-            ) VALUES ('inst-up-1', 'model-up', 'Up Model', 'llamacpp', '[]', 'tested_here', 'compatible', 'v1.0.0', 'localpilot_owned', '2026-01-01', '2026-01-01')
-            """
+            ) VALUES ('inst-up-1', 'model-up', 'Up Model', 'llamacpp', ?, 'tested_here', 'compatible', 'v1.0.0', 'localpilot_owned', '2026-01-01', '2026-01-01')
+            """,
+            (json.dumps([art_id]),),
         )
 
-    workflow = UpdateWorkflow(db=db)
+    workflow = UpdateWorkflow(db=db, data_dir=tmp_path)
     # Trigger update failure to verify safe rollback
     res = workflow.apply_update("inst-up-1", target_version="v2.0.0", simulate_failure_for_test=True)
 
     assert res["success"] is False
     assert res["rolled_back"] is True
     assert res["current_version"] == "v1.0.0"
+    assert art_file.read_bytes() == b"ORIGINAL_BYTES"
 
     # Verify DB still has old version
     row = conn.execute("SELECT update_status FROM installations WHERE installation_id = 'inst-up-1'").fetchone()

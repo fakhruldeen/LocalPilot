@@ -162,12 +162,10 @@ class OllamaRuntimeAdapter(BaseRuntimeAdapter):
             raise RuntimeError(f"Ollama preparation failed: binary was not found or not executable at {target_path} after extraction.")
 
         # Smoke check execution
-        try:
-            smoke = subprocess.run([str(target_path), "--version"], capture_output=True, timeout=5)
-            if smoke.returncode != 0:
-                pass  # Some headless setups may return code 0 or 1 on version check
-        except Exception:
-            pass
+        smoke = subprocess.run([str(target_path), "--version"], capture_output=True, timeout=5)
+        if smoke.returncode != 0:
+            err = smoke.stderr.decode("utf-8", errors="ignore") or smoke.stdout.decode("utf-8", errors="ignore")
+            raise RuntimeError(f"Ollama binary smoke check failed with exit code {smoke.returncode}: {err}")
 
         return str(target_path)
 
@@ -262,6 +260,8 @@ class OllamaRuntimeAdapter(BaseRuntimeAdapter):
     ) -> Dict[str, Any]:
         """Pulls a model through the Ollama service API (Section 10.3)."""
         url = endpoint_url.rstrip("/") + "/api/pull"
+        error_msg = None
+        saw_terminal_status = False
         async with httpx.AsyncClient(timeout=600.0) as client:
             async with client.stream("POST", url, json={"name": model_id, "stream": True}) as resp:
                 resp.raise_for_status()
@@ -270,13 +270,21 @@ class OllamaRuntimeAdapter(BaseRuntimeAdapter):
                         continue
                     try:
                         data = json.loads(line)
+                        if "error" in data:
+                            error_msg = data["error"]
+                            break
                         status_msg = data.get("status", "Pulling model...")
+                        if status_msg == "success":
+                            saw_terminal_status = True
                         completed = data.get("completed", 0)
                         total = data.get("total", 0)
                         if progress_callback:
                             progress_callback(status_msg, completed, total)
                     except Exception:
                         pass
+
+        if error_msg:
+            raise RuntimeError(f"Ollama pull failed for {model_id}: {error_msg}")
 
         # Inspect pulled model digest and size
         digest = None
@@ -286,20 +294,24 @@ class OllamaRuntimeAdapter(BaseRuntimeAdapter):
                 tags_r = await client.get(endpoint_url.rstrip("/") + "/api/tags")
                 if tags_r.status_code == 200:
                     models = tags_r.json().get("models", [])
+                    target_names = {model_id, f"{model_id}:latest" if ":" not in model_id else model_id}
                     for m in models:
                         name_tag = m.get("name", "")
                         model_tag = m.get("model", "")
-                        if model_id in (name_tag, model_tag) or name_tag.startswith(model_id):
+                        if name_tag in target_names or model_tag in target_names:
                             digest = m.get("digest")
                             size = m.get("size", 0)
                             break
         except Exception:
             pass
 
+        if not digest:
+            raise RuntimeError(f"Model '{model_id}' was pulled but could not be verified in Ollama tags catalog.")
+
         return {
             "success": True,
             "model_id": model_id,
-            "digest": digest or f"sha256:ollama_{model_id.replace(':', '_')}",
+            "digest": digest,
             "size": size,
         }
 
@@ -355,8 +367,11 @@ class OllamaRuntimeAdapter(BaseRuntimeAdapter):
         """Stops the running model. Never stops external/shared daemons automatically."""
         # Unload model memory via API without killing daemon
         target_model = model_id or (identity.service_id if identity.service_id and identity.service_id != "ollama" else None)
-        unloaded = True
-        if identity.endpoint_url and target_model:
+        if not target_model:
+            return False
+
+        unloaded = False
+        if identity.endpoint_url:
             unloaded = await self.unload_model(identity.endpoint_url, target_model)
 
         # Only terminate daemon process if explicitly requested and strictly owned

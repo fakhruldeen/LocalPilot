@@ -41,15 +41,6 @@ from localpilot.storage.db import DatabaseManager, get_db, get_default_data_dir
 from localpilot.storage.inventory import StorageManager
 
 
-class ApprovalRecord(BaseModel):
-    """Explicit user or policy approval for critical operations (Section 23)."""
-    approved_by: str = "user"
-    approved_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"))
-    plan_id: Optional[str] = None
-    plan_hash: Optional[str] = None
-    decision_type: str = "model_setup"
-
-
 class SetupPlan(BaseModel):
     model_id: str
     candidate_id: str
@@ -65,6 +56,42 @@ class SetupPlan(BaseModel):
     managed_service: str = "none"
     deployment_method: str = "local_api_service"
     alternative_plans: List[ExecutionPlan] = Field(default_factory=list)
+
+    def compute_hash(self) -> str:
+        """Deterministic hash of the setup plan to guard against tampering."""
+        import hashlib
+        data = {
+            "model_id": self.model_id,
+            "candidate_id": self.candidate_id,
+            "runtime_name": self.runtime_name,
+            "install_scope": self.install_scope.value if hasattr(self.install_scope, "value") else str(self.install_scope),
+            "target_install_dir": str(self.target_install_dir),
+            "download_bytes": self.download_bytes,
+            "storage_needed_bytes": self.storage_needed_bytes,
+            "execution_mode": self.execution_mode,
+            "inference_backend": self.inference_backend,
+            "managed_service": self.managed_service,
+            "deployment_method": self.deployment_method,
+        }
+        dumped = json.dumps(data, sort_keys=True)
+        return hashlib.sha256(dumped.encode("utf-8")).hexdigest()
+
+
+class ApprovalRecord(BaseModel):
+    """Explicit user or policy approval for critical operations (Section 23)."""
+    approved_by: str = "user"
+    approved_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"))
+    plan_id: Optional[str] = None
+    plan_hash: Optional[str] = None
+    decision_type: str = "model_setup"
+
+    @classmethod
+    def create_for_plan(cls, plan: SetupPlan, approved_by: str = "user") -> ApprovalRecord:
+        return cls(
+            approved_by=approved_by,
+            plan_hash=plan.compute_hash(),
+            decision_type="model_setup",
+        )
 
 
 class SetupWorkflow:
@@ -221,6 +248,15 @@ class SetupWorkflow:
                 raise RuntimeError(f"Compatibility recheck failed: {comp.friendly_explanation}")
 
             # Stage 4 & 5: Save mandatory audit approval checkpoint before state change (D26)
+            if not approval:
+                raise PermissionError("Explicit user approval is required before executing setup.")
+
+            expected_hash = plan.compute_hash()
+            if approval.plan_hash != expected_hash:
+                raise PermissionError(
+                    f"Approval plan hash mismatch: expected {expected_hash}, got {approval.plan_hash}"
+                )
+
             checkpoint_payload = plan.model_dump()
             if plan.execution_plan:
                 checkpoint_payload["execution_plan_id"] = plan.execution_plan.plan_id
@@ -228,14 +264,13 @@ class SetupWorkflow:
                 checkpoint_payload["managed_service"] = plan.execution_plan.managed_service.value
                 checkpoint_payload["deployment_method"] = plan.execution_plan.deployment_method.value
                 checkpoint_payload["ownership_class"] = plan.execution_plan.ownership_class.value
-            if approval:
-                checkpoint_payload["approval"] = approval.model_dump()
+            checkpoint_payload["approval"] = approval.model_dump()
 
             self.hub.record_audit_checkpoint(
                 decision_type="model_setup",
                 target_id=candidate.candidate_id,
                 payload=checkpoint_payload,
-                outcome="approved" if approval else "approved",
+                outcome="approved",
                 is_critical=True,
             )
 
@@ -363,6 +398,10 @@ class SetupWorkflow:
                                         if progress_callback and total > 0:
                                             progress_callback(f"Downloading {candidate.name}...", downloaded, total)
 
+                        if total > 0 and downloaded < total:
+                            part_file.unlink(missing_ok=True)
+                            raise RuntimeError(f"Download incomplete: received {downloaded} bytes of expected {total} bytes")
+
                         # Validate downloaded hash if expected
                         if candidate.sha256:
                             calc_sha = hasher.hexdigest().lower()
@@ -456,20 +495,25 @@ class SetupWorkflow:
                         inference_passed = await self.vllm_adapter.test_inference("http://127.0.0.1:8000", candidate.model_id)
                     else:
                         # llama.cpp: launch dynamic test instance
-                        test_endpoint = "http://127.0.0.1:8080"
+                        v_inst_id = f"inst-verify-{str(uuid.uuid4())[:8]}"
+                        log_dir = self.storage_mgr.data_dir / "logs"
+                        log_dir.mkdir(parents=True, exist_ok=True)
+                        v_log = log_dir / f"verify_{v_inst_id}.log"
                         try:
-                            v_inst_id = f"inst-verify-{str(uuid.uuid4())[:8]}"
-                            log_dir = self.storage_mgr.data_dir / "logs"
-                            log_dir.mkdir(parents=True, exist_ok=True)
-                            v_log = log_dir / f"verify_{v_inst_id}.log"
                             verification_instance = await self.llamacpp_adapter.start_instance(
                                 str(model_file), candidate, v_inst_id, v_log
                             )
-                            if verification_instance and verification_instance.endpoint_url:
-                                test_endpoint = verification_instance.endpoint_url
                         except Exception as launch_err:
-                            test_error = str(launch_err)
-                        inference_passed = await self.llamacpp_adapter.test_inference(test_endpoint, candidate.model_id)
+                            test_error = f"Failed to start verification instance: {launch_err}"
+                            verification_instance = None
+
+                        if verification_instance and verification_instance.endpoint_url:
+                            test_endpoint = verification_instance.endpoint_url
+                            inference_passed = await self.llamacpp_adapter.test_inference(test_endpoint, candidate.model_id)
+                        else:
+                            inference_passed = False
+                            if not test_error:
+                                test_error = "Verification instance did not start or provide an endpoint."
                 except Exception as exc:
                     test_error = str(exc)
                     inference_passed = False

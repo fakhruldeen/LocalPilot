@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 import httpx
 
-from localpilot.domain.models import NormalizedCandidate
+from localpilot.domain.models import NormalizedCandidate, StopResult, StopStatus
 from localpilot.domain.ownership import OwnershipClass, OwnershipVerifier, ProcessIdentity
 from localpilot.hardware.inspector import SystemInspector
 from localpilot.platforms import get_platform_adapter
@@ -33,7 +33,9 @@ class RuntimeLifecycleService:
     def get_adapter(self, runtime_name: str) -> BaseRuntimeAdapter:
         if runtime_name == "ollama":
             return self.ollama_adapter
-        return self.llamacpp_adapter
+        if runtime_name == "llamacpp":
+            return self.llamacpp_adapter
+        raise ValueError(f"Unsupported runtime adapter: '{runtime_name}'")
 
     def reconcile_running_instances(self) -> List[Dict[str, Any]]:
         """Reconciles database running_instances against real OS processes and endpoint health."""
@@ -66,18 +68,19 @@ class RuntimeLifecycleService:
 
             is_alive = OwnershipVerifier.verify_process(identity)
 
-            # Check endpoint responsiveness
-            if is_alive and endpoint:
-                try:
-                    with httpx.Client(timeout=1.5) as client:
-                        resp = client.get(endpoint.rstrip("/") + ("/api/tags" if "ollama" in data.get("executable_path", "").lower() or data.get("managed_service") == "ollama" else "/v1/models"))
-                        if resp.status_code >= 500:
-                            is_alive = False
-                except Exception:
-                    # Non-fatal if server is just busy or starting up, but if process is dead, it will have failed already
-                    pass
-
+            # Check endpoint responsiveness without dropping instances on transient timeouts
             if is_alive:
+                data["health_status"] = "healthy"
+                if endpoint:
+                    try:
+                        with httpx.Client(timeout=1.5) as client:
+                            probe = "/api/tags" if "ollama" in data.get("executable_path", "").lower() or data.get("managed_service") == "ollama" else "/v1/models"
+                            resp = client.get(endpoint.rstrip("/") + probe)
+                            if resp.status_code >= 500:
+                                data["health_status"] = "degraded"
+                    except Exception:
+                        data["health_status"] = "unresponsive"
+
                 active_instances.append(data)
             else:
                 dead_instance_ids.append(data["instance_id"])
@@ -106,21 +109,55 @@ class RuntimeLifecycleService:
 
         model_id = inst_row["model_id"]
         runtime_name = inst_row["runtime_name"]
+
+        # Prevent duplicate instances if already running and verified
+        existing_run = conn.execute(
+            "SELECT * FROM running_instances WHERE installation_id = ? OR model_id = ?",
+            (installation_id, model_id),
+        ).fetchone()
+        if existing_run:
+            existing_data = dict(existing_run)
+            pid = existing_data.get("pid")
+            create_time = existing_data.get("process_create_time")
+            identity = ProcessIdentity(
+                pid=pid if pid and pid > 0 else None,
+                process_create_time=create_time,
+                executable_path=existing_data.get("executable_path"),
+                endpoint_url=existing_data.get("endpoint_url"),
+                ownership_class=OwnershipClass.LOCALPILOT_OWNED if pid else OwnershipClass.READONLY_DISCOVERED,
+            )
+            if OwnershipVerifier.verify_process(identity):
+                return {
+                    "instance_id": existing_data["instance_id"],
+                    "model_id": existing_data["model_id"],
+                    "installation_id": existing_data.get("installation_id") or installation_id,
+                    "endpoint_url": existing_data["endpoint_url"],
+                    "pid": existing_data["pid"],
+                    "started_at": existing_data["started_at"],
+                    "already_running": True,
+                }
+
         adapter = self.get_adapter(runtime_name)
 
-        # Resolve artifact path
+        # Resolve artifact path and size
         art_ids = json.loads(inst_row["artifact_ids_json"]) if inst_row["artifact_ids_json"] else []
         artifact_path = ""
+        artifact_bytes = 0
         if art_ids:
             art_row = conn.execute(
-                "SELECT physical_path FROM storage_artifacts WHERE artifact_id = ?",
+                "SELECT physical_path, bytes FROM storage_artifacts WHERE artifact_id = ?",
                 (art_ids[0],),
             ).fetchone()
             if art_row:
                 artifact_path = art_row["physical_path"]
+                artifact_bytes = art_row["bytes"]
 
         # If no physical artifact, check model_id
         target = artifact_path or model_id
+
+        # Memory verification against actual system capabilities
+        sys_report = self.inspector.inspect()
+        avail_ram = sys_report.hardware.memory.available_ram_bytes
 
         # Candidate reconstruction
         c_row = conn.execute(
@@ -130,16 +167,24 @@ class RuntimeLifecycleService:
         if c_row:
             candidate = NormalizedCandidate.model_validate_json(c_row["payload_json"])
         else:
+            cand_bytes = artifact_bytes or (1024 * 1024 * 1024)
             candidate = NormalizedCandidate(
                 candidate_id=f"inst-{installation_id}",
                 model_id=model_id,
                 name=inst_row["name"],
                 source="local",
                 format="gguf" if runtime_name != "ollama" else "ollama_blob",
-                total_bytes=1024 * 1024 * 1024,
-                estimated_ram_bytes=1024 * 1024 * 1024,
-                estimated_disk_bytes=1024 * 1024 * 1024,
+                total_bytes=cand_bytes,
+                estimated_ram_bytes=cand_bytes,
+                estimated_disk_bytes=cand_bytes,
                 metadata_fetched_at=datetime.now(timezone.utc).isoformat(),
+            )
+
+        if candidate.estimated_ram_bytes > avail_ram:
+            raise RuntimeError(
+                f"Insufficient memory to start {candidate.name}: requires at least "
+                f"{candidate.estimated_ram_bytes / (1024**3):.1f} GB RAM, but only "
+                f"{avail_ram / (1024**3):.1f} GB is currently available."
             )
 
         import uuid
@@ -153,6 +198,22 @@ class RuntimeLifecycleService:
             instance_id=instance_id,
             log_file=log_file,
         )
+
+        # Verify endpoint readiness probe
+        if proc_id.endpoint_url:
+            ready = False
+            async with httpx.AsyncClient(timeout=2.0) as client:
+                probe_url = proc_id.endpoint_url.rstrip("/") + ("/api/tags" if runtime_name == "ollama" else "/v1/models")
+                for _ in range(10):
+                    try:
+                        r = await client.get(probe_url)
+                        if r.status_code == 200:
+                            ready = True
+                            break
+                    except Exception:
+                        await asyncio.sleep(0.3)
+            if not ready:
+                logger.warning(f"Instance started at {proc_id.endpoint_url} but probe did not confirm 200 OK within timeout.")
 
         now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         with conn:
@@ -188,10 +249,11 @@ class RuntimeLifecycleService:
             "endpoint_url": proc_id.endpoint_url,
             "pid": proc_id.pid,
             "started_at": now_iso,
+            "already_running": False,
         }
 
-    async def stop_running_instance(self, instance_id: str, force: bool = False) -> bool:
-        """Stops a running instance and clears it from running_instances."""
+    async def stop_running_instance(self, instance_id: str, force: bool = False) -> StopResult:
+        """Stops a running instance honestly and clears it from running_instances only if stop succeeds."""
         conn = self.db.get_connection()
         row = conn.execute(
             "SELECT * FROM running_instances WHERE instance_id = ?",
@@ -199,9 +261,15 @@ class RuntimeLifecycleService:
         ).fetchone()
 
         if not row:
-            return False
+            return StopResult(
+                target_instance_id=instance_id,
+                request_succeeded=False,
+                observed_outcome=StopStatus.ALREADY_STOPPED,
+                reason=f"Instance {instance_id} was not found in running instances.",
+            )
 
         data = dict(row)
+        model_id = data.get("model_id")
         try:
             ownership = OwnershipClass(data.get("ownership_class", "unknown"))
         except ValueError:
@@ -213,6 +281,7 @@ class RuntimeLifecycleService:
             executable_path=data.get("executable_path"),
             endpoint_url=data.get("endpoint_url"),
             ownership_class=ownership,
+            service_id="ollama" if "ollama" in (data.get("executable_path") or "").lower() or (data.get("endpoint_url") or "").endswith("11434") else None,
         )
 
         # Look up runtime adapter
@@ -224,13 +293,43 @@ class RuntimeLifecycleService:
             ).fetchone()
 
         runtime_name = inst_row["runtime_name"] if inst_row else "llamacpp"
-        if "ollama" in data.get("executable_path", "").lower() or data.get("endpoint_url", "").endswith("11434"):
+        if "ollama" in data.get("executable_path", "").lower() or (data.get("endpoint_url") or "").endswith("11434"):
             runtime_name = "ollama"
 
-        adapter = self.get_adapter(runtime_name)
-        stopped = await adapter.stop_instance(identity)
+        try:
+            adapter = self.get_adapter(runtime_name)
+        except Exception as e:
+            return StopResult(
+                target_instance_id=instance_id,
+                model_id=model_id,
+                request_succeeded=False,
+                observed_outcome=StopStatus.FAILED,
+                reason=f"Could not resolve adapter for {runtime_name}: {e}",
+            )
 
-        with conn:
-            conn.execute("DELETE FROM running_instances WHERE instance_id = ?", (instance_id,))
+        if runtime_name == "ollama":
+            stopped = await adapter.stop_instance(identity, model_id=model_id, stop_daemon=force)
+        else:
+            stopped = await adapter.stop_instance(identity)
 
-        return stopped
+        if stopped:
+            with conn:
+                conn.execute("DELETE FROM running_instances WHERE instance_id = ?", (instance_id,))
+
+            return StopResult(
+                target_instance_id=instance_id,
+                model_id=model_id,
+                request_succeeded=True,
+                observed_outcome=StopStatus.STOPPED if runtime_name != "ollama" else StopStatus.UNLOADED_ONLY,
+                reason=f"Successfully stopped/unloaded instance {instance_id}.",
+                remaining_state="stopped",
+            )
+        else:
+            return StopResult(
+                target_instance_id=instance_id,
+                model_id=model_id,
+                request_succeeded=False,
+                observed_outcome=StopStatus.FAILED,
+                reason=f"Adapter {runtime_name} reported failure when attempting to stop instance {instance_id}.",
+                remaining_state="running",
+            )

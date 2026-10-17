@@ -12,7 +12,7 @@ import typer
 from rich.table import Table
 
 from localpilot.application.runtime_service import RuntimeLifecycleService
-from localpilot.application.setup_workflow import SetupWorkflow
+from localpilot.application.setup_workflow import ApprovalRecord, SetupWorkflow
 from localpilot.application.update_workflow import UpdateWorkflow
 from localpilot.cli.formatting import console, render_banner, render_error_box, render_message_box
 from localpilot.domain.models import TaskCategory
@@ -229,11 +229,14 @@ def _do_stop(instance_id: str, force: bool = False) -> None:
         return await svc.stop_running_instance(instance_id, force=force)
 
     try:
-        success = asyncio.run(_async_stop())
-        if success:
-            console.print(f"[bold green]Instance {instance_id} stopped successfully.[/bold green]")
+        res = asyncio.run(_async_stop())
+        if res.request_succeeded:
+            console.print(f"[bold green]Instance {instance_id} stopped ({res.observed_outcome.value}).[/bold green]")
         else:
-            console.print(f"[yellow]Instance {instance_id} was not active or already stopped.[/yellow]")
+            if getattr(res, "observed_outcome", None) and res.observed_outcome.value == "already_stopped":
+                console.print(f"[yellow]Instance {instance_id} was not active or already stopped.[/yellow]")
+            else:
+                render_error_box(f"Failed to stop instance {instance_id}: {res.reason or 'Unknown error'}")
     except Exception as e:
         render_error_box(f"Failed to stop instance: {e}")
 
@@ -301,33 +304,37 @@ def _do_chat(target: str) -> None:
 def _do_update(installation_id: str, yes: bool = False) -> None:
     workflow = UpdateWorkflow()
 
-    async def _async_check():
-        return await workflow.check_for_updates(installation_id)
-
-    with console.status("Checking for model updates..."):
-        status = asyncio.run(_async_check())
-
-    if not status.is_update_available:
-        console.print(f"Installation {installation_id} is up to date ({status.details}).")
+    try:
+        with console.status("Checking for model updates..."):
+            status = workflow.check_updates(installation_id)
+    except Exception as e:
+        render_error_box(f"Failed to check updates for {installation_id}: {e}")
         return
 
-    console.print(f"[bold green]Update available![/bold green] {status.details}")
+    if not status.has_update:
+        console.print(f"Installation {installation_id}: {status.impact_summary}")
+        return
+
+    console.print(f"[bold green]Update available![/bold green] {status.impact_summary} (target: {status.available_version or 'latest'})")
     if not yes:
         confirm = typer.confirm("Apply update now?", default=True)
         if not confirm:
             console.print("Update cancelled.")
             return
 
-    async def _async_apply():
-        return await workflow.apply_update(installation_id)
+    try:
+        with console.status("Applying update..."):
+            res = workflow.apply_update(installation_id, target_version=status.available_version or "latest")
+    except Exception as e:
+        render_error_box(f"Failed to apply update: {e}")
+        return
 
-    with console.status("Applying update..."):
-        res = asyncio.run(_async_apply())
-
-    if res.get("status") == "updated":
+    if res.get("updated"):
         console.print(f"[bold green]Update applied successfully![/bold green]")
+    elif res.get("rolled_back"):
+        render_error_box(f"Update failed but safely restored previous version: {res.get('error', 'Unknown error')}")
     else:
-        render_error_box(f"Update failed: {res.get('details', 'Unknown error')}")
+        render_error_box(f"Update failed: {res.get('error', 'Unknown error')} (rollback: {res.get('rollback_status')})")
 
 
 def _do_guide(topic: Optional[str] = None) -> None:
@@ -753,8 +760,9 @@ def setup_model(
         def _progress(msg: str, done: int, total: int) -> None:
             console.print(f"[dim]{msg}[/dim]")
 
+        approval = ApprovalRecord.create_for_plan(plan, approved_by="user_cli")
         with console.status(f"Setting up {candidate.name}..."):
-            res = await workflow.execute_setup(candidate, plan, progress_callback=_progress)
+            res = await workflow.execute_setup(candidate, plan, progress_callback=_progress, approval=approval)
         console.print(f"\n[bold green]Success![/bold green] Model set up with ID: [cyan]{res['installation_id']}[/cyan]")
         console.print(f"To run this model: [cyan]localpilot run {res['installation_id']}[/cyan]")
 
