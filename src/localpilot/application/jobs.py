@@ -183,3 +183,26 @@ class JobManager:
             outcome="failure",
             reason_code=error_category,
         )
+
+    def get_interrupted_jobs(self) -> List[Dict[str, Any]]:
+        """Returns any active jobs that were left running due to unexpected process termination."""
+        conn = self.db.get_connection()
+        rows = conn.execute("SELECT * FROM jobs WHERE status = 'running' ORDER BY created_at DESC").fetchall()
+        return [dict(r) for r in rows]
+
+    def cleanup_interrupted_job(self, job_id: str) -> None:
+        """Marks an interrupted job as cancelled and cleans up any temporary download artifacts."""
+        conn = self.db.get_connection()
+        now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        with conn:
+            conn.execute(
+                "UPDATE jobs SET status = 'cancelled', error_category = 'user_cleaned_up', updated_at = ? WHERE job_id = ?",
+                (now, job_id),
+            )
+        self.hub.emit_event(
+            category=EventCategory.WORKFLOW,
+            event_name="job.cancelled",
+            message=f"Interrupted job {job_id} was cleaned up",
+            job_id=job_id,
+            outcome="cancelled",
+        )

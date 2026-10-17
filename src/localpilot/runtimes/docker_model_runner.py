@@ -118,12 +118,28 @@ class DockerModelRunnerServiceAdapter(ManagedServiceAdapter):
         if not cli:
             return False
         try:
-            res = subprocess.run(
-                [cli, "model", "--help"],
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
+            # 1. Inspect Docker client plugins list if available
+            info_res = subprocess.run(
+                [cli, "info", "--format", "{{range .ClientInfo.Plugins}}{{.Name}} {{end}}"],
+                capture_output=True,
+                text=True,
                 timeout=3,
             )
+            if info_res.returncode == 0 and info_res.stdout:
+                plugins = info_res.stdout.split()
+                if "model" in plugins:
+                    return True
+
+            # 2. Check direct 'docker model' command (must not be an unknown command)
+            res = subprocess.run(
+                [cli, "model"],
+                capture_output=True,
+                text=True,
+                timeout=3,
+            )
+            combined = (res.stdout + res.stderr).lower()
+            if "unknown command" in combined or "is not a docker command" in combined:
+                return False
             return res.returncode == 0
         except Exception:
             return False

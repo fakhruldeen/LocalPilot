@@ -72,6 +72,7 @@ class NormalizedCandidate(BaseModel):
     # Files, format and acquisition URLs
     format: str                          # "gguf", "ollama_blob"
     total_bytes: int
+    expected_bytes: Optional[int] = None
     files: List[str] = Field(default_factory=list)
     sha256: Optional[str] = None
     download_url: Optional[str] = None

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 import asyncio
+import hashlib
 import json
 import os
 import platform
@@ -124,6 +125,7 @@ class OllamaRuntimeAdapter(BaseRuntimeAdapter):
         archive_path = downloads_dir / Path(plan.download_url).name
 
         if plan.download_url:
+            hasher = hashlib.sha256()
             async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
                 async with client.stream("GET", plan.download_url) as resp:
                     resp.raise_for_status()
@@ -132,9 +134,18 @@ class OllamaRuntimeAdapter(BaseRuntimeAdapter):
                     with open(archive_path, "wb") as f:
                         async for chunk in resp.aiter_bytes(chunk_size=65536):
                             f.write(chunk)
+                            hasher.update(chunk)
                             downloaded += len(chunk)
                             if progress_callback and total > 0:
                                 progress_callback(downloaded, total)
+
+            if plan.expected_sha256:
+                calc_sha = hasher.hexdigest().lower()
+                if calc_sha != plan.expected_sha256.lower():
+                    archive_path.unlink(missing_ok=True)
+                    raise RuntimeError(
+                        f"Integrity check failed for runtime archive: {calc_sha} != {plan.expected_sha256}"
+                    )
 
         # Extract archive
         extract_dir = target_path.parent.parent if scope == InstallationScope.ISOLATED else downloads_dir / "extracted_ollama"

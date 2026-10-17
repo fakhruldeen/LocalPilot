@@ -169,6 +169,8 @@ class StorageManager:
         bytes_freed = 0
         service_delete_failed = False
         service_delete_err = ""
+        fs_delete_failed = False
+        fs_delete_err = ""
 
         # Plan removal actions per artifact
         for art_id in artifact_ids:
@@ -182,6 +184,7 @@ class StorageManager:
             mgmt_mode = art["management_mode"]
             del_method = art["deletion_method"]
             is_imported = mgmt_mode == "imported_reference" or not art["is_managed"]
+            artifact_deleted = False
 
             if delete_files and new_ref == 0 and is_owned and not is_imported:
                 if mgmt_mode == "runtime_managed" or del_method == "service_api_delete":
@@ -214,10 +217,13 @@ class StorageManager:
                         files_preserved.append(f"service:{endpoint}/{model_target}")
                         break
 
+                    ref_bytes = 0
                     if p.exists() and p.is_file():
+                        ref_bytes = p.stat().st_size
                         p.unlink(missing_ok=True)
-                    bytes_freed += art["bytes"]
+                    bytes_freed += ref_bytes
                     files_deleted.append(f"service:{endpoint}/{model_target}")
+                    artifact_deleted = True
 
                 elif mgmt_mode == "directly_managed" or del_method == "delete_files":
                     if p.exists() and p.is_file():
@@ -227,25 +233,32 @@ class StorageManager:
                             p.unlink()
                             bytes_freed += sz
                             files_deleted.append(str(p))
-                        except Exception:
+                            artifact_deleted = True
+                        except Exception as e:
+                            fs_delete_failed = True
+                            fs_delete_err = str(e)
                             files_preserved.append(str(p))
+                            break
                     else:
                         files_preserved.append(str(p))
+                        artifact_deleted = True
                 else:
                     files_preserved.append(str(p))
             else:
                 files_preserved.append(str(p))
 
-            with conn:
-                if new_ref > 0:
-                    conn.execute("UPDATE storage_artifacts SET ref_count = ? WHERE artifact_id = ?", (new_ref, art_id))
-                else:
-                    conn.execute("DELETE FROM storage_artifacts WHERE artifact_id = ?", (art_id,))
+            if not fs_delete_failed and not service_delete_failed:
+                with conn:
+                    if new_ref > 0:
+                        conn.execute("UPDATE storage_artifacts SET ref_count = ? WHERE artifact_id = ?", (new_ref, art_id))
+                    elif artifact_deleted:
+                        conn.execute("DELETE FROM storage_artifacts WHERE artifact_id = ?", (art_id,))
 
-        if service_delete_failed:
+        if service_delete_failed or fs_delete_failed:
+            err_msg = service_delete_err or fs_delete_err or "Failed deleting files"
             return {
                 "success": False,
-                "error": f"Failed deleting model from service: {service_delete_err}. Model record preserved.",
+                "error": f"Failed deleting model files: {err_msg}. Model record preserved.",
                 "bytes_freed": bytes_freed,
                 "files_deleted": files_deleted,
                 "files_preserved": files_preserved,

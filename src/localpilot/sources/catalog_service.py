@@ -359,3 +359,85 @@ class CatalogService:
             )
 
         return results
+
+    def get_shortlist(
+        self,
+        task: Optional[TaskCategory] = None,
+        hardware: Optional[HardwareSnapshot] = None,
+        limit: int = 3,
+    ) -> List[Any]:
+        """Returns non-redundant, compatibility-gated shortlisted candidates with distinctions."""
+        from localpilot.domain.recommendation import ModelRecommendationEngine, ShortlistCandidate
+        from localpilot.observability.schema import RecommendationDecisionRecord
+
+        report = self.inspector.inspect()
+        hw = hardware or report.hardware
+        target_task = task or TaskCategory.CHAT
+
+        ranked = self.discover(hardware=hw, task=task, only_compatible=True)
+        shortlist = ModelRecommendationEngine.generate_shortlist(
+            ranked_candidates=ranked,
+            task=target_task,
+            hardware=hw,
+            target_count=limit,
+        )
+
+        conn = self.db.get_connection()
+        for idx, item in enumerate(shortlist):
+            cand = item.candidate
+            plan = item.recommended_plan
+            score_comp_dict = {
+                "newness": item.score.newness_score,
+                "download": item.score.download_score,
+                "context": item.score.context_score,
+                "headroom": item.score.headroom_score,
+            } if item.score else {}
+            decision_record = RecommendationDecisionRecord(
+                candidate_id=cand.candidate_id,
+                policy_version="compatibility-v1",
+                scoring_version="scoring-v1",
+                hardware_snapshot=hw.model_dump(),
+                execution_plan=plan.model_dump() if plan else {},
+                checks=item.compatibility.checks if item.compatibility else [],
+                score_components=score_comp_dict,
+                total_score=item.score.total_score if item.score else 0.0,
+                confidence=item.task_evidence_level.value,
+                rank=idx + 1,
+                outcome="recommended",
+                reason_code=item.distinction.value,
+            )
+            try:
+                with conn:
+                    conn.execute(
+                        """
+                        INSERT INTO audit_decisions (
+                            decision_id, timestamp, decision_type, target_id, payload_json, outcome, reason_code
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            decision_record.decision_id,
+                            decision_record.timestamp,
+                            "recommendation",
+                            cand.candidate_id,
+                            decision_record.model_dump_json(),
+                            decision_record.outcome,
+                            decision_record.reason_code,
+                        ),
+                    )
+            except Exception:
+                pass
+
+        return shortlist
+
+    def get_comparison(
+        self,
+        candidates: List[NormalizedCandidate],
+        hardware: Optional[HardwareSnapshot] = None,
+    ) -> List[Any]:
+        """Generates side-by-side comparison rows for candidates."""
+        from localpilot.domain.recommendation import ModelRecommendationEngine
+
+        report = self.inspector.inspect()
+        hw = hardware or report.hardware
+        return ModelRecommendationEngine.generate_comparison(candidates, hw)
+

@@ -176,6 +176,8 @@ class UpdateWorkflow:
                     target_file.write_bytes(b"CORRUPT_STAGED_TEST_BYTES")
                 raise RuntimeError("Verification tests failed on staged update.")
 
+            new_sha = None
+            new_size = None
             if staged_source_path:
                 if not staged_source_path.exists():
                     raise FileNotFoundError(f"Staged update file not found at {staged_source_path}")
@@ -184,14 +186,26 @@ class UpdateWorkflow:
                     file_modified = True
                     if verify_callback and not verify_callback(target_file):
                         raise RuntimeError("Staged update failed verification test.")
+                    import hashlib
+                    hasher = hashlib.sha256()
+                    with open(target_file, "rb") as f:
+                        for chunk in iter(lambda: f.read(65536), b""):
+                            hasher.update(chunk)
+                    new_sha = hasher.hexdigest()
+                    new_size = target_file.stat().st_size
 
-            # Apply update to installation record
+            # Apply update to installation record and canonical artifact metadata
             now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
             with conn:
                 conn.execute(
                     "UPDATE installations SET update_status = ?, updated_at = ? WHERE installation_id = ?",
                     ("up_to_date", now, installation_id),
                 )
+                if artifact_ids and new_size is not None and new_sha is not None:
+                    conn.execute(
+                        "UPDATE storage_artifacts SET bytes = ?, sha256 = ? WHERE artifact_id = ?",
+                        (new_size, new_sha, artifact_ids[0]),
+                    )
 
             # Cleanup backup copy after successful update
             if backup_file and backup_file.exists():

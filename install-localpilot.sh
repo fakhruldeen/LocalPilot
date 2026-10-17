@@ -197,7 +197,7 @@ if [ -f "$SCRIPT_DIR/pyproject.toml" ]; then
 else
   echo "Downloading and installing LocalPilot from PyPI..."
   "$VENV_DIR/bin/pip" install --upgrade pip >/dev/null 2>&1 || true
-  "$VENV_DIR/bin/pip" install "localpilot>=0.1.5"
+  "$VENV_DIR/bin/pip" install "localpilot>=0.1.6"
 fi
 
 # Create launcher script
@@ -211,9 +211,14 @@ chmod +x "$LAUNCHER"
 # Convenience symlink to ~/.local/bin if available
 USER_LOCAL_BIN="$HOME/.local/bin"
 if [ -d "$USER_LOCAL_BIN" ] && [ "$BIN_DIR" != "$USER_LOCAL_BIN" ]; then
-  mkdir -p "$USER_LOCAL_BIN"
-  ln -sf "$LAUNCHER" "$USER_LOCAL_BIN/localpilot" 2>/dev/null || true
-  echo "Convenience link created: $USER_LOCAL_BIN/localpilot"
+  TARGET_LINK="$USER_LOCAL_BIN/localpilot"
+  if [ -e "$TARGET_LINK" ] && [ ! -L "$TARGET_LINK" ]; then
+    echo "Warning: Existing non-symlink file found at $TARGET_LINK; skipping convenience link to avoid overwriting."
+  else
+    mkdir -p "$USER_LOCAL_BIN"
+    ln -sf "$LAUNCHER" "$TARGET_LINK" 2>/dev/null || true
+    echo "Convenience link created: $TARGET_LINK"
+  fi
 fi
 
 echo ""

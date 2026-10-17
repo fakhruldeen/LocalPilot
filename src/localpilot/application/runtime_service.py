@@ -157,7 +157,7 @@ class RuntimeLifecycleService:
 
         # Memory verification against actual system capabilities
         sys_report = self.inspector.inspect()
-        avail_ram = sys_report.hardware.memory.available_ram_bytes
+        avail_ram = sys_report.hardware.ram_available_bytes
 
         # Candidate reconstruction
         c_row = conn.execute(
@@ -173,6 +173,10 @@ class RuntimeLifecycleService:
                 model_id=model_id,
                 name=inst_row["name"],
                 source="local",
+                artifact_id=Path(artifact_path).name if artifact_path else f"{model_id}.gguf",
+                architecture="llama",
+                family="Local Model",
+                runtime=runtime_name,
                 format="gguf" if runtime_name != "ollama" else "ollama_blob",
                 total_bytes=cand_bytes,
                 estimated_ram_bytes=cand_bytes,
@@ -252,23 +256,35 @@ class RuntimeLifecycleService:
             "already_running": False,
         }
 
-    async def stop_running_instance(self, instance_id: str, force: bool = False) -> StopResult:
+    async def stop_running_instance(self, target: str, force: bool = False) -> StopResult:
         """Stops a running instance honestly and clears it from running_instances only if stop succeeds."""
         conn = self.db.get_connection()
         row = conn.execute(
-            "SELECT * FROM running_instances WHERE instance_id = ?",
-            (instance_id,),
+            "SELECT * FROM running_instances WHERE instance_id = ? OR installation_id = ? OR model_id = ?",
+            (target, target, target),
         ).fetchone()
 
         if not row:
+            inst_row = conn.execute(
+                "SELECT installation_id FROM installations WHERE name = ? OR model_id = ?",
+                (target, target),
+            ).fetchone()
+            if inst_row:
+                row = conn.execute(
+                    "SELECT * FROM running_instances WHERE installation_id = ?",
+                    (inst_row["installation_id"],),
+                ).fetchone()
+
+        if not row:
             return StopResult(
-                target_instance_id=instance_id,
+                target_instance_id=target,
                 request_succeeded=False,
                 observed_outcome=StopStatus.ALREADY_STOPPED,
-                reason=f"Instance {instance_id} was not found in running instances.",
+                reason=f"Instance {target} was not found in running instances.",
             )
 
         data = dict(row)
+        instance_id = data.get("instance_id", target)
         model_id = data.get("model_id")
         try:
             ownership = OwnershipClass(data.get("ownership_class", "unknown"))

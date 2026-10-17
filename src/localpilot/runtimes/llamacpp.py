@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 import asyncio
+import hashlib
 import os
 import platform
 import shutil
@@ -9,7 +10,7 @@ import socket
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 import httpx
 import psutil
 
@@ -57,6 +58,32 @@ class LlamaCppRuntimeAdapter(BaseRuntimeAdapter):
             restore_previous_version=True,
             protection_level=ProtectionLevel.RECOVERY_COPY_AVAILABLE,
         )
+
+    @staticmethod
+    def get_runtime_env(bin_path: Union[str, Path]) -> Dict[str, str]:
+        """Constructs an environment dictionary with LD_LIBRARY_PATH/DYLD_LIBRARY_PATH
+
+        containing directories where libllama.so, libggml.so, or libllama.dylib reside.
+        """
+        env = os.environ.copy()
+        bin_p = Path(bin_path).resolve()
+        candidate_dirs = [
+            bin_p.parent,
+            bin_p.parent / "build" / "bin",
+            bin_p.parent / "lib",
+            bin_p.parent.parent / "lib",
+        ]
+        valid_lib_dirs = [
+            str(d) for d in candidate_dirs
+            if d.is_dir() and any(f.suffix in (".so", ".dylib") for f in d.iterdir() if f.is_file())
+        ]
+        if valid_lib_dirs:
+            joined = ":".join(valid_lib_dirs)
+            current_ld = env.get("LD_LIBRARY_PATH", "")
+            env["LD_LIBRARY_PATH"] = f"{joined}:{current_ld}" if current_ld else joined
+            current_dyld = env.get("DYLD_LIBRARY_PATH", "")
+            env["DYLD_LIBRARY_PATH"] = f"{joined}:{current_dyld}" if current_dyld else joined
+        return env
 
     def detect_existing_installation(self) -> Optional[Tuple[InstallationScope, str]]:
         # 1. Check isolated application runtime directory
@@ -125,6 +152,7 @@ class LlamaCppRuntimeAdapter(BaseRuntimeAdapter):
         archive_path = downloads_dir / Path(plan.download_url).name
 
         if plan.download_url:
+            hasher = hashlib.sha256()
             async with httpx.AsyncClient(timeout=60.0, follow_redirects=True) as client:
                 async with client.stream("GET", plan.download_url) as resp:
                     resp.raise_for_status()
@@ -133,9 +161,18 @@ class LlamaCppRuntimeAdapter(BaseRuntimeAdapter):
                     with open(archive_path, "wb") as f:
                         async for chunk in resp.aiter_bytes(chunk_size=65536):
                             f.write(chunk)
+                            hasher.update(chunk)
                             downloaded += len(chunk)
                             if progress_callback and total > 0:
                                 progress_callback(downloaded, total)
+
+            if plan.expected_sha256:
+                calc_sha = hasher.hexdigest().lower()
+                if calc_sha != plan.expected_sha256.lower():
+                    archive_path.unlink(missing_ok=True)
+                    raise RuntimeError(
+                        f"Integrity check failed for runtime archive: {calc_sha} != {plan.expected_sha256}"
+                    )
 
         extract_dir = target_path.parent if scope == InstallationScope.ISOLATED else downloads_dir / "extracted_llama"
         extract_dir.mkdir(parents=True, exist_ok=True)
@@ -190,11 +227,13 @@ class LlamaCppRuntimeAdapter(BaseRuntimeAdapter):
         log_file.parent.mkdir(parents=True, exist_ok=True)
         log_fd = open(log_file, "a", encoding="utf-8")
 
+        proc_env = self.get_runtime_env(bin_path)
         proc = subprocess.Popen(
             cmd,
             stdout=log_fd,
             stderr=subprocess.STDOUT,
             close_fds=True,
+            env=proc_env,
         )
 
         ready = False

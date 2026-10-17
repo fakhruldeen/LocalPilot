@@ -1,0 +1,51 @@
+Name,Installed_Version,Declared_Constraint,Scope,License,Purpose
+annotated-doc,0.0.5,declared,Transitive,MIT,Supporting dependency
+annotated-types,0.8.0,declared,Transitive,MIT,Supporting dependency
+anyio,4.15.1,declared,Transitive,MIT,Supporting dependency
+certifi,2026.7.22,declared,Transitive,MPL-2.0,Supporting dependency
+cffi,2.1.1,declared,Transitive,MIT-0,Supporting dependency
+click,8.5.0,declared,Transitive,BSD-3-Clause,Supporting dependency
+coverage,7.16.2,declared,Transitive,Apache-2.0,Supporting dependency
+cryptography,50.0.2,declared,Transitive,Apache-2.0 OR BSD-3-Clause,Supporting dependency
+filelock,4.2.0,declared,Transitive,MIT,Supporting dependency
+fsspec,2026.9.0,declared,Transitive,BSD-3-Clause,Supporting dependency
+h11,0.16.0,declared,Transitive,MIT,Supporting dependency
+hf-xet,1.7.0,declared,Transitive,Apache-2.0,Supporting dependency
+httpcore,1.0.9,declared,Transitive,BSD-3-Clause,Supporting dependency
+httpcore2,2.13.1,declared,Transitive,BSD-3-Clause,Supporting dependency
+httpx,0.28.1,>=0.27.0,Direct (Production),BSD-3-Clause,Core HTTP communication
+httpx2,2.13.1,declared,Transitive,BSD-3-Clause,Supporting dependency
+huggingface_hub,2.2.0,>=0.25.0,Direct (Production),Apache-2.0,Hugging Face model search and metadata
+idna,3.20,declared,Transitive,BSD-3-Clause,Supporting dependency
+iniconfig,2.3.1,declared,Transitive,MIT,Supporting dependency
+jaraco.classes,3.4.0,declared,Transitive,MIT,Supporting dependency
+jaraco.context,6.1.2,declared,Transitive,MIT,Supporting dependency
+jaraco.functools,4.6.0,declared,Transitive,MIT,Supporting dependency
+jeepney,0.9.0,declared,Transitive,MIT,Supporting dependency
+keyring,25.7.0,>=25.0.0,Direct (Production),MIT,OS secure credential storage
+linkify-it-py,2.2.0,declared,Transitive,MIT,Supporting dependency
+markdown-it-py,4.2.0,declared,Transitive,MIT,Supporting dependency
+mdit-py-plugins,0.6.1,declared,Transitive,MIT,Supporting dependency
+mdurl,0.1.2,declared,Transitive,MIT,Supporting dependency
+more-itertools,11.2.1,declared,Transitive,MIT,Supporting dependency
+packaging,26.3,declared,Transitive,Apache-2.0 OR BSD-2-Clause,Supporting dependency
+platformdirs,4.13.3,declared,Transitive,MIT,Supporting dependency
+pluggy,1.7.0,declared,Transitive,MIT,Supporting dependency
+psutil,7.2.2,>=6.0.0,Direct (Production),BSD-3-Clause,System hardware and process inspection
+pycparser,3.11,declared,Transitive,BSD-3-Clause,Supporting dependency
+pydantic,2.14.1,>=2.9.0,Direct (Production),MIT,Data validation and settings management
+pydantic_core,2.50.1,declared,Transitive,MIT,Supporting dependency
+Pygments,2.21.0,declared,Transitive,BSD-2-Clause,Supporting dependency
+pytest,9.1.1,>=8.0.0,Direct (Development),MIT,Testing framework
+pytest-asyncio,1.4.0,>=0.24.0,Direct (Development),Apache-2.0,Asyncio test runner
+pytest-cov,7.1.0,>=5.0.0,Direct (Development),MIT,Test coverage reporting
+PyYAML,6.0.3,declared,Transitive,MIT,Supporting dependency
+rich,15.0.0,>=13.7.0,Direct (Production),MIT,Terminal styling and formatted tables
+SecretStorage,3.5.0,declared,Transitive,BSD-3-Clause,Linux keyring secret service
+shellingham,1.5.4,declared,Transitive,ISC,Shell detection
+textual,8.2.8,>=0.80.0,Direct (Production),MIT,Full-screen terminal dashboard (TUI)
+tqdm,4.70.1,declared,Transitive,MPL-2.0 AND MIT,Progress display
+truststore,0.10.5,declared,Transitive,MIT,Native system certificate trust
+typer,0.27.3,>=0.12.0,Direct (Production),MIT,Interactive CLI application framework
+typing-inspection,0.4.4,declared,Transitive,MIT,Supporting dependency
+typing_extensions,4.16.0,declared,Transitive,PSF-2.0,Type hint compatibility

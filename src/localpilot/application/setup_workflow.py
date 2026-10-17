@@ -34,7 +34,7 @@ from localpilot.runtimes.llamacpp import LlamaCppRuntimeAdapter
 from localpilot.runtimes.lm_studio import LMStudioServiceAdapter
 from localpilot.runtimes.ollama import OllamaRuntimeAdapter
 from localpilot.runtimes.vllm_backend import VllmBackendAdapter
-from localpilot.security import sanitize_artifact_subpath, validate_path_within_root
+from localpilot.security import sanitize_artifact_subpath, validate_download_url, validate_path_within_root
 from localpilot.sources.huggingface import HuggingFaceSourceAdapter
 from localpilot.sources.ollama_library import OllamaLibrarySourceAdapter
 from localpilot.storage.db import DatabaseManager, get_db, get_default_data_dir
@@ -172,10 +172,11 @@ class SetupWorkflow:
                 runtime_name = "llamacpp"
 
         # D05: Isolated storage directory structure
+        artifact_fname = candidate.artifact_id or f"{candidate.model_id.split('/')[-1]}.gguf"
         dir_slug, _ = sanitize_artifact_subpath(
             candidate.model_id,
             candidate.revision,
-            candidate.artifact_id or f"{candidate.model_id}.gguf",
+            Path(artifact_fname).name,
         )
         target_dir_path = self.storage_mgr.models_dir / runtime_name / dir_slug
         validate_path_within_root(target_dir_path, self.storage_mgr.models_dir)
@@ -231,6 +232,7 @@ class SetupWorkflow:
         progress_callback: Optional[Callable[[str, int, int], None]] = None,
         approval: Optional[ApprovalRecord] = None,
         keep_running: bool = False,
+        cancel_event: Optional[asyncio.Event] = None,
     ) -> Dict[str, Any]:
         """Executes the setup and test workflow with evidence-based verification."""
         import hashlib
@@ -250,6 +252,9 @@ class SetupWorkflow:
             # Stage 4 & 5: Save mandatory audit approval checkpoint before state change (D26)
             if not approval:
                 raise PermissionError("Explicit user approval is required before executing setup.")
+
+            if not approval.plan_hash:
+                raise PermissionError("Approval must be bound to the exact material plan (missing plan_hash).")
 
             expected_hash = plan.compute_hash()
             if approval.plan_hash != expected_hash:
@@ -329,6 +334,8 @@ class SetupWorkflow:
                         progress_callback(f"Pulling model {candidate.model_id} via Ollama...", 0, 100)
 
                     def _pull_progress(msg: str, done: int, total: int) -> None:
+                        if cancel_event and cancel_event.is_set():
+                            raise asyncio.CancelledError("Setup cancelled by user.")
                         if progress_callback:
                             progress_callback(f"Ollama: {msg}", done, total)
 
@@ -362,6 +369,9 @@ class SetupWorkflow:
                         valid = True
                         if existing_sz == 0:
                             valid = False
+                        exp_bytes = getattr(candidate, "expected_bytes", None)
+                        if exp_bytes and existing_sz != exp_bytes:
+                            valid = False
                         if valid and candidate.sha256:
                             hasher = hashlib.sha256()
                             with open(model_file, "rb") as f:
@@ -373,12 +383,23 @@ class SetupWorkflow:
                             model_file.unlink(missing_ok=True)
 
                     if not model_file.exists():
+                        # Disk space pre-flight check
+                        rep = self.inspector.inspect()
+                        disk_free = rep.hardware.disk_available_bytes
+                        required_bytes = resolved_artifact.expected_bytes or candidate.total_bytes
+                        if required_bytes > 0 and disk_free < required_bytes:
+                            raise RuntimeError(
+                                f"Insufficient disk space for {candidate.name}: requires {required_bytes / (1024**2):.1f} MB, "
+                                f"but only {disk_free / (1024**2):.1f} MB is available."
+                            )
+
                         download_url = resolved_artifact.download_url or getattr(candidate, "download_url", None)
                         if not download_url:
                             raise RuntimeError(
                                 f"Model file '{model_file.name}' not found at {model_file} and no downloadable source URL is available. "
                                 "LocalPilot does not create synthetic weights in production."
                             )
+                        validate_download_url(download_url)
 
                         if progress_callback:
                             progress_callback(f"Downloading model {candidate.name}...", 0, 100)
@@ -386,12 +407,20 @@ class SetupWorkflow:
                         part_file = self.storage_mgr.downloads_dir / f"{model_file.name}.{job.job_id}.part"
                         hasher = hashlib.sha256()
                         downloaded = 0
+                        if cancel_event and cancel_event.is_set():
+                            self.job_mgr.fail_job(job.job_id, "user_cancelled", "Setup cancelled by user.")
+                            raise asyncio.CancelledError("Setup cancelled by user.")
                         async with httpx.AsyncClient(timeout=300.0, follow_redirects=True) as client:
                             async with client.stream("GET", download_url) as resp:
                                 resp.raise_for_status()
                                 total = int(resp.headers.get("content-length", resolved_artifact.expected_bytes or candidate.total_bytes))
                                 with open(part_file, "wb") as f:
                                     async for chunk in resp.aiter_bytes(chunk_size=65536):
+                                        if cancel_event and cancel_event.is_set():
+                                            f.close()
+                                            part_file.unlink(missing_ok=True)
+                                            self.job_mgr.fail_job(job.job_id, "user_cancelled", "Setup cancelled by user.")
+                                            raise asyncio.CancelledError("Setup cancelled by user.")
                                         f.write(chunk)
                                         hasher.update(chunk)
                                         downloaded += len(chunk)

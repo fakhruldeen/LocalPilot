@@ -41,6 +41,7 @@ class RuntimeInstallPlan(BaseModel):
     target_scope: InstallationScope
     target_bin_path: str
     download_url: Optional[str] = None
+    expected_sha256: Optional[str] = None
     estimated_download_bytes: int = 0
     requires_elevation: bool = False
     plan_description: str

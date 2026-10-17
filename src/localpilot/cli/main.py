@@ -14,7 +14,22 @@ from rich.table import Table
 from localpilot.application.runtime_service import RuntimeLifecycleService
 from localpilot.application.setup_workflow import ApprovalRecord, SetupWorkflow
 from localpilot.application.update_workflow import UpdateWorkflow
-from localpilot.cli.formatting import console, render_banner, render_error_box, render_message_box
+from localpilot.cli.formatting import (
+    console,
+    format_json_error,
+    render_app_error_box,
+    render_banner,
+    render_error_box,
+    render_message_box,
+)
+from localpilot.domain.errors import (
+    AppError,
+    ErrorCode,
+    OutcomeCertainty,
+    RecoveryAction,
+    create_app_error,
+    map_exception_to_app_error,
+)
 from localpilot.domain.models import TaskCategory
 from localpilot.hardware.inspector import SystemInspector
 from localpilot.observability.activity import ActivityService
@@ -42,7 +57,16 @@ self_app = typer.Typer(help="Manage the LocalPilot application itself.")
 app.add_typer(self_app, name="self")
 
 
+def _val(arg: Any, default: Any = None) -> Any:
+    """Unwraps Typer OptionInfo/ArgumentInfo default objects when commands are invoked directly in Python."""
+    if hasattr(arg, "default"):
+        return arg.default if arg.default is not ... else default
+    return arg
+
+
 def _do_doctor(plain: bool = False, json_output: bool = False) -> None:
+    plain = bool(_val(plain, False))
+    json_output = bool(_val(json_output, False))
     inspector = SystemInspector()
     report = inspector.inspect()
 
@@ -59,10 +83,10 @@ def _do_doctor(plain: bool = False, json_output: bool = False) -> None:
     if plain:
         print(f"OS: {hw.os_name} {hw.os_version} ({hw.cpu_arch})")
         print(f"CPU Cores: {hw.cpu_cores_logical} logical, {hw.cpu_cores_physical} physical")
-        print(f"System RAM: {ram_gb:.1f} GB Total, {avail_ram_gb:.1f} GB Available, {safe_ram_gb:.1f} GB Safe Budget")
+        print(f"System RAM: {ram_gb:.1f} GB Total, {avail_ram_gb:.1f} GB Available, {safe_ram_gb:.1f} GB Safe Budget (reserves RAM for OS & context)")
         print(f"Memory Model: {hw.memory_model.value}")
         print(f"Disk Free: {disk_free_gb:.1f} GB")
-        print(f"Discovered Runtimes: {[r.name for r in report.discovered_runtimes]}")
+        print(f"Discovered Runtimes: {', '.join(r.name for r in report.discovered_runtimes) or 'None'}")
         return
 
     table = Table(title="Computer Diagnostic Summary", border_style="cyan")
@@ -92,15 +116,24 @@ def _do_discover(
     plain: bool = False,
     json_output: bool = False,
 ) -> None:
-    cat_svc = CatalogService()
-    task_cat = TaskCategory(task.lower()) if task else None
-    results = cat_svc.discover(task=task_cat, query=query)
+    task_val = _val(task, None)
+    query_val = str(_val(query, ""))
+    plain_val = bool(_val(plain, False))
+    json_val = bool(_val(json_output, False))
 
-    if json_output:
+    cat_svc = CatalogService()
+    task_cat = TaskCategory(task_val.lower()) if task_val and isinstance(task_val, str) else None
+    results = cat_svc.discover(task=task_cat, query=query_val)
+
+    if not results and not json_val:
+        console.print("[bold yellow]No models in the catalog fit within your computer's safe memory budget (RAM limit exceeded).[/bold yellow]")
+        return
+
+    if json_val:
         typer.echo(json.dumps([r.model_dump() for r in results], indent=2))
         return
 
-    if plain:
+    if plain_val:
         for r in results:
             cand = r.candidate
             sz_mb = cand.total_bytes / (1024 * 1024)
@@ -134,11 +167,13 @@ def _do_discover(
 
 
 def _do_installed(plain: bool = False, json_output: bool = False) -> None:
+    plain_val = bool(_val(plain, False))
+    json_val = bool(_val(json_output, False))
     db = get_db()
     conn = db.get_connection()
     rows = conn.execute("SELECT * FROM installations ORDER BY created_at DESC").fetchall()
 
-    if json_output:
+    if json_val:
         typer.echo(json.dumps([dict(r) for r in rows], indent=2))
         return
 
@@ -159,10 +194,12 @@ def _do_installed(plain: bool = False, json_output: bool = False) -> None:
 
 
 def _do_running(plain: bool = False, json_output: bool = False) -> None:
+    plain_val = bool(_val(plain, False))
+    json_val = bool(_val(json_output, False))
     svc = RuntimeLifecycleService()
     rows = svc.reconcile_running_instances()
 
-    if json_output:
+    if json_val:
         typer.echo(json.dumps(rows, indent=2))
         return
 
@@ -183,10 +220,12 @@ def _do_running(plain: bool = False, json_output: bool = False) -> None:
 
 
 def _do_storage(plain: bool = False, json_output: bool = False) -> None:
+    plain_val = bool(_val(plain, False))
+    json_val = bool(_val(json_output, False))
     mgr = StorageManager()
     summary = mgr.inspect_storage_categories()
 
-    if json_output:
+    if json_val:
         typer.echo(summary.model_dump_json(indent=2))
         return
 
@@ -204,22 +243,29 @@ def _do_storage(plain: bool = False, json_output: bool = False) -> None:
     console.print(table)
 
 
-def _do_run(installation_id: str) -> None:
+def _do_run(target: str) -> None:
     svc = RuntimeLifecycleService()
+    conn = get_db().get_connection()
+    inst_row = conn.execute(
+        "SELECT * FROM installations WHERE installation_id = ? OR model_id = ? OR name = ? OR name LIKE ?",
+        (target, target, target, f"%{target}%"),
+    ).fetchone()
+    installation_id = inst_row["installation_id"] if inst_row else target
 
     async def _async_run():
         return await svc.start_installed_model(installation_id)
 
     try:
-        with console.status(f"Starting model instance for {installation_id}..."):
+        with console.status(f"Starting model instance for {inst_row['name'] if inst_row else installation_id}..."):
             res = asyncio.run(_async_run())
         console.print(f"[bold green]Model started successfully![/bold green]")
-        console.print(f"Instance ID: [cyan]{res['instance_id']}[/cyan]")
+        console.print(f"Model: [cyan]{inst_row['name'] if inst_row else res['model_id']}[/cyan]")
         console.print(f"Endpoint: [cyan]{res['endpoint_url']}[/cyan] (PID: {res['pid']})")
-        console.print(f"To chat: [cyan]localpilot chat {installation_id}[/cyan]")
+        console.print(f"To chat: [cyan]localpilot chat {inst_row['name'] if inst_row else installation_id}[/cyan]")
         console.print(f"To stop: [cyan]localpilot stop {res['instance_id']}[/cyan]")
     except Exception as e:
-        render_error_box(f"Failed to start model: {e}")
+        app_err = map_exception_to_app_error(e, operation="start_model", stage="starting")
+        render_app_error_box(app_err)
 
 
 def _do_stop(instance_id: str, force: bool = False) -> None:
@@ -236,9 +282,21 @@ def _do_stop(instance_id: str, force: bool = False) -> None:
             if getattr(res, "observed_outcome", None) and res.observed_outcome.value == "already_stopped":
                 console.print(f"[yellow]Instance {instance_id} was not active or already stopped.[/yellow]")
             else:
-                render_error_box(f"Failed to stop instance {instance_id}: {res.reason or 'Unknown error'}")
+                outcome_val = res.observed_outcome.value if getattr(res, "observed_outcome", None) else "failed"
+                code = ErrorCode.STOP_UNKNOWN if outcome_val == "stop_outcome_unknown" else ErrorCode.STOP_REJECTED
+                app_err = create_app_error(
+                    code,
+                    operation="stop_instance",
+                    stage="stopping",
+                    explanation=res.reason or "Failed to stop instance safely.",
+                    known_impact="The process was not terminated or its outcome is unconfirmed. The instance is still listed.",
+                    recommended_action=RecoveryAction.CHECK_AGAIN,
+                    technical_details=f"Target: {instance_id} | Outcome: {outcome_val}",
+                )
+                render_app_error_box(app_err)
     except Exception as e:
-        render_error_box(f"Failed to stop instance: {e}")
+        app_err = map_exception_to_app_error(e, operation="stop_instance", stage="stopping")
+        render_app_error_box(app_err)
 
 
 def _do_chat(target: str) -> None:
@@ -253,8 +311,8 @@ def _do_chat(target: str) -> None:
 
     if not run_row:
         inst_row = conn.execute(
-            "SELECT * FROM installations WHERE installation_id = ? OR model_id = ?",
-            (target, target),
+            "SELECT * FROM installations WHERE installation_id = ? OR model_id = ? OR name = ? OR name LIKE ?",
+            (target, target, target, f"%{target}%"),
         ).fetchone()
         if not inst_row:
             render_error_box(f"No running instance or installation found matching '{target}'.")
@@ -271,7 +329,16 @@ def _do_chat(target: str) -> None:
 
     endpoint = run_row["endpoint_url"]
     model_id = run_row["model_id"]
-    runtime = "ollama" if "ollama" in (run_row["executable_path"] or "").lower() or endpoint.endswith("11434") else "llamacpp"
+    runtime = "llamacpp"
+    if run_row["installation_id"]:
+        inst_info = conn.execute(
+            "SELECT runtime_name FROM installations WHERE installation_id = ?",
+            (run_row["installation_id"],),
+        ).fetchone()
+        if inst_info and inst_info["runtime_name"]:
+            runtime = inst_info["runtime_name"]
+    if runtime == "llamacpp" and "ollama" in (run_row["executable_path"] or "").lower():
+        runtime = "ollama"
 
     console.print(f"[bold green]Connected to {model_id}[/bold green] at {endpoint}. Type 'exit' to quit.\n")
     messages: List[Dict[str, str]] = []
@@ -286,18 +353,30 @@ def _do_chat(target: str) -> None:
                 break
             messages.append({"role": "user", "content": user_input})
 
-            async def _send():
-                return await ChatService.send_message(endpoint, runtime, model_id, messages)
+            console.print("[bold cyan]Assistant:[/bold cyan] ", end="")
+            full_reply: List[str] = []
 
-            with console.status("Thinking..."):
-                reply = asyncio.run(_send())
+            async def _stream():
+                async for token in ChatService.stream_message(endpoint, runtime, model_id, messages):
+                    console.print(token, end="")
+                    full_reply.append(token)
+
+            try:
+                asyncio.run(_stream())
+                console.print("\n")
+                reply = "".join(full_reply)
+            except Exception:
+                # Fallback to send_message if streaming fails or is unsupported
+                reply = asyncio.run(ChatService.send_message(endpoint, runtime, model_id, messages))
+                console.print(f"{reply}\n")
+
             messages.append({"role": "assistant", "content": reply})
-            console.print(f"[bold cyan]Assistant:[/bold cyan] {reply}\n")
         except (KeyboardInterrupt, EOFError):
             console.print("\nChat ended.")
             break
         except Exception as e:
-            render_error_box(f"Chat request failed: {e}")
+            app_err = map_exception_to_app_error(e, operation="chat", stage="chat_request")
+            render_app_error_box(app_err)
             break
 
 
@@ -308,7 +387,8 @@ def _do_update(installation_id: str, yes: bool = False) -> None:
         with console.status("Checking for model updates..."):
             status = workflow.check_updates(installation_id)
     except Exception as e:
-        render_error_box(f"Failed to check updates for {installation_id}: {e}")
+        app_err = map_exception_to_app_error(e, operation="update", stage="check_updates")
+        render_app_error_box(app_err)
         return
 
     if not status.has_update:
@@ -326,15 +406,42 @@ def _do_update(installation_id: str, yes: bool = False) -> None:
         with console.status("Applying update..."):
             res = workflow.apply_update(installation_id, target_version=status.available_version or "latest")
     except Exception as e:
-        render_error_box(f"Failed to apply update: {e}")
+        app_err = map_exception_to_app_error(e, operation="update", stage="apply_update")
+        render_app_error_box(app_err)
         return
 
     if res.get("updated"):
         console.print(f"[bold green]Update applied successfully![/bold green]")
-    elif res.get("rolled_back"):
-        render_error_box(f"Update failed but safely restored previous version: {res.get('error', 'Unknown error')}")
     else:
-        render_error_box(f"Update failed: {res.get('error', 'Unknown error')} (rollback: {res.get('rollback_status')})")
+        status = res.get("rollback_status")
+        if status == "restored":
+            err = create_app_error(
+                ErrorCode.UPDATE_VERIFY_FAILED,
+                operation="update",
+                stage="verification",
+                known_impact="The update was not applied. Your previous installed version was restored safely.",
+                recommended_action=RecoveryAction.USE_PREVIOUS_VERSION,
+                technical_details=res.get("error", ""),
+            )
+        elif status == "restoration_failed":
+            err = create_app_error(
+                ErrorCode.RESTORATION_FAILED,
+                operation="update",
+                stage="restoration",
+                known_impact="The previous version could not be restored completely. This model needs repair before it can run.",
+                recommended_action=RecoveryAction.REVIEW_REPAIR_OPTIONS,
+                technical_details=res.get("error", ""),
+            )
+        else:
+            err = create_app_error(
+                ErrorCode.UPDATE_VERIFY_FAILED,
+                operation="update",
+                stage="verification",
+                known_impact="The update could not be verified. No changes were made to your installed model files.",
+                recommended_action=RecoveryAction.DISMISS,
+                technical_details=res.get("error", ""),
+            )
+        render_app_error_box(err)
 
 
 def _do_guide(topic: Optional[str] = None) -> None:
@@ -370,45 +477,49 @@ def main_menu(ctx: typer.Context) -> None:
         render_banner()
         if sys.stdin.isatty() and sys.stdout.isatty():
             console.print("[bold]Select an option to begin:[/bold]")
-            console.print("  [bold cyan]1[/bold cyan]) Open Visual Dashboard (TUI)")
-            console.print("  [bold cyan]2[/bold cyan]) Discover Compatible Models")
-            console.print("  [bold cyan]3[/bold cyan]) View Installed Models")
-            console.print("  [bold cyan]4[/bold cyan]) Run Computer Diagnostics (Doctor)")
-            console.print("  [bold cyan]5[/bold cyan]) View Storage Breakdown")
-            console.print("  [bold cyan]6[/bold cyan]) Read User Guide & Documentation")
+            console.print("  [bold cyan]1[/bold cyan]) Help me get started (Guided Setup Wizard)")
+            console.print("  [bold cyan]2[/bold cyan]) Open Visual Dashboard (TUI)")
+            console.print("  [bold cyan]3[/bold cyan]) Chat with an installed model")
+            console.print("  [bold cyan]4[/bold cyan]) View installed models")
+            console.print("  [bold cyan]5[/bold cyan]) Discover & browse compatible models")
+            console.print("  [bold cyan]6[/bold cyan]) Run computer diagnostics (Doctor)")
+            console.print("  [bold cyan]7[/bold cyan]) View storage breakdown")
+            console.print("  [bold cyan]8[/bold cyan]) Read user guide & documentation")
             console.print("  [bold cyan]q[/bold cyan]) Exit\n")
             try:
                 choice = typer.prompt("Enter choice", default="1").strip().lower()
-                if choice in ("1", "tui"):
+                if choice in ("1", "setup", "wizard", "start"):
+                    from localpilot.tui.app import LocalPilotTUI
+                    LocalPilotTUI(start_wizard=True).run()
+                elif choice in ("2", "tui", "dashboard"):
                     from localpilot.tui.app import LocalPilotTUI
                     LocalPilotTUI().run()
-                elif choice in ("2", "discover"):
-                    _do_discover()
-                elif choice in ("3", "installed"):
+                elif choice in ("3", "chat"):
+                    chat_model()
+                elif choice in ("4", "installed", "models"):
                     _do_installed()
-                elif choice in ("4", "doctor"):
+                elif choice in ("5", "discover"):
+                    _do_discover()
+                elif choice in ("6", "doctor"):
                     _do_doctor()
-                elif choice in ("5", "storage"):
+                elif choice in ("7", "storage"):
                     _do_storage()
-                elif choice in ("6", "guide", "docs", "help"):
+                elif choice in ("8", "guide", "docs", "help"):
                     _do_guide()
                 else:
                     return
             except (KeyboardInterrupt, EOFError):
                 return
         else:
-            console.print("[bold]Welcome to LocalPilot![/bold]\n")
+            console.print("[bold]LocalPilot: Run AI on this computer. We will find a suitable model and help you set it up.[/bold]\n")
             console.print("Common commands:")
-            console.print("  [cyan]localpilot tui[/cyan]         Open the complete visual dashboard")
+            console.print("  [cyan]localpilot[/cyan]             Launch interactive guided menu")
+            console.print("  [cyan]localpilot tui[/cyan]         Open full visual dashboard")
+            console.print("  [cyan]localpilot chat[/cyan]        Chat directly with your model")
             console.print("  [cyan]localpilot discover[/cyan]    Find compatible models")
             console.print("  [cyan]localpilot installed[/cyan]   View your installed models")
             console.print("  [cyan]localpilot doctor[/cyan]      Check computer capabilities")
-            console.print("  [cyan]localpilot run[/cyan]         Start an installed model")
-            console.print("  [cyan]localpilot chat[/cyan]        Chat with a running model")
             console.print("  [cyan]localpilot stop[/cyan]        Stop an active model instance")
-            console.print("  [cyan]localpilot setup[/cyan]       Set up a new model")
-            console.print("  [cyan]localpilot update[/cyan]      Check and apply model updates")
-            console.print("  [cyan]localpilot storage[/cyan]     View storage breakdown")
             console.print("  [cyan]localpilot guide[/cyan]       Read step-by-step documentation\n")
             console.print("Run [cyan]localpilot --help[/cyan] to see all available commands.")
 
@@ -539,7 +650,7 @@ def list_running(
 
 @app.command("run")
 def run_model(
-    installation_id: str = typer.Argument(..., help="Installation ID to start (from 'localpilot installed')"),
+    target: Optional[str] = typer.Argument(None, help="Installation ID or Model Name to start"),
 ) -> None:
     """Start an installed model and make it ready for local inference.
 
@@ -547,14 +658,35 @@ def run_model(
     Technical: Executes the selected runtime adapter (Ollama or llama.cpp), assigns an isolated port, tracks PID ownership, and verifies real readiness via inference probe before returning.
 
     Examples:
+      localpilot run
+      localpilot run "Qwen 2.5 Coder 1.5B"
       localpilot run inst_llama3_8b
     """
-    _do_run(installation_id)
+    target_val = _val(target, None)
+    if not target_val:
+        db = get_db()
+        rows = db.get_connection().execute("SELECT * FROM installations ORDER BY created_at DESC").fetchall()
+        if not rows:
+            console.print("[dim]No models installed yet. Run [cyan]localpilot[/cyan] to get started.[/dim]")
+            return
+        if len(rows) == 1:
+            target_val = rows[0]["name"]
+        else:
+            console.print("[bold]Select a model to start:[/bold]")
+            for idx, r in enumerate(rows, 1):
+                console.print(f"  [bold cyan]{idx}[/bold cyan]) {r['name']} ({r['runtime_name']})")
+            choice = typer.prompt("Enter number", default="1").strip()
+            try:
+                sel = int(choice) - 1
+                target_val = rows[sel]["name"] if 0 <= sel < len(rows) else rows[0]["name"]
+            except ValueError:
+                target_val = choice
+    _do_run(target_val)
 
 
 @app.command("stop")
 def stop_model(
-    instance_id: str = typer.Argument(..., help="Instance ID to stop (from 'localpilot running')"),
+    target: Optional[str] = typer.Argument(None, help="Instance ID, Installation ID, or Model Name to stop"),
     force: bool = typer.Option(False, "--force", "-f", help="Force stop immediately (SIGKILL) if graceful stop times out"),
 ) -> None:
     """Stop an active model instance and free up system memory.
@@ -563,15 +695,36 @@ def stop_model(
     Technical: Sends SIGTERM for graceful shutdown, verifies child process termination, updates SQLite status to 'stopped', and protects external/system-managed processes from accidental termination.
 
     Examples:
-      localpilot stop inst_llama3_8b
+      localpilot stop
+      localpilot stop "Qwen 2.5 Coder 1.5B"
+      localpilot stop inst_run_abc123
       localpilot stop inst_llama3_8b --force
     """
-    _do_stop(instance_id, force=force)
+    target_val = _val(target, None)
+    if not target_val:
+        svc = RuntimeLifecycleService()
+        active = svc.reconcile_running_instances()
+        if not active:
+            console.print("[dim]No models are currently running.[/dim]")
+            return
+        if len(active) == 1:
+            target_val = active[0].get("instance_id") or active[0].get("model_id")
+        else:
+            console.print("[bold]Select an active model to stop:[/bold]")
+            for idx, a in enumerate(active, 1):
+                console.print(f"  [bold cyan]{idx}[/bold cyan]) {a.get('model_id')} (PID: {a.get('pid')})")
+            choice = typer.prompt("Enter number", default="1").strip()
+            try:
+                sel = int(choice) - 1
+                target_val = active[sel].get("instance_id") if 0 <= sel < len(active) else active[0].get("instance_id")
+            except ValueError:
+                target_val = choice
+    _do_stop(target_val, force=force)
 
 
 @app.command("chat")
 def chat_model(
-    target: str = typer.Argument(..., help="Installation ID or Model ID to chat with"),
+    target: Optional[str] = typer.Argument(None, help="Installation ID, Model ID, or recognizable Model Name to chat with"),
 ) -> None:
     """Open an interactive conversation with a model in your terminal.
 
@@ -579,9 +732,30 @@ def chat_model(
     Technical: Connects to the local HTTP inference endpoint (streaming OpenAI-compatible or Ollama chat endpoint) and streams tokens directly to the terminal. Type '/exit' or '/quit' to leave.
 
     Examples:
+      localpilot chat
+      localpilot chat "Qwen 2.5 Coder 1.5B"
       localpilot chat inst_llama3_8b
     """
-    _do_chat(target)
+    target_val = _val(target, None)
+    if not target_val:
+        db = get_db()
+        rows = db.get_connection().execute("SELECT * FROM installations ORDER BY created_at DESC").fetchall()
+        if not rows:
+            console.print("[dim]No models installed yet. Run [cyan]localpilot[/cyan] to launch the guided setup.[/dim]")
+            return
+        if len(rows) == 1:
+            target_val = rows[0]["name"]
+        else:
+            console.print("[bold]Select a model to chat with:[/bold]")
+            for idx, r in enumerate(rows, 1):
+                console.print(f"  [bold cyan]{idx}[/bold cyan]) {r['name']} ({r['runtime_name']})")
+            choice = typer.prompt("Enter number", default="1").strip()
+            try:
+                sel = int(choice) - 1
+                target_val = rows[sel]["name"] if 0 <= sel < len(rows) else rows[0]["name"]
+            except ValueError:
+                target_val = choice
+    _do_chat(target_val)
 
 
 @app.command("update")
@@ -708,29 +882,39 @@ def setup_model(
       localpilot setup cand_llama32_3b --yes
     """
     cat_svc = CatalogService()
+    rec_plan = None
+    alt_plans = []
     if not candidate_id:
-        # Pick top recommended model
-        results = cat_svc.discover()
-        if not results:
-            render_error_box("No compatible models found for this computer.")
+        # Pick top recommended model via recommendation engine
+        shortlist = cat_svc.get_shortlist()
+        if not shortlist:
+            render_error_box("No compatible models found within this computer's safe memory budget.")
             return
-        candidate = results[0].candidate
+        candidate = shortlist[0].candidate
+        rec_plan = shortlist[0].recommended_plan
+        alt_plans = shortlist[0].alternative_plans
     else:
         candidate = cat_svc.get_candidate(candidate_id)
         if not candidate:
             render_error_box(f"Candidate '{candidate_id}' not found.")
             return
 
+        # Check for recommended plan from catalog
+        matched = [r for r in cat_svc.discover(query=candidate.model_id) if r.candidate.candidate_id == candidate.candidate_id]
+        if matched:
+            rec_plan = matched[0].recommended_plan
+            alt_plans = matched[0].alternative_plans
+
+    # Runtime availability check with honest warning
+    if rec_plan:
+        from localpilot.domain.recommendation import ModelRecommendationEngine
+        hw_report = cat_svc.inspector.inspect()
+        is_avail, avail_msg = ModelRecommendationEngine.recheck_runtime_availability(candidate, rec_plan, hw_report.hardware)
+        if not is_avail:
+            console.print(f"[bold yellow]Warning:[/bold yellow] {avail_msg}\n")
+
     workflow = SetupWorkflow()
     install_scope = InstallationScope(scope.lower())
-
-    # Check for recommended plan from catalog
-    rec_plan = None
-    alt_plans = []
-    matched = [r for r in cat_svc.discover(query=candidate.model_id) if r.candidate.candidate_id == candidate.candidate_id]
-    if matched:
-        rec_plan = matched[0].recommended_plan
-        alt_plans = matched[0].alternative_plans
 
     plan = workflow.build_plan(candidate, scope=install_scope, execution_plan=rec_plan, alternative_plans=alt_plans)
 
@@ -764,14 +948,15 @@ def setup_model(
         with console.status(f"Setting up {candidate.name}..."):
             res = await workflow.execute_setup(candidate, plan, progress_callback=_progress, approval=approval)
         console.print(f"\n[bold green]Success![/bold green] Model set up with ID: [cyan]{res['installation_id']}[/cyan]")
-        console.print(f"To run this model: [cyan]localpilot run {res['installation_id']}[/cyan]")
+        console.print(f"To start chatting immediately: [bold cyan]localpilot chat {candidate.name}[/bold cyan]")
+        console.print(f"[dim]To run as background service only: localpilot run {res['installation_id']}[/dim]")
 
     asyncio.run(_run())
 
 
 @app.command("remove")
 def remove_model(
-    installation_id: str = typer.Argument(..., help="Installation ID to remove (from 'localpilot installed')"),
+    installation_id: Optional[str] = typer.Argument(None, help="Installation ID or Model Name to remove"),
     yes: bool = typer.Option(False, "-y", "--yes", help="Skip confirmation prompt"),
     delete_files: bool = typer.Option(True, "--delete-files/--keep-files", help="Delete model weight files from disk (default: delete)"),
 ) -> None:
@@ -781,22 +966,58 @@ def remove_model(
     Technical: Stops any running instance, removes local GGUF weights or invokes model deletion in the runtime, unregisters database entry, and protects shared files.
 
     Examples:
+      localpilot remove "Qwen 2.5 Coder 1.5B"
       localpilot remove inst_qwen25_coder
       localpilot remove inst_qwen25_coder -y
     """
     mgr = StorageManager()
+    db = get_db()
+    conn = db.get_connection()
+
+    target_val = _val(installation_id, None)
+    if not target_val:
+        rows = conn.execute("SELECT * FROM installations ORDER BY created_at DESC").fetchall()
+        if not rows:
+            console.print("[dim]No installed models to remove.[/dim]")
+            return
+        console.print("[bold]Select a model to remove:[/bold]")
+        for idx, r in enumerate(rows, 1):
+            console.print(f"  [bold cyan]{idx}[/bold cyan]) {r['name']} ({r['runtime_name']})")
+        choice = typer.prompt("Enter number", default="1").strip()
+        try:
+            sel = int(choice) - 1
+            target_val = rows[sel]["name"] if 0 <= sel < len(rows) else rows[0]["name"]
+        except ValueError:
+            target_val = choice
+
+    row = conn.execute(
+        "SELECT installation_id, name FROM installations WHERE installation_id = ? OR model_id = ? OR name = ? OR name LIKE ?",
+        (target_val, target_val, target_val, f"%{target_val}%"),
+    ).fetchone()
+    resolved_id = row["installation_id"] if row else target_val
+    display_name = row["name"] if row else target_val
+
     if not yes:
-        confirm = typer.confirm(f"Are you sure you want to remove installation '{installation_id}'?", default=False)
+        confirm = typer.confirm(f"Are you sure you want to remove model '{display_name}'?", default=False)
         if not confirm:
             console.print("Removal cancelled.")
             return
 
-    res = mgr.safe_remove_installation(installation_id, delete_files=delete_files)
+    res = mgr.safe_remove_installation(resolved_id, delete_files=delete_files)
     if res.get("success"):
         freed_mb = res.get("bytes_freed", 0) / (1024 * 1024)
-        console.print(f"[bold green]Removed installation {installation_id}.[/bold green] Freed: {freed_mb:.1f} MB.")
+        console.print(f"[bold green]Removed model '{display_name}'.[/bold green] Freed: {freed_mb:.1f} MB.")
     else:
-        render_error_box(res.get("error", "Failed to remove installation."))
+        err = create_app_error(
+            ErrorCode.DELETION_FAILED,
+            operation="remove",
+            stage="cleanup",
+            explanation=res.get("error", "Failed to remove installation."),
+            known_impact=f"Freed {res.get('bytes_freed', 0) / (1024*1024):.1f} MB. Preserved {len(res.get('files_preserved', []))} files on disk.",
+            recommended_action=RecoveryAction.REVIEW_STORAGE,
+            technical_details=res.get("error", ""),
+        )
+        render_app_error_box(err)
 
 
 @app.command("support")
@@ -830,7 +1051,7 @@ def self_update() -> None:
     """
     import httpx
     import localpilot
-    current = getattr(localpilot, "__version__", "0.1.5")
+    current = getattr(localpilot, "__version__", "0.1.6")
     console.print(f"[bold cyan]Checking for LocalPilot updates (current: v{current})...[/bold cyan]")
     try:
         resp = httpx.get("https://pypi.org/pypi/localpilot/json", timeout=4.0)

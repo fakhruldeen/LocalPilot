@@ -37,7 +37,14 @@ Running local AI shouldn't require configuring build flags, figuring out CUDA or
 
 ## ✨ Key Features
 
-- **🧠 Hardware-Aware Recommendation**: Evaluates CPU, RAM, GPU, Apple Silicon Unified Memory vs. discrete VRAM, and storage budgets. Filters out incompatible models before you waste bandwidth.
+- **🧙‍♂️ 6-Step Guided Setup Wizard**: Welcoming non-technical onboarding checking computer capabilities, setting practical goals (writing, questions, coding), recommending pre-verified models, and executing multi-stage setups with live progress.
+- **💬 Integrated In-TUI Chat**: Full-screen token-streaming terminal chat screen (`ChatScreen`) with styled message bubbles, auto-scrolling, and responsive cancellation directly within the terminal UI.
+- **🧠 Decision Quality & Shortlist Comparison**:
+  - **Strict Compatibility Gating**: Incompatible configurations exceeding RAM/VRAM budgets are strictly excluded—never illegally falling back.
+  - **Near-Duplicate Suppression**: Equivalence grouping ensures diverse model choices instead of multiple quants of the same model.
+  - **Shortlist Distinctions & Roles**: `★ Top Pick`, `Compact Choice`, `Extended Memory`, and `Lightweight Choice` with side-by-side comparison matrix modal (`c` key).
+  - **Launch Memory Recheck**: Truthful warnings before start if background applications reduce required RAM/VRAM.
+- **🛡️ Truthful Error Recovery System**: Structured `AppError` contract with 25 typed error codes answering what happened, current situation, file impact, next steps, and technical details, with safe default modal focus.
 - **🧭 3-Axis Execution Architecture**: Decouples model computation into three orthogonal dimensions:
   - **Inference Backends**: `llama.cpp` (GGUF, Metal, CUDA), `vLLM` (advanced Linux+GPU).
   - **Managed Execution Services**: `Ollama`, `LM Studio / llmster`, and `Docker Model Runner`.
@@ -49,7 +56,7 @@ Running local AI shouldn't require configuring build flags, figuring out CUDA or
 - **💻 Dual Interface**:
   - **Interactive TUI**: A beautiful full-screen dashboard powered by [Textual](https://textual.textualize.io/).
   - **Fast Scriptable CLI**: Clean, structured CLI commands powered by [Typer](https://typer.tiangolo.com/) and [Rich](https://rich.readthedocs.io/).
-- **📝 Comprehensive Observability**: Structured event logs, audit checkpoints before destructive actions, and support bundle diagnostics.
+- **📝 Comprehensive Observability & Decision Audits**: Structured event logs, audit checkpoints before destructive actions, immutable decision records in `audit_decisions`, and support bundle diagnostics.
 
 ---
 
@@ -236,18 +243,18 @@ If you use LocalPilot in your research, academic study, or open-source projects,
 ```bibtex
 @software{fakhruldeen_2026_localpilot,
   author       = {Mohamed (Fouad) Fakhruldeen},
-  title        = {fakhruldeen/LocalPilot: v0.1.5},
+  title        = {fakhruldeen/LocalPilot: v0.1.6},
   month        = oct,
   year         = 2026,
   publisher    = {Zenodo},
-  version      = {v0.1.5},
+  version      = {v0.1.6},
   doi          = {10.5281/zenodo.23424540},
   url          = {https://doi.org/10.5281/zenodo.23424540}
 }
 ```
 
 **Text / APA Citation:**
-> Mohamed (Fouad) Fakhruldeen. (2026). fakhruldeen/LocalPilot: v0.1.5 (Version v0.1.5) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23424540
+> Mohamed (Fouad) Fakhruldeen. (2026). fakhruldeen/LocalPilot: v0.1.6 (Version v0.1.6) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23424540
 
 ---
 
