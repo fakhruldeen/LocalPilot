@@ -27,20 +27,23 @@ def render_banner() -> None:
 
 def render_message_box(
     what_is_happening: str,
-    why_needed: str,
-    what_will_change: str,
-    what_remains_untouched: str,
-    next_action: str,
+    why_needed: str = "",
+    what_will_change: str = "",
+    what_remains_untouched: str = "",
+    next_action: str = "",
     title: str = "LocalPilot",
 ) -> None:
     """Renders the standard 5-part message structure."""
-    body = (
-        f"[bold]{what_is_happening}[/bold]\n\n"
-        f"[dim]Why it is needed:[/dim] {why_needed}\n"
-        f"[dim]What will change:[/dim] {what_will_change}\n"
-        f"[dim]What remains untouched:[/dim] {what_remains_untouched}\n\n"
-        f"[cyan]Next step:[/cyan] {next_action}"
-    )
+    parts = [f"[bold]{what_is_happening}[/bold]"]
+    if why_needed:
+        parts.append(f"\n[dim]Why it is needed:[/dim] {why_needed}")
+    if what_will_change:
+        parts.append(f"[dim]What will change:[/dim] {what_will_change}")
+    if what_remains_untouched:
+        parts.append(f"[dim]What remains untouched:[/dim] {what_remains_untouched}")
+    if next_action:
+        parts.append(f"\n[cyan]Next step:[/cyan] {next_action}")
+    body = "\n".join(parts)
     console.print(Panel(body, title=title, border_style="cyan"))
 
 

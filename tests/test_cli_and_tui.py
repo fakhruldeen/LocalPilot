@@ -112,3 +112,36 @@ async def test_tui_app_smoke() -> None:
         await pilot.press("question_mark")
         # Pop screen
         await pilot.press("escape")
+
+
+def test_cli_api_and_keys_rotation():
+    runner = CliRunner()
+
+    # 1. Verify api alias matches gateway
+    res_api = runner.invoke(app, ["api", "--help"])
+    assert res_api.exit_code == 0
+    assert "start" in res_api.stdout
+    assert "status" in res_api.stdout
+    assert "test" in res_api.stdout
+
+    # 2. Test api status when not running
+    res_status = runner.invoke(app, ["api", "status"])
+    assert res_status.exit_code == 0
+    assert "LocalPilot Gateway is not running" in res_status.stdout
+
+    # 3. Create key, list it, and rotate it
+    res_create = runner.invoke(app, ["keys", "create", "Rotatable Key", "--app", "opencode"])
+    assert res_create.exit_code == 0
+    assert "sk-local-" in res_create.stdout
+
+    # Extract key_id from output
+    import re
+    match = re.search(r"Key ID:\s+(\S+)", res_create.stdout)
+    assert match is not None
+    key_id = match.group(1)
+
+    res_rotate = runner.invoke(app, ["keys", "rotate", key_id])
+    assert res_rotate.exit_code == 0
+    assert "Key Rotated" in res_rotate.stdout
+    assert "sk-local-" in res_rotate.stdout
+

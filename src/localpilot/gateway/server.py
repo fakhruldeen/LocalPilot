@@ -35,6 +35,122 @@ from localpilot.storage.db import DatabaseManager, get_db, get_default_data_dir
 logger = logging.getLogger(__name__)
 
 
+def get_openapi_spec() -> Dict[str, Any]:
+    """Generates the OpenAPI 3.1.0 specification for the LocalPilot inference gateway."""
+    return {
+        "openapi": "3.1.0",
+        "info": {
+            "title": "LocalPilot Inference Gateway API",
+            "version": "0.1.8",
+            "description": "Authenticated, loopback-only OpenAI-compatible inference gateway for local models.",
+            "license": {"name": "GPL-3.0-only"},
+        },
+        "servers": [
+            {"url": "http://127.0.0.1:8080", "description": "Local loopback server"}
+        ],
+        "paths": {
+            "/health": {
+                "get": {
+                    "summary": "Gateway health status",
+                    "responses": {"200": {"description": "Gateway status ok"}},
+                }
+            },
+            "/v1/health/live": {
+                "get": {
+                    "summary": "Liveness probe verifying gateway process is alive",
+                    "responses": {"200": {"description": "Gateway process is alive"}},
+                }
+            },
+            "/v1/health/ready": {
+                "get": {
+                    "summary": "Readiness probe verifying models and execution readiness",
+                    "responses": {
+                        "200": {"description": "At least one model version is ready for inference"},
+                        "503": {"description": "No model version or alias is ready for inference"},
+                    },
+                }
+            },
+            "/openapi.json": {
+                "get": {
+                    "summary": "OpenAPI 3.1.0 specification",
+                    "responses": {"200": {"description": "OpenAPI JSON document"}},
+                }
+            },
+            "/v1/models": {
+                "get": {
+                    "summary": "List available models and aliases authorized for the API key",
+                    "security": [{"BearerAuth": []}],
+                    "responses": {
+                        "200": {"description": "List of authorized models"},
+                        "401": {"description": "Missing or invalid API key"},
+                    },
+                }
+            },
+            "/v1/models/{model_id}": {
+                "get": {
+                    "summary": "Retrieve specific model or alias information",
+                    "security": [{"BearerAuth": []}],
+                    "parameters": [{"name": "model_id", "in": "path", "required": True, "schema": {"type": "string"}}],
+                    "responses": {
+                        "200": {"description": "Model information"},
+                        "404": {"description": "Model not found"},
+                    },
+                }
+            },
+            "/v1/chat/completions": {
+                "post": {
+                    "summary": "Execute chat completion with or without streaming",
+                    "security": [{"BearerAuth": []}],
+                    "requestBody": {
+                        "required": True,
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "required": ["model", "messages"],
+                                    "properties": {
+                                        "model": {"type": "string", "description": "Model alias or name"},
+                                        "messages": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "object",
+                                                "required": ["role", "content"],
+                                                "properties": {
+                                                    "role": {"type": "string", "enum": ["system", "user", "assistant"]},
+                                                    "content": {"type": "string"},
+                                                },
+                                            },
+                                        },
+                                        "temperature": {"type": "number", "default": 0.7},
+                                        "top_p": {"type": "number", "default": 0.95},
+                                        "max_tokens": {"type": "integer"},
+                                        "stream": {"type": "boolean", "default": False},
+                                    },
+                                }
+                            }
+                        },
+                    },
+                    "responses": {
+                        "200": {"description": "Chat completion response or SSE stream"},
+                        "400": {"description": "Bad request or missing required parameters"},
+                        "401": {"description": "Unauthorized"},
+                        "404": {"description": "Model not found"},
+                    },
+                }
+            },
+        },
+        "components": {
+            "securitySchemes": {
+                "BearerAuth": {
+                    "type": "http",
+                    "scheme": "bearer",
+                    "bearerFormat": "Local API Key (sk-local-...)",
+                }
+            }
+        },
+    }
+
+
 class GatewayRequestHandler(BaseHTTPRequestHandler):
     """HTTP request handler implementing OpenAI-compatible inference routes on loopback."""
 
@@ -84,7 +200,7 @@ class GatewayRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
 
     def do_GET(self) -> None:
-        """Routes GET requests for health and model discovery."""
+        """Routes GET requests for health, readiness, openapi, and model discovery."""
         path = self.path.split("?")[0].rstrip("/")
         if not path:
             path = "/"
@@ -93,9 +209,42 @@ class GatewayRequestHandler(BaseHTTPRequestHandler):
             self._send_json(200, {
                 "status": "ok",
                 "service": "localpilot-gateway",
-                "version": "0.1.7",
+                "version": "0.1.8",
                 "loopback_only": True,
             })
+            return
+
+        if path == "/v1/health/live":
+            self._send_json(200, {
+                "status": "alive",
+                "service": "localpilot-gateway",
+                "version": "0.1.8",
+                "loopback_only": True,
+            })
+            return
+
+        if path == "/v1/health/ready":
+            aliases = self.server.version_service.list_aliases()
+            if aliases:
+                self._send_json(200, {
+                    "status": "ready",
+                    "service": "localpilot-gateway",
+                    "version": "0.1.8",
+                    "available_models": len(aliases),
+                    "ready": True,
+                })
+            else:
+                self._send_json(503, {
+                    "status": "not_ready",
+                    "service": "localpilot-gateway",
+                    "version": "0.1.8",
+                    "reason": "No models or aliases registered yet",
+                    "ready": False,
+                })
+            return
+
+        if path in ("/openapi.json", "/v1/openapi.json"):
+            self._send_json(200, get_openapi_spec())
             return
 
         if path == "/v1/models":

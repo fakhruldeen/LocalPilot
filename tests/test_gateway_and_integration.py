@@ -100,12 +100,29 @@ def test_gateway_server_loopback_endpoints():
         base_url = f"http://127.0.0.1:{actual_port}"
 
         try:
-            # 1. Health check (no auth needed)
+            # 1. Health checks
             r_health = httpx.get(f"{base_url}/health")
             assert r_health.status_code == 200
             health_json = r_health.json()
             assert health_json["status"] == "ok"
             assert health_json["service"] == "localpilot-gateway"
+
+            # 1b. Liveness probe
+            r_live = httpx.get(f"{base_url}/v1/health/live")
+            assert r_live.status_code == 200
+            assert r_live.json()["status"] == "alive"
+
+            # 1c. Readiness probe
+            r_ready = httpx.get(f"{base_url}/v1/health/ready")
+            assert r_ready.status_code == 200
+            assert r_ready.json()["status"] == "ready"
+            assert r_ready.json()["available_models"] >= 1
+
+            # 1d. OpenAPI specification
+            r_openapi = httpx.get(f"{base_url}/openapi.json")
+            assert r_openapi.status_code == 200
+            assert r_openapi.json()["openapi"] == "3.1.0"
+            assert "/v1/chat/completions" in r_openapi.json()["paths"]
 
             # 2. GET /v1/models without auth -> 401
             r_unauth = httpx.get(f"{base_url}/v1/models")
@@ -121,6 +138,14 @@ def test_gateway_server_loopback_endpoints():
             assert models_data["object"] == "list"
             assert any(m["id"] == "coding" for m in models_data["data"])
 
+            # 3b. GET /v1/models/{model_id}
+            r_single = httpx.get(f"{base_url}/v1/models/coding", headers=headers)
+            assert r_single.status_code == 200
+            assert r_single.json()["id"] == "coding"
+
+            r_not_found = httpx.get(f"{base_url}/v1/models/nonexistent", headers=headers)
+            assert r_not_found.status_code == 404
+
             # 4. State lock file testing
             server.write_state()
             state = GatewayServer.get_running_state(data_dir=tmp_path)
@@ -131,3 +156,4 @@ def test_gateway_server_loopback_endpoints():
             server.shutdown()
             server.server_close()
             server.clear_state()
+

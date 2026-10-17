@@ -68,6 +68,7 @@ app.add_typer(alias_app, name="alias")
 
 gateway_app = typer.Typer(help="Manage local OpenAI-compatible inference API gateway.")
 app.add_typer(gateway_app, name="gateway")
+app.add_typer(gateway_app, name="api")
 
 keys_app = typer.Typer(help="Manage local API keys and application permissions.")
 app.add_typer(keys_app, name="keys")
@@ -1509,6 +1510,82 @@ def gateway_stop() -> None:
             pass
 
 
+@gateway_app.command("test")
+def gateway_test(
+    port: int = typer.Option(8080, "--port", "-p", help="Gateway port to test"),
+    key: Optional[str] = typer.Option(None, "--key", "-k", help="API key token for authenticated routes"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Model alias to test with a completion probe"),
+) -> None:
+    """Test connectivity, health, readiness, and sample completions against the running gateway."""
+    import httpx
+
+    base_url = f"http://127.0.0.1:{port}"
+    console.print(f"[bold cyan]Testing LocalPilot Gateway at {base_url}...[/bold cyan]")
+
+    # 1. Test Liveness Probe
+    try:
+        r_live = httpx.get(f"{base_url}/v1/health/live", timeout=3.0)
+        if r_live.status_code == 200:
+            console.print("  [bold green]✓[/bold green] Liveness check passed (/v1/health/live: alive)")
+        else:
+            console.print(f"  [bold red]✗[/bold red] Liveness check returned {r_live.status_code}")
+    except Exception as e:
+        console.print(f"  [bold red]✗[/bold red] Cannot connect to gateway at {base_url}: {e}")
+        console.print("    Start it with [bold cyan]localpilot gateway start[/bold cyan]")
+        return
+
+    # 2. Test Readiness Probe
+    try:
+        r_ready = httpx.get(f"{base_url}/v1/health/ready", timeout=3.0)
+        data = r_ready.json()
+        if r_ready.status_code == 200 and data.get("ready"):
+            console.print(f"  [bold green]✓[/bold green] Readiness check passed ({data.get('available_models', 0)} models ready)")
+        else:
+            console.print(f"  [yellow]![/yellow] Gateway alive, but models not ready ({data.get('reason', 'no models registered')})")
+    except Exception as e:
+        console.print(f"  [bold red]✗[/bold red] Readiness probe failed: {e}")
+
+    # 3. Test Models Discovery
+    api_key = key
+    if not api_key:
+        db = DatabaseService()
+        key_svc = ApiKeyService(db)
+        keys = [k for k in key_svc.list_keys() if k.status == ApiKeyStatus.ACTIVE]
+        if keys:
+            console.print(f"  [dim]Found local API key '{keys[0].display_name}' ({keys[0].secret_prefix}...); supply --key <token> for full auth test[/dim]")
+
+    if api_key:
+        headers = {"Authorization": f"Bearer {api_key}"}
+        try:
+            r_models = httpx.get(f"{base_url}/v1/models", headers=headers, timeout=4.0)
+            if r_models.status_code == 200:
+                m_list = r_models.json().get("data", [])
+                console.print(f"  [bold green]✓[/bold green] Authentication & model discovery passed ({len(m_list)} models accessible)")
+                target_model = model or (m_list[0]["id"] if m_list else None)
+                if target_model:
+                    console.print(f"  Testing chat completion probe on model '[bold]{target_model}[/bold]'...")
+                    t0 = time.time()
+                    r_chat = httpx.post(
+                        f"{base_url}/v1/chat/completions",
+                        headers=headers,
+                        json={
+                            "model": target_model,
+                            "messages": [{"role": "user", "content": "ping"}],
+                            "max_tokens": 5,
+                        },
+                        timeout=10.0,
+                    )
+                    latency = (time.time() - t0) * 1000
+                    if r_chat.status_code == 200:
+                        console.print(f"  [bold green]✓[/bold green] Chat completion test succeeded ({latency:.1f} ms)")
+                    else:
+                        console.print(f"  [yellow]![/yellow] Chat completion returned status {r_chat.status_code}: {r_chat.text}")
+            else:
+                console.print(f"  [bold red]✗[/bold red] Model list returned status {r_models.status_code}: {r_models.text}")
+        except Exception as e:
+            console.print(f"  [bold red]✗[/bold red] Auth test failed: {e}")
+
+
 # =============================================================================
 # Local API Key Management Subcommands
 # =============================================================================
@@ -1584,6 +1661,24 @@ def keys_revoke(
         render_message_box("Key Revoked", f"API Key '{key_id}' has been permanently revoked.")
     except Exception as exc:
         render_error_box("Revoke Failed", str(exc))
+        raise typer.Exit(code=1)
+
+
+@keys_app.command("rotate")
+def keys_rotate(
+    key_id: str = typer.Argument(..., help="API key ID to rotate"),
+) -> None:
+    """Rotate secret token for an existing key, preserving its identity and policy."""
+    service = ApiKeyService()
+    try:
+        raw_token, record = service.rotate_key(key_id)
+        render_message_box("Key Rotated", f"API Key '{record.display_name}' ({key_id}) rotated successfully.")
+        console.print(f"  [bold]Key ID:[/bold]          {record.key_id}")
+        console.print(f"  [bold]New Safe Prefix:[/bold] {record.secret_prefix}")
+        console.print(f"\n[bold yellow]New Plaintext API Token (copy now, will not be shown again):[/bold yellow]")
+        console.print(f"  [bold cyan]{raw_token}[/bold cyan]\n")
+    except Exception as exc:
+        render_error_box("Rotation Failed", str(exc))
         raise typer.Exit(code=1)
 
 

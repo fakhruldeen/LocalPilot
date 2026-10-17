@@ -187,9 +187,28 @@ class ApiKeyService:
             conn.execute("UPDATE api_keys SET revoked_at = ? WHERE key_id = ?", (now, key_id))
         return True
 
+    def rotate_key(self, key_id: str) -> Tuple[str, ApiKeyRecord]:
+        """Rotates the secret for an existing key, returning the new raw token and updated record."""
+        existing = self.get_key(key_id)
+        if not existing:
+            raise ValueError(f"API key '{key_id}' does not exist.")
+
+        raw_token, new_rec = ApiKeyRecord.generate(name=existing.display_name)
+        conn = self.db.get_connection()
+        with conn:
+            conn.execute(
+                "UPDATE api_keys SET prefix = ?, hashed_secret = ?, revoked_at = NULL WHERE key_id = ?",
+                (new_rec.secret_prefix, new_rec.verifier, key_id),
+            )
+        updated = self.get_key(key_id)
+        if not updated:
+            raise RuntimeError(f"Failed to retrieve rotated key '{key_id}'.")
+        return raw_token, updated
+
     def delete_key(self, key_id: str) -> bool:
         """Removes an API key record permanently."""
         conn = self.db.get_connection()
         with conn:
             conn.execute("DELETE FROM api_keys WHERE key_id = ?", (key_id,))
         return True
+

@@ -74,3 +74,21 @@ def test_revoke_and_delete_key(temp_service):
     del_res = temp_service.delete_key(record.key_id)
     assert del_res is True
     assert temp_service.get_key(record.key_id) is None
+
+
+def test_rotate_key(temp_service):
+    raw_old, key = temp_service.create_key("Key to Rotate", app_name="cursor")
+    assert temp_service.verify_token(raw_old) is not None
+
+    raw_new, rotated = temp_service.rotate_key(key.key_id)
+    assert raw_new.startswith("sk-local-")
+    assert raw_new != raw_old
+    assert rotated.key_id == key.key_id
+    assert rotated.display_name == "Key to Rotate"
+
+    # Old token fails, new token succeeds
+    assert temp_service.verify_token(raw_old) is None
+    verified = temp_service.verify_token(raw_new)
+    assert verified is not None
+    assert verified.key_id == key.key_id
+
