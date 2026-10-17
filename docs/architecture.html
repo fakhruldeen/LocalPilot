@@ -157,7 +157,7 @@
                 <img src="img/logo.png" alt="LocalPilot Logo" class="w-10 h-10 rounded-xl object-contain border border-white/10 group-hover:scale-105 transition-transform duration-300">
                 <span class="font-bold text-xl tracking-tight text-white flex items-center gap-2">
                     LocalPilot
-                    <span class="text-xs bg-brand/10 text-brand px-2 py-0.5 rounded-full border border-brand/20 font-mono font-medium">v0.1.7</span>
+                    <span class="text-xs bg-brand/10 text-brand px-2 py-0.5 rounded-full border border-brand/20 font-mono font-medium">v0.1.8</span>
                 </span>
             </a>
 
@@ -747,6 +747,69 @@
                         $ localpilot self update
                     </div>
                 </div>
+
+                <!-- Command 12: Version Management -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <code class="text-brand font-bold text-sm font-mono">localpilot versions list | info | pin | compare | remove</code>
+                        <span class="text-[11px] text-slate-400 font-mono">Model Versioning</span>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Manages immutable model version records, pin protection against cleanup, side-by-side attribute comparison, and safe removal with reference-counted shared file preservation.
+                    </p>
+                    <div class="bg-dark-950 p-3 rounded-xl font-mono text-xs text-slate-300 border border-white/5 space-y-1">
+                        <div>$ localpilot versions list</div>
+                        <div>$ localpilot versions pin ver-12345 --reason "Approved baseline"</div>
+                        <div>$ localpilot versions compare ver-1 ver-2</div>
+                    </div>
+                </div>
+
+                <!-- Command 13: Model Aliases -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <code class="text-brand font-bold text-sm font-mono">localpilot alias list | set | rollback | history</code>
+                        <span class="text-[11px] text-slate-400 font-mono">Model Aliases</span>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Maintains stable user- and API-facing pointers (<code class="text-brand">default</code>, <code class="text-brand">writing</code>, <code class="text-brand">coding</code>) with atomic version reassignment and instant rollback.
+                    </p>
+                    <div class="bg-dark-950 p-3 rounded-xl font-mono text-xs text-slate-300 border border-white/5 space-y-1">
+                        <div>$ localpilot alias list</div>
+                        <div>$ localpilot alias set coding ver-new</div>
+                        <div>$ localpilot alias rollback coding</div>
+                    </div>
+                </div>
+
+                <!-- Command 14: OpenAI-Compatible Inference Gateway -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <code class="text-brand font-bold text-sm font-mono">localpilot gateway start | status | stop</code>
+                        <span class="text-[11px] text-slate-400 font-mono">Local Inference API</span>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Runs a local authenticated OpenAI-compatible API gateway bound strictly to loopback (<code class="text-brand">127.0.0.1:8080/v1</code>) supporting <code class="text-slate-300">/v1/models</code> and streaming SSE <code class="text-slate-300">/v1/chat/completions</code>.
+                    </p>
+                    <div class="bg-dark-950 p-3 rounded-xl font-mono text-xs text-slate-300 border border-white/5 space-y-1">
+                        <div>$ localpilot gateway start --daemon --port 8080</div>
+                        <div>$ localpilot gateway status</div>
+                    </div>
+                </div>
+
+                <!-- Command 15: API Keys, Stats & App Connect -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <code class="text-brand font-bold text-sm font-mono">localpilot keys | stats | connect</code>
+                        <span class="text-[11px] text-slate-400 font-mono">Telemetry &amp; Integration</span>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Manages local API credentials, displays real-time request and token accounting (TPS, TTFT, latency), and generates guided configurations for OpenCode, VS Code Continue, and Cursor.
+                    </p>
+                    <div class="bg-dark-950 p-3 rounded-xl font-mono text-xs text-slate-300 border border-white/5 space-y-1">
+                        <div>$ localpilot keys create "OpenCode" --app opencode</div>
+                        <div>$ localpilot stats</div>
+                        <div>$ localpilot connect opencode --write</div>
+                    </div>
+                </div>
             </div>
         </article>
 
@@ -857,7 +920,7 @@
                     <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="hover:text-brand transition-colors underline font-mono text-slate-300">10.5281/zenodo.23424540</a>
                 </div>
                 <div class="text-center md:text-right leading-relaxed">
-                    Mohamed (Fouad) Fakhruldeen. (2026). <em class="text-slate-300">fakhruldeen/LocalPilot: v0.1.7</em> (Version v0.1.7) [Computer software]. Zenodo. <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="text-brand hover:underline font-mono">https://doi.org/10.5281/zenodo.23424540</a>
+                    Mohamed (Fouad) Fakhruldeen. (2026). <em class="text-slate-300">fakhruldeen/LocalPilot: v0.1.8</em> (Version v0.1.8) [Computer software]. Zenodo. <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="text-brand hover:underline font-mono">https://doi.org/10.5281/zenodo.23424540</a>
                 </div>
             </div>
         </div>

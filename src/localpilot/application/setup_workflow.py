@@ -37,6 +37,8 @@ from localpilot.runtimes.vllm_backend import VllmBackendAdapter
 from localpilot.security import sanitize_artifact_subpath, validate_download_url, validate_path_within_root
 from localpilot.sources.huggingface import HuggingFaceSourceAdapter
 from localpilot.sources.ollama_library import OllamaLibrarySourceAdapter
+from localpilot.application.version_service import ModelVersionService
+from localpilot.domain.versioning import ExecutionProfile, ModelVersion, VerificationRecord
 from localpilot.storage.db import DatabaseManager, get_db, get_default_data_dir
 from localpilot.storage.inventory import StorageManager
 
@@ -104,12 +106,14 @@ class SetupWorkflow:
         job_mgr: Optional[JobManager] = None,
         storage_mgr: Optional[StorageManager] = None,
         data_dir: Optional[Path] = None,
+        version_service: Optional[ModelVersionService] = None,
     ) -> None:
         self.db = db or get_db()
         self.hub = hub or ObservabilityHub(db=self.db)
         self.job_mgr = job_mgr or JobManager(self.db, self.hub)
         self.data_dir = data_dir or (self.db.db_path.parent if hasattr(self.db, "db_path") else get_default_data_dir())
         self.storage_mgr = storage_mgr or StorageManager(self.db, data_dir=self.data_dir)
+        self.version_service = version_service or ModelVersionService(self.db)
         self.inspector = SystemInspector()
         self.compatibility_policy = CompatibilityPolicy()
         self.ollama_adapter = OllamaRuntimeAdapter(data_dir=self.data_dir)
@@ -511,6 +515,38 @@ class SetupWorkflow:
                             (inst_id, plan.execution_plan.plan_id),
                         )
 
+                # Register immutable version and active alias in ModelVersionService
+                try:
+                    ver_id = f"ver-{inst_id[:12]}"
+                    mv = ModelVersion(
+                        version_id=ver_id,
+                        logical_model_id=candidate.model_id,
+                        version_label="v1",
+                        source=candidate.source or "local",
+                        artifact_uri=candidate.source_url or str(model_file),
+                        artifact_digest=candidate.sha256 or "unknown",
+                        artifact_size_bytes=candidate.size_bytes or 0,
+                        quantization=candidate.quantization,
+                        context_length=candidate.context_length or 2048,
+                        installed_path=str(model_file),
+                        installation_id=inst_id,
+                    )
+                    prof = ExecutionProfile(
+                        profile_id=f"prof-{inst_id[:12]}",
+                        version_id=ver_id,
+                        profile_name="default",
+                        inference_backend=plan.inference_backend,
+                        managed_service=plan.managed_service,
+                        deployment_method=plan.deployment_method,
+                        context_tokens=candidate.context_length or 2048,
+                    )
+                    self.version_service.register_version(mv, prof)
+                    self.version_service.activate_alias(f"{candidate.model_id}:latest", ver_id, reason="Initial setup")
+                    if not self.version_service.get_alias("default"):
+                        self.version_service.activate_alias("default", ver_id, reason="Default alias from initial setup")
+                except Exception:
+                    pass
+
                 # Stage 9: Live Test Inference Verification (D02)
                 self.job_mgr.update_checkpoint(job.job_id, "verifying_inference", checkpoint_name="inference_test")
                 if progress_callback:
@@ -573,6 +609,19 @@ class SetupWorkflow:
                             "UPDATE installations SET readiness_stage = ?, updated_at = ? WHERE installation_id = ?",
                             (VerificationStage.TESTED_HERE.value, now_tested, inst_id),
                         )
+
+                    try:
+                        self.version_service.record_verification(
+                            VerificationRecord(
+                                version_id=f"ver-{inst_id[:12]}",
+                                runtime_version=plan.runtime_name,
+                                test_type="inference_smoke",
+                                outcome="passed",
+                                passed=True,
+                            )
+                        )
+                    except Exception:
+                        pass
 
                     self.job_mgr.complete_job(job.job_id)
                     self.hub.record_activity(

@@ -261,6 +261,219 @@ class DatabaseManager:
                 )
                 applied.add(3)
 
+            if 4 not in applied:
+                # Migration v4: Versioned model management, aliases, verification, and API gateway tables
+                conn.execute("""
+                CREATE TABLE IF NOT EXISTS logical_models (
+                    model_id TEXT PRIMARY KEY,
+                    display_name TEXT NOT NULL,
+                    description TEXT,
+                    task_type TEXT NOT NULL,
+                    default_alias TEXT,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+                """)
+
+                conn.execute("""
+                CREATE TABLE IF NOT EXISTS model_versions (
+                    version_id TEXT PRIMARY KEY,
+                    logical_model_id TEXT NOT NULL REFERENCES logical_models(model_id),
+                    version_tag TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    artifact_uri TEXT NOT NULL,
+                    artifact_digest TEXT NOT NULL,
+                    artifact_size_bytes INTEGER NOT NULL,
+                    quantization TEXT,
+                    context_length INTEGER NOT NULL,
+                    installed_path TEXT NOT NULL,
+                    installation_id TEXT REFERENCES installations(installation_id),
+                    compatibility_matrix_json TEXT NOT NULL DEFAULT '{}',
+                    is_pinned INTEGER NOT NULL DEFAULT 0,
+                    pinned_reason TEXT,
+                    pin_count INTEGER NOT NULL DEFAULT 0,
+                    is_deleted INTEGER NOT NULL DEFAULT 0,
+                    deleted_at TEXT
+                )
+                """)
+
+                conn.execute("""
+                CREATE TABLE IF NOT EXISTS execution_profiles (
+                    profile_id TEXT PRIMARY KEY,
+                    version_id TEXT NOT NULL REFERENCES model_versions(version_id),
+                    profile_name TEXT NOT NULL,
+                    backend TEXT NOT NULL,
+                    managed_service TEXT NOT NULL,
+                    deployment_method TEXT NOT NULL,
+                    threads INTEGER,
+                    gpu_layers INTEGER,
+                    context_tokens INTEGER,
+                    temperature REAL,
+                    created_at TEXT NOT NULL
+                )
+                """)
+
+                conn.execute("""
+                CREATE TABLE IF NOT EXISTS model_aliases (
+                    alias_name TEXT PRIMARY KEY,
+                    target_version_id TEXT NOT NULL REFERENCES model_versions(version_id),
+                    logical_model_id TEXT NOT NULL REFERENCES logical_models(model_id),
+                    is_system_alias INTEGER NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+                """)
+
+                conn.execute("""
+                CREATE TABLE IF NOT EXISTS alias_history (
+                    history_id TEXT PRIMARY KEY,
+                    alias_name TEXT NOT NULL,
+                    previous_version_id TEXT,
+                    new_version_id TEXT NOT NULL,
+                    changed_at TEXT NOT NULL,
+                    reason TEXT NOT NULL
+                )
+                """)
+
+                conn.execute("""
+                CREATE TABLE IF NOT EXISTS verification_records (
+                    verification_id TEXT PRIMARY KEY,
+                    version_id TEXT NOT NULL REFERENCES model_versions(version_id),
+                    verified_at TEXT NOT NULL,
+                    passed INTEGER NOT NULL,
+                    benchmark_tps REAL,
+                    first_token_latency_ms REAL,
+                    error_message TEXT
+                )
+                """)
+
+                conn.execute("""
+                CREATE TABLE IF NOT EXISTS api_keys (
+                    key_id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    prefix TEXT NOT NULL,
+                    hashed_secret TEXT NOT NULL,
+                    created_at TEXT NOT NULL,
+                    expires_at TEXT,
+                    revoked_at TEXT,
+                    policy_json TEXT NOT NULL DEFAULT '{}'
+                )
+                """)
+
+                conn.execute("""
+                CREATE TABLE IF NOT EXISTS api_requests (
+                    request_id TEXT PRIMARY KEY,
+                    timestamp TEXT NOT NULL,
+                    key_id TEXT REFERENCES api_keys(key_id),
+                    app_name TEXT,
+                    model_alias TEXT NOT NULL,
+                    resolved_version_id TEXT NOT NULL,
+                    prompt_tokens INTEGER NOT NULL DEFAULT 0,
+                    completion_tokens INTEGER NOT NULL DEFAULT 0,
+                    total_tokens INTEGER NOT NULL DEFAULT 0,
+                    latency_ms REAL NOT NULL DEFAULT 0.0,
+                    first_token_latency_ms REAL,
+                    status_code INTEGER NOT NULL,
+                    error_code TEXT
+                )
+                """)
+
+                self.backfill_v4_from_installations(conn)
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, applied_at, description) VALUES (4, datetime('now'), 'v4: versioned model management, aliases, and api gateway')"
+                )
+                applied.add(4)
+
+    def backfill_v4_from_installations(self, conn: sqlite3.Connection) -> None:
+        """Non-destructive idempotent backfill promoting installations to versioned model management."""
+        installations = conn.execute("SELECT * FROM installations").fetchall()
+        inst_col_names = [col[0] for col in conn.execute("SELECT * FROM installations LIMIT 0").description]
+
+        for row in installations:
+            inst = dict(zip(inst_col_names, row))
+            m_id = inst.get("model_id") or "default-model"
+            inst_id = inst.get("installation_id") or "inst-0"
+            now_str = inst.get("installed_at") or "2026-01-01T00:00:00Z"
+
+            # Logical model
+            existing_lm = conn.execute("SELECT model_id FROM logical_models WHERE model_id = ?", (m_id,)).fetchone()
+            if not existing_lm:
+                conn.execute(
+                    "INSERT INTO logical_models (model_id, display_name, description, task_type, default_alias, created_at, updated_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (m_id, m_id, f"Model {m_id}", "general", f"{m_id}:latest", now_str, now_str)
+                )
+
+            # Model version
+            ver_id = f"ver-{inst_id[:12]}"
+            existing_ver = conn.execute("SELECT version_id FROM model_versions WHERE version_id = ?", (ver_id,)).fetchone()
+            if not existing_ver:
+                conn.execute(
+                    "INSERT INTO model_versions (version_id, logical_model_id, version_tag, created_at, "
+                    "artifact_uri, artifact_digest, artifact_size_bytes, quantization, context_length, installed_path, installation_id) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        ver_id,
+                        m_id,
+                        "v1",
+                        now_str,
+                        inst.get("source_url") or inst.get("model_path") or "local",
+                        inst.get("sha256") or "unknown",
+                        inst.get("size_bytes") or 0,
+                        inst.get("quantization") or "Q4_K_M",
+                        2048,
+                        inst.get("model_path") or "",
+                        inst_id,
+                    )
+                )
+
+            # Execution profile
+            prof_id = f"prof-{inst_id[:12]}"
+            existing_prof = conn.execute("SELECT profile_id FROM execution_profiles WHERE profile_id = ?", (prof_id,)).fetchone()
+            if not existing_prof:
+                conn.execute(
+                    "INSERT INTO execution_profiles (profile_id, version_id, profile_name, backend, managed_service, deployment_method, context_tokens, temperature, created_at) "
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+                    (
+                        prof_id,
+                        ver_id,
+                        "default",
+                        inst.get("inference_backend") or "llama.cpp",
+                        inst.get("managed_service") or "none",
+                        inst.get("deployment_method") or "local_api_service",
+                        2048,
+                        0.7,
+                        now_str,
+                    )
+                )
+
+            # Aliases
+            alias_tag = f"{m_id}:latest"
+            if not conn.execute("SELECT alias_name FROM model_aliases WHERE alias_name = ?", (alias_tag,)).fetchone():
+                conn.execute(
+                    "INSERT INTO model_aliases (alias_name, target_version_id, logical_model_id, is_system_alias, created_at, updated_at) "
+                    "VALUES (?, ?, ?, 1, ?, ?)",
+                    (alias_tag, ver_id, m_id, now_str, now_str)
+                )
+                conn.execute(
+                    "INSERT INTO alias_history (history_id, alias_name, previous_version_id, new_version_id, changed_at, reason) "
+                    "VALUES (?, ?, NULL, ?, ?, 'Initial migration backfill')",
+                    (f"hist-{alias_tag}-init", alias_tag, ver_id, now_str)
+                )
+
+            # Default global alias
+            if not conn.execute("SELECT alias_name FROM model_aliases WHERE alias_name = 'default'").fetchone():
+                conn.execute(
+                    "INSERT INTO model_aliases (alias_name, target_version_id, logical_model_id, is_system_alias, created_at, updated_at) "
+                    "VALUES ('default', ?, ?, 1, ?, ?)",
+                    (ver_id, m_id, now_str, now_str)
+                )
+                conn.execute(
+                    "INSERT INTO alias_history (history_id, alias_name, previous_version_id, new_version_id, changed_at, reason) "
+                    "VALUES (?, 'default', NULL, ?, ?, 'Initial migration default alias')",
+                    (f"hist-default-{ver_id}", ver_id, now_str)
+                )
+
 
 # Global shared instance
 _global_db: Optional[DatabaseManager] = None

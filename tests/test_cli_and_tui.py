@@ -104,6 +104,10 @@ async def test_tui_app_smoke() -> None:
         await pilot.press("a")
         assert tui.query_one("#main-tabs").active == "activity-tab"
 
+        # Switch to gateway tab via keybinding 7
+        await pilot.press("7")
+        assert tui.query_one("#main-tabs").active == "gateway-tab"
+
         # Open help modal via ? keybinding
         await pilot.press("question_mark")
         # Pop screen

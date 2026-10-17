@@ -150,7 +150,7 @@
                 <img src="../img/logo.png" alt="LocalPilot Logo" class="w-10 h-10 rounded-xl object-contain border border-white/10 group-hover:scale-105 transition-transform duration-300">
                 <span class="font-bold text-xl tracking-tight text-white flex items-center gap-2">
                     LocalPilot
-                    <span class="text-xs bg-brand/10 text-brand px-2 py-0.5 rounded-full border border-brand/20 font-mono font-medium">v0.1.7</span>
+                    <span class="text-xs bg-brand/10 text-brand px-2 py-0.5 rounded-full border border-brand/20 font-mono font-medium">v0.1.8</span>
                 </span>
             </a>
 
@@ -604,6 +604,26 @@
                                 <td class="p-4">إلغاء تثبيت التطبيق بنظافة، مع خيار حذف النماذج أو الاحتفاظ بها.</td>
                                 <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot self uninstall --purge-models</td>
                             </tr>
+                            <tr>
+                                <td class="p-4 font-mono font-bold text-brand" dir="ltr">localpilot versions</td>
+                                <td class="p-4">إدارة إصدارات النماذج الثابتة، وتثبيت الإصدارات المعتمدة (Pin) ضد الحذف التلقائي، والمقارنة جنباً إلى جنب، والحذف الآمن مع حماية الملفات المشتركة.</td>
+                                <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot versions list</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-mono font-bold text-brand" dir="ltr">localpilot alias</td>
+                                <td class="p-4">إدارة الأسماء المستعارة الثابتة للتطبيقات (مثل default و coding) مع التبديل الذري بين الإصدارات والتراجع الفوري (Rollback).</td>
+                                <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot alias set coding ver-new</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-mono font-bold text-brand" dir="ltr">localpilot gateway</td>
+                                <td class="p-4">تشغيل خادم محلي متوافق مع OpenAI API محصور تماماً على المضيف المحلي (127.0.0.1:8080) مع دعم البث الحي والتوثيق المحلي.</td>
+                                <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot gateway start --daemon --port 8080</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-mono font-bold text-brand" dir="ltr">localpilot keys | stats | connect</td>
+                                <td class="p-4">إدارة مفاتيح API المحلية، وتتبع مقاييس استهلاك الرموز والأداء الحية (TPS، TTFT، الكمون)، وتوليد إعدادات الربط الموجهة للتطبيقات مثل OpenCode و Continue و Cursor.</td>
+                                <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot connect opencode --write</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -636,7 +656,7 @@
                     <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="hover:text-brand transition-colors underline font-mono text-slate-300">10.5281/zenodo.23424540</a>
                 </div>
                 <div class="text-center md:text-left leading-relaxed" dir="ltr">
-                    Mohamed (Fouad) Fakhruldeen. (2026). <em class="text-slate-300">fakhruldeen/LocalPilot: v0.1.7</em> (Version v0.1.7) [Computer software]. Zenodo. <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="text-brand hover:underline font-mono">https://doi.org/10.5281/zenodo.23424540</a>
+                    Mohamed (Fouad) Fakhruldeen. (2026). <em class="text-slate-300">fakhruldeen/LocalPilot: v0.1.8</em> (Version v0.1.8) [Computer software]. Zenodo. <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="text-brand hover:underline font-mono">https://doi.org/10.5281/zenodo.23424540</a>
                 </div>
             </div>
         </div>

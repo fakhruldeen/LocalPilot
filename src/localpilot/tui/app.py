@@ -52,6 +52,10 @@ from localpilot.domain.recommendation import (
     ShortlistCandidate,
 )
 from localpilot.hardware.inspector import SystemInspector
+from localpilot.application.accounting_service import ApiAccountingService
+from localpilot.application.api_key_service import ApiKeyService
+from localpilot.application.version_service import ModelVersionService
+from localpilot.gateway.server import GatewayServer
 from localpilot.observability.activity import ActivityService
 from localpilot.security import get_stored_secret, store_secret
 from localpilot.sources.catalog_service import CatalogService, RankedCandidate
@@ -1255,6 +1259,7 @@ class LocalPilotTUI(App):
         ("4", "switch_to_running", "Running"),
         ("5", "switch_to_storage", "Storage"),
         ("6", "switch_to_activity", "Activity"),
+        ("7", "switch_to_gateway", "Gateway & API"),
     ]
 
     def __init__(self, start_wizard: bool = False) -> None:
@@ -1265,6 +1270,9 @@ class LocalPilotTUI(App):
         self.activity_svc = ActivityService()
         self.runtime_svc = RuntimeLifecycleService()
         self.job_mgr = JobManager()
+        self.version_service = ModelVersionService()
+        self.key_service = ApiKeyService()
+        self.accounting_service = ApiAccountingService()
         self._ranked_candidates: List[RankedCandidate] = []
         self._search_timer: Optional[Timer] = None
         self._pending_query: str = ""
@@ -1353,6 +1361,17 @@ class LocalPilotTUI(App):
                 with Vertical():
                     yield DataTable(id="activity-table")
 
+            with TabPane("API & Gateway", id="gateway-tab"):
+                with VerticalScroll():
+                    yield Label("[bold cyan]Local Inference Gateway & Operational Monitoring[/bold cyan]")
+                    yield Label("", id="gateway-status-label")
+                    yield Label("\n[bold]Active Aliases & Routes[/bold]")
+                    yield DataTable(id="gateway-alias-table")
+                    yield Label("\n[bold]API Usage & Performance Summary[/bold]")
+                    yield DataTable(id="gateway-metrics-table")
+                    with Horizontal(classes="table-actions-bar"):
+                        yield Button("Refresh Metrics (R)", variant="default", id="btn-gateway-refresh", tooltip="Refresh API statistics and active keys")
+
         with Container(id="context-help-container"):
             yield Label("• Use Tab / Arrow keys to navigate. Press '?' or F1 for documentation manual.", id="context-help-text")
         yield Footer()
@@ -1362,6 +1381,7 @@ class LocalPilotTUI(App):
         self._setup_installed_table()
         self._setup_running_table()
         self._setup_activity_table()
+        self._setup_gateway_tab()
         self._refresh_storage()
         self._load_health_background()
         self._check_for_interrupted_work()
@@ -1677,6 +1697,73 @@ class LocalPilotTUI(App):
     def action_switch_to_activity(self) -> None:
         self.query_one("#main-tabs", TabbedContent).active = "activity-tab"
 
+    def action_switch_to_gateway(self) -> None:
+        self.query_one("#main-tabs", TabbedContent).active = "gateway-tab"
+        self._refresh_gateway_tab()
+
+    def _setup_gateway_tab(self) -> None:
+        try:
+            alias_table = self.query_one("#gateway-alias-table", DataTable)
+            alias_table.cursor_type = "row"
+            alias_table.clear(columns=True)
+            alias_table.add_columns("Alias Name", "Target Version", "Logical Model", "Type", "Last Updated")
+
+            metrics_table = self.query_one("#gateway-metrics-table", DataTable)
+            metrics_table.cursor_type = "row"
+            metrics_table.clear(columns=True)
+            metrics_table.add_columns("Metric", "Value")
+
+            self._refresh_gateway_tab()
+        except Exception:
+            pass
+
+    def _refresh_gateway_tab(self) -> None:
+        try:
+            # 1. Gateway Status
+            running = GatewayServer.get_running_state()
+            status_label = self.query_one("#gateway-status-label", Label)
+            if running:
+                status_label.update(
+                    f"[bold green]● RUNNING[/bold green] on [cyan]http://{running['host']}:{running['port']}/v1[/cyan] (PID: {running['pid']})"
+                )
+            else:
+                status_label.update(
+                    "[yellow]○ STOPPED[/yellow] • Start using '[bold cyan]localpilot gateway start[/bold cyan]' to expose OpenAI-compatible inference on loopback."
+                )
+
+            # 2. Aliases Table
+            alias_table = self.query_one("#gateway-alias-table", DataTable)
+            alias_table.clear()
+            aliases = self.version_service.list_aliases()
+            if not aliases:
+                alias_table.add_row("No aliases registered", "-", "-", "-", "-")
+            else:
+                for a in aliases:
+                    alias_table.add_row(
+                        f"[bold]{a.alias_name}[/bold]",
+                        a.version_id,
+                        a.logical_model_id or "-",
+                        "System" if a.is_system_alias else "Custom",
+                        a.updated_at[:19].replace("T", " ") if a.updated_at else "-",
+                    )
+
+            # 3. Metrics Table
+            metrics_table = self.query_one("#gateway-metrics-table", DataTable)
+            metrics_table.clear()
+            summary = self.accounting_service.get_usage_summary()
+
+            metrics_table.add_row("Total Requests", str(summary["total_requests"]))
+            metrics_table.add_row("Successful Requests", str(summary["successful_requests"]))
+            metrics_table.add_row("Error Requests", str(summary["error_requests"]))
+            metrics_table.add_row("Prompt Tokens", f"{summary['total_prompt_tokens']:,}")
+            metrics_table.add_row("Completion Tokens", f"{summary['total_completion_tokens']:,}")
+            metrics_table.add_row("Total Tokens", f"{summary['total_tokens']:,}")
+            metrics_table.add_row("Average Latency (ms)", f"{summary['avg_latency_ms']:.1f}")
+            metrics_table.add_row("Time to First Token (TTFT ms)", f"{summary['avg_first_token_latency_ms']:.1f}")
+            metrics_table.add_row("Tokens Per Second (TPS)", f"{summary['tokens_per_second']:.1f}")
+        except Exception:
+            pass
+
     def action_start_guided_setup(self) -> None:
         def _on_guided_finish(model_name: Optional[str]) -> None:
             self._refresh_installed_table()
@@ -1738,6 +1825,8 @@ class LocalPilotTUI(App):
             self.action_details_selected()
         elif btn_id == "btn-running-stop":
             self.action_stop_action()
+        elif btn_id == "btn-gateway-refresh":
+            self._refresh_gateway_tab()
 
     def _handle_interrupted_decision(self, decision: str) -> None:
         if decision == "resume":

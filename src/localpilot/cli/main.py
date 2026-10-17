@@ -36,9 +36,13 @@ from localpilot.observability.activity import ActivityService
 from localpilot.observability.events import get_hub
 from localpilot.observability.export import export_support_bundle, generate_support_bundle_dict
 from localpilot.observability.schema import EventCategory, EventLevel
-from localpilot.runtimes.base import InstallationScope
 from localpilot.sources.catalog_service import CatalogService
-from localpilot.storage.db import get_db, get_default_log_dir
+from localpilot.application.accounting_service import ApiAccountingService
+from localpilot.application.api_key_service import ApiKeyService
+from localpilot.application.integration_service import IntegrationTemplateService
+from localpilot.application.version_service import ModelVersionService
+from localpilot.gateway.server import GatewayServer
+from localpilot.storage.db import get_db, get_default_data_dir, get_default_log_dir
 from localpilot.storage.inventory import StorageManager
 
 app = typer.Typer(
@@ -55,6 +59,18 @@ Run 'localpilot tui' to launch the visual full-screen dashboard.""",
 
 self_app = typer.Typer(help="Manage the LocalPilot application itself.")
 app.add_typer(self_app, name="self")
+
+versions_app = typer.Typer(help="Manage immutable model versions, pins, comparison, and safe removal.")
+app.add_typer(versions_app, name="versions")
+
+alias_app = typer.Typer(help="Manage stable model aliases, activation, and rollback.")
+app.add_typer(alias_app, name="alias")
+
+gateway_app = typer.Typer(help="Manage local OpenAI-compatible inference API gateway.")
+app.add_typer(gateway_app, name="gateway")
+
+keys_app = typer.Typer(help="Manage local API keys and application permissions.")
+app.add_typer(keys_app, name="keys")
 
 
 def _val(arg: Any, default: Any = None) -> Any:
@@ -1056,7 +1072,7 @@ def self_update() -> None:
     """
     import httpx
     import localpilot
-    current = getattr(localpilot, "__version__", "0.1.7")
+    current = getattr(localpilot, "__version__", "0.1.8")
     console.print(f"[bold cyan]Checking for LocalPilot updates (current: v{current})...[/bold cyan]")
     try:
         resp = httpx.get("https://pypi.org/pypi/localpilot/json", timeout=4.0)
@@ -1136,3 +1152,593 @@ def self_uninstall(
     console.print("\n[bold green]Cleanup finished.[/bold green]")
     console.print("To complete removal of the Python package from your environment, run:")
     console.print("  [bold cyan]pip uninstall localpilot[/bold cyan] (or [bold cyan]pipx uninstall localpilot[/bold cyan])")
+
+
+# =============================================================================
+# Model Versions CLI Subcommands
+# =============================================================================
+
+@versions_app.command("list")
+def versions_list(
+    model_id: Optional[str] = typer.Argument(None, help="Optional model family ID to filter by"),
+    all: bool = typer.Option(False, "--all", "-a", help="Include deleted versions"),
+) -> None:
+    """List installed model versions with pinning, size, and variant details."""
+    service = ModelVersionService()
+    versions = service.list_versions(model_id=model_id, include_deleted=all)
+    if not versions:
+        console.print("[yellow]No model versions found.[/yellow]")
+        return
+
+    table = Table(title="Installed Model Versions", show_header=True, header_style="bold cyan")
+    table.add_column("Version ID", style="bold")
+    table.add_column("Logical Model")
+    table.add_column("Tag")
+    table.add_column("Quantization")
+    table.add_column("Size (MB)", justify="right")
+    table.add_column("Pinned?", justify="center")
+    table.add_column("Created At", style="dim")
+
+    for v in versions:
+        size_mb = f"{v.artifact_size_bytes / (1024*1024):.1f}" if v.artifact_size_bytes else "-"
+        pinned_badge = "[bold green]YES[/bold green]" if v.is_pinned else "[dim]no[/dim]"
+        table.add_row(
+            v.version_id,
+            v.logical_model_id,
+            v.version_label,
+            v.quantization or "n/a",
+            size_mb,
+            pinned_badge,
+            v.created_at[:19].replace("T", " ") if v.created_at else "-",
+        )
+    console.print(table)
+
+
+@versions_app.command("info")
+def versions_info(
+    version_id: str = typer.Argument(..., help="Model version ID to inspect"),
+) -> None:
+    """Inspect an immutable model version, execution profiles, and verification status."""
+    service = ModelVersionService()
+    v = service.get_version(version_id)
+    if not v:
+        render_error_box("Version Not Found", f"No version found with ID '{version_id}'.")
+        raise typer.Exit(code=1)
+
+    console.print(f"[bold cyan]Model Version:[/bold cyan] {v.version_id}")
+    console.print(f"  [bold]Logical Model:[/bold]   {v.logical_model_id}")
+    console.print(f"  [bold]Version Tag:[/bold]     {v.version_label}")
+    console.print(f"  [bold]Quantization:[/bold]    {v.quantization or 'n/a'}")
+    console.print(f"  [bold]Artifact Digest:[/bold] {v.artifact_digest or 'unknown'}")
+    console.print(f"  [bold]Installed Path:[/bold]  {v.installed_path or 'n/a'}")
+    console.print(f"  [bold]Pinned:[/bold]          {'YES (' + (v.pinned_reason or 'protected') + ')' if v.is_pinned else 'no'}")
+    console.print(f"  [bold]Created At:[/bold]      {v.created_at}")
+
+    profiles = service.list_execution_profiles(v.version_id)
+    if profiles:
+        console.print("\n[bold]Execution Profiles:[/bold]")
+        ptable = Table(show_header=True, header_style="bold magenta")
+        ptable.add_column("Profile ID")
+        ptable.add_column("Name")
+        ptable.add_column("Backend")
+        ptable.add_column("Context")
+        ptable.add_column("Temp")
+        for p in profiles:
+            ptable.add_row(p.profile_id, p.profile_name, p.inference_backend, str(p.context_tokens), str(p.temperature))
+        console.print(ptable)
+
+    verifs = service.get_verifications(v.version_id)
+    if verifs:
+        console.print("\n[bold]Verification Records:[/bold]")
+        vtable = Table(show_header=True, header_style="bold green")
+        vtable.add_column("Verification ID")
+        vtable.add_column("Test Type")
+        vtable.add_column("Outcome")
+        vtable.add_column("Verified At")
+        for vr in verifs:
+            outcome_style = "[green]PASSED[/green]" if vr.passed else "[red]FAILED[/red]"
+            vtable.add_row(vr.verification_id, vr.test_type, outcome_style, vr.verified_at[:19].replace("T", " "))
+        console.print(vtable)
+
+
+@versions_app.command("pin")
+def versions_pin(
+    version_id: str = typer.Argument(..., help="Model version ID to pin"),
+    reason: str = typer.Option("User pinned", "--reason", "-r", help="Reason for pinning"),
+) -> None:
+    """Pin a model version to protect it from automatic cleanup or pruning."""
+    service = ModelVersionService()
+    try:
+        service.pin_version(version_id, reason=reason)
+        render_message_box("Version Pinned", f"Version '{version_id}' is now pinned and protected.\nReason: {reason}")
+    except Exception as exc:
+        render_error_box("Pin Failed", str(exc))
+        raise typer.Exit(code=1)
+
+
+@versions_app.command("unpin")
+def versions_unpin(
+    version_id: str = typer.Argument(..., help="Model version ID to unpin"),
+) -> None:
+    """Unpin a model version, allowing safe removal or pruning."""
+    service = ModelVersionService()
+    try:
+        res = service.unpin_version(version_id)
+        if res.is_pinned:
+            console.print(f"[yellow]Version '{version_id}' pin count decreased (remaining pins: {res.pin_count}).[/yellow]")
+        else:
+            render_message_box("Version Unpinned", f"Version '{version_id}' is no longer pinned.")
+    except Exception as exc:
+        render_error_box("Unpin Failed", str(exc))
+        raise typer.Exit(code=1)
+
+
+@versions_app.command("compare")
+def versions_compare(
+    version_a: str = typer.Argument(..., help="First version ID"),
+    version_b: str = typer.Argument(..., help="Second version ID"),
+) -> None:
+    """Compare two installed model versions side-by-side."""
+    service = ModelVersionService()
+    try:
+        cmp = service.compare_versions(version_a, version_b)
+        va = cmp["version_a"]
+        vb = cmp["version_b"]
+
+        table = Table(title=f"Comparison: {version_a} vs {version_b}", show_header=True, header_style="bold cyan")
+        table.add_column("Attribute", style="bold")
+        table.add_column(f"Version A ({va['version_id']})")
+        table.add_column(f"Version B ({vb['version_id']})")
+
+        table.add_row("Logical Model", va["logical_model_id"], vb["logical_model_id"])
+        table.add_row("Version Tag", va["version_label"], vb["version_label"])
+        table.add_row("Quantization", va["quantization"] or "-", vb["quantization"] or "-")
+        table.add_row("Size (MB)", f"{va['artifact_size_bytes'] / (1024*1024):.1f}", f"{vb['artifact_size_bytes'] / (1024*1024):.1f}")
+        table.add_row("Context Length", str(va["context_length"]), str(vb["context_length"]))
+        table.add_row("Pinned?", str(va["is_pinned"]), str(vb["is_pinned"]))
+        table.add_row("Profiles Count", str(len(va["profiles"])), str(len(vb["profiles"])))
+        console.print(table)
+    except Exception as exc:
+        render_error_box("Comparison Failed", str(exc))
+        raise typer.Exit(code=1)
+
+
+@versions_app.command("remove")
+def versions_remove(
+    version_id: str = typer.Argument(..., help="Model version ID to remove"),
+    force: bool = typer.Option(False, "--force", "-f", help="Force removal even if pinned or active under aliases"),
+) -> None:
+    """Safely remove a model version with pin protection and shared file preservation."""
+    service = ModelVersionService()
+    try:
+        result = service.safe_remove_version(version_id, force=force)
+        render_message_box(
+            "Version Removed",
+            f"Version '{version_id}' removed from active inventory.\n"
+            f"Physical file deleted: {result['file_deleted']}\n"
+            f"Note: {result['reason']}",
+        )
+    except Exception as exc:
+        render_error_box("Removal Refused", str(exc))
+        raise typer.Exit(code=1)
+
+
+# =============================================================================
+# Model Aliases CLI Subcommands
+# =============================================================================
+
+@alias_app.command("list")
+def alias_list() -> None:
+    """List stable model aliases, target versions, and logical models."""
+    service = ModelVersionService()
+    aliases = service.list_aliases()
+    if not aliases:
+        console.print("[yellow]No aliases found.[/yellow]")
+        return
+
+    table = Table(title="Model Aliases", show_header=True, header_style="bold cyan")
+    table.add_column("Alias Name", style="bold green")
+    table.add_column("Target Version")
+    table.add_column("Logical Model")
+    table.add_column("System Alias?", justify="center")
+    table.add_column("Last Updated", style="dim")
+
+    for a in aliases:
+        is_sys = "[cyan]yes[/cyan]" if a.is_system_alias else "[dim]no[/dim]"
+        table.add_row(
+            a.alias_name,
+            a.version_id,
+            a.logical_model_id or "-",
+            is_sys,
+            a.updated_at[:19].replace("T", " ") if a.updated_at else "-",
+        )
+    console.print(table)
+
+
+@alias_app.command("set")
+def alias_set(
+    alias_name: str = typer.Argument(..., help="Alias name (e.g. 'writing', 'coding', 'default')"),
+    version_id: str = typer.Argument(..., help="Target model version ID to map"),
+    reason: str = typer.Option("Manual activation", "--reason", "-r", help="Reason for activation"),
+) -> None:
+    """Point or switch an alias to a target model version atomically."""
+    service = ModelVersionService()
+    try:
+        alias = service.activate_alias(alias_name, version_id, reason=reason)
+        render_message_box(
+            "Alias Updated",
+            f"Alias '[bold green]{alias.alias_name}[/bold green]' is now active and pointing to version '{alias.version_id}'.",
+        )
+    except Exception as exc:
+        render_error_box("Alias Update Failed", str(exc))
+        raise typer.Exit(code=1)
+
+
+@alias_app.command("rollback")
+def alias_rollback(
+    alias_name: str = typer.Argument(..., help="Alias name to rollback to its prior version"),
+) -> None:
+    """Roll back an alias to its immediately preceding version."""
+    service = ModelVersionService()
+    try:
+        alias = service.rollback_alias(alias_name)
+        if alias:
+            render_message_box(
+                "Alias Rolled Back",
+                f"Alias '[bold green]{alias.alias_name}[/bold green]' successfully rolled back to version '{alias.version_id}'.",
+            )
+    except Exception as exc:
+        render_error_box("Rollback Failed", str(exc))
+        raise typer.Exit(code=1)
+
+
+@alias_app.command("history")
+def alias_history(
+    alias_name: Optional[str] = typer.Argument(None, help="Optional alias name to inspect"),
+) -> None:
+    """Show the audit history of alias activations, switches, and rollbacks."""
+    service = ModelVersionService()
+    records = service.get_alias_history(alias_name=alias_name)
+    if not records:
+        console.print("[yellow]No alias history found.[/yellow]")
+        return
+
+    table = Table(title="Alias Redirection History", show_header=True, header_style="bold cyan")
+    table.add_column("Alias Name", style="bold")
+    table.add_column("Previous Version", style="dim")
+    table.add_column("New Version", style="green")
+    table.add_column("Reason")
+    table.add_column("Changed At", style="dim")
+
+    for r in records:
+        table.add_row(
+            r.alias_name,
+            r.previous_version_id or "-",
+            r.new_version_id,
+            r.reason or "-",
+            r.changed_at[:19].replace("T", " ") if r.changed_at else "-",
+        )
+    console.print(table)
+
+
+# =============================================================================
+# Local OpenAI-Compatible API Gateway Subcommands
+# =============================================================================
+
+@gateway_app.command("start")
+def gateway_start(
+    port: int = typer.Option(8080, "--port", "-p", help="Port to bind gateway server to (loopback only)"),
+    daemon: bool = typer.Option(False, "--daemon", "-d", help="Run gateway server in the background"),
+) -> None:
+    """Start local OpenAI-compatible inference gateway on loopback (127.0.0.1)."""
+    running = GatewayServer.get_running_state()
+    if running:
+        console.print(f"[yellow]Gateway is already running (PID: {running['pid']}, Port: {running['port']}).[/yellow]")
+        return
+
+    if daemon:
+        import subprocess
+        log_file = get_default_log_dir() / "gateway.log"
+        cmd = [sys.executable, "-m", "localpilot.cli.main", "gateway", "start", "--port", str(port)]
+        with open(log_file, "a") as f_out:
+            proc = subprocess.Popen(cmd, stdout=f_out, stderr=f_out, start_new_session=True)
+        console.print(f"[bold green]LocalPilot Gateway started in background (PID: {proc.pid}, Port: {port}).[/bold green]")
+        console.print(f"Log output: [cyan]{log_file}[/cyan]")
+        return
+
+    server = GatewayServer(host="127.0.0.1", port=port)
+    server.write_state()
+    render_banner()
+    console.print(f"[bold green]LocalPilot Inference Gateway running at http://127.0.0.1:{port}/v1[/bold green]")
+    console.print("[dim]Strict loopback only (127.0.0.1). Endpoints: /v1/models, /v1/chat/completions[/dim]")
+    console.print("[dim]Press Ctrl+C to stop.[/dim]\n")
+
+    try:
+        server.serve_forever()
+    except KeyboardInterrupt:
+        console.print("\n[yellow]Shutting down LocalPilot Gateway...[/yellow]")
+    finally:
+        server.shutdown()
+        server.server_close()
+        server.clear_state()
+        console.print("[green]Gateway stopped safely.[/green]")
+
+
+@gateway_app.command("status")
+def gateway_status() -> None:
+    """Check running state, port, and health of the local inference gateway."""
+    running = GatewayServer.get_running_state()
+    if not running:
+        console.print("[yellow]LocalPilot Gateway is not running.[/yellow]")
+        console.print("Run [bold cyan]localpilot gateway start[/bold cyan] to launch.")
+        return
+
+    table = Table(title="LocalPilot Gateway Status", show_header=True, header_style="bold green")
+    table.add_column("Property", style="bold")
+    table.add_column("Value")
+    table.add_row("Status", "[bold green]RUNNING[/bold green]")
+    table.add_row("Process ID (PID)", str(running["pid"]))
+    table.add_row("Address", f"http://{running['host']}:{running['port']}/v1")
+    table.add_row("Started At", running.get("started_at", "-"))
+    console.print(table)
+
+
+@gateway_app.command("stop")
+def gateway_stop() -> None:
+    """Stop the running local inference gateway server."""
+    running = GatewayServer.get_running_state()
+    if not running:
+        console.print("[yellow]LocalPilot Gateway is not running.[/yellow]")
+        return
+
+    pid = running["pid"]
+    try:
+        import signal
+        os.kill(pid, signal.SIGTERM)
+        time.sleep(0.5)
+        console.print(f"[bold green]Sent stop signal to LocalPilot Gateway (PID: {pid}).[/bold green]")
+    except ProcessLookupError:
+        console.print(f"[dim]Process {pid} was not running; clearing state.[/dim]")
+
+    # Clear state file
+    lf = get_default_data_dir() / "gateway.json"
+    if lf.exists():
+        try:
+            lf.unlink()
+        except Exception:
+            pass
+
+
+# =============================================================================
+# Local API Key Management Subcommands
+# =============================================================================
+
+@keys_app.command("list")
+def keys_list() -> None:
+    """List all registered local API keys and applications."""
+    service = ApiKeyService()
+    keys = service.list_keys()
+    if not keys:
+        console.print("[yellow]No API keys found.[/yellow]")
+        console.print("Create one using [bold cyan]localpilot keys create <name>[/bold cyan].")
+        return
+
+    table = Table(title="Local API Keys", show_header=True, header_style="bold cyan")
+    table.add_column("Key ID", style="bold")
+    table.add_column("Display Name")
+    table.add_column("App Name")
+    table.add_column("Prefix", style="dim")
+    table.add_column("Status", justify="center")
+    table.add_column("Created At", style="dim")
+
+    for k in keys:
+        status_badge = "[bold green]ACTIVE[/bold green]" if k.is_active else "[red]REVOKED[/red]"
+        table.add_row(
+            k.key_id,
+            k.display_name,
+            k.app_name or "-",
+            k.secret_prefix,
+            status_badge,
+            k.created_at[:19].replace("T", " ") if k.created_at else "-",
+        )
+    console.print(table)
+
+
+@keys_app.command("create")
+def keys_create(
+    name: str = typer.Argument(..., help="Friendly label for this key (e.g., 'OpenCode', 'VS Code')"),
+    app: Optional[str] = typer.Option(None, "--app", "-a", help="Application name identifier"),
+    expires_days: Optional[int] = typer.Option(None, "--expires-days", help="Optional expiry in days"),
+) -> None:
+    """Create a new local API key with secure token generation."""
+    service = ApiKeyService()
+    expires_at = None
+    if expires_days:
+        from datetime import timedelta
+        exp_dt = datetime.now(timezone.utc) + timedelta(days=expires_days)
+        expires_at = exp_dt.isoformat().replace("+00:00", "Z")
+
+    raw_token, record = service.create_key(
+        name=name,
+        app_name=app,
+        expires_at=expires_at,
+    )
+
+    console.print(f"\n[bold green]✓ Local API Key Created Successfully![/bold green]")
+    console.print(f"  [bold]Key ID:[/bold]       {record.key_id}")
+    console.print(f"  [bold]Name:[/bold]         {record.display_name}")
+    console.print(f"  [bold]App Name:[/bold]     {record.app_name or 'generic'}")
+    console.print(f"  [bold]Safe Prefix:[/bold]  {record.secret_prefix}")
+    console.print(f"\n[bold yellow]Plaintext API Token (copy now, will not be shown again):[/bold yellow]")
+    console.print(f"  [bold cyan]{raw_token}[/bold cyan]\n")
+
+
+@keys_app.command("revoke")
+def keys_revoke(
+    key_id: str = typer.Argument(..., help="API key ID to revoke"),
+) -> None:
+    """Revoke an API key immediately, blocking future access."""
+    service = ApiKeyService()
+    try:
+        service.revoke_key(key_id)
+        render_message_box("Key Revoked", f"API Key '{key_id}' has been permanently revoked.")
+    except Exception as exc:
+        render_error_box("Revoke Failed", str(exc))
+        raise typer.Exit(code=1)
+
+
+@keys_app.command("delete")
+def keys_delete(
+    key_id: str = typer.Argument(..., help="API key ID to delete"),
+) -> None:
+    """Permanently delete an API key record."""
+    service = ApiKeyService()
+    service.delete_key(key_id)
+    render_message_box("Key Deleted", f"API Key '{key_id}' removed from database.")
+
+
+# =============================================================================
+# Operational Statistics & Dashboards
+# =============================================================================
+
+@app.command("stats")
+def app_stats(
+    key_id: Optional[str] = typer.Option(None, "--key", "-k", help="Filter statistics by API key ID"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Filter statistics by model alias"),
+) -> None:
+    """Display real-time operational metrics, token usage, and latency summary."""
+    acct = ApiAccountingService()
+    summary = acct.get_usage_summary(key_id=key_id, model_alias=model)
+
+    table = Table(title="Inference Gateway Operational Metrics", show_header=True, header_style="bold cyan")
+    table.add_column("Metric", style="bold")
+    table.add_column("Value", justify="right")
+
+    table.add_row("Total Requests", str(summary["total_requests"]))
+    table.add_row("Successful Requests (200 OK)", f"[green]{summary['successful_requests']}[/green]")
+    table.add_row("Error Requests", f"[red]{summary['error_requests']}[/red]" if summary["error_requests"] > 0 else "0")
+    table.add_row("Prompt Tokens", f"{summary['total_prompt_tokens']:,}")
+    table.add_row("Completion Tokens", f"{summary['total_completion_tokens']:,}")
+    table.add_row("Total Tokens", f"[bold]{summary['total_tokens']:,}[/bold]")
+    table.add_row("Average Latency (ms)", f"{summary['avg_latency_ms']:.1f}")
+    table.add_row("Time to First Token (TTFT ms)", f"{summary['avg_first_token_latency_ms']:.1f}")
+    table.add_row("Estimated Generation Speed (TPS)", f"{summary['tokens_per_second']:.1f} tokens/s")
+    console.print(table)
+
+    # Per-Model breakdown
+    model_breakdown = acct.get_per_model_breakdown()
+    if model_breakdown:
+        console.print("\n[bold]Usage by Model Alias:[/bold]")
+        mt = Table(show_header=True, header_style="bold magenta")
+        mt.add_column("Model Alias", style="bold")
+        mt.add_column("Requests", justify="right")
+        mt.add_column("Prompt Tokens", justify="right")
+        mt.add_column("Completion Tokens", justify="right")
+        mt.add_column("Total Tokens", justify="right")
+        mt.add_column("Avg Latency (ms)", justify="right")
+        for m in model_breakdown:
+            mt.add_row(
+                m["model_alias"],
+                str(m["request_count"]),
+                f"{m['prompt_tokens']:,}",
+                f"{m['completion_tokens']:,}",
+                f"{m['total_tokens']:,}",
+                f"{m['avg_latency_ms']:.1f}",
+            )
+        console.print(mt)
+
+    # Per-Key breakdown
+    key_breakdown = acct.get_per_key_breakdown()
+    if key_breakdown:
+        console.print("\n[bold]Usage by Application / Key:[/bold]")
+        kt = Table(show_header=True, header_style="bold blue")
+        kt.add_column("Key Name", style="bold")
+        kt.add_column("App", style="dim")
+        kt.add_column("Requests", justify="right")
+        kt.add_column("Total Tokens", justify="right")
+        kt.add_column("Avg Latency (ms)", justify="right")
+        for k in key_breakdown:
+            kt.add_row(
+                k["key_name"],
+                k["app_name"],
+                str(k["request_count"]),
+                f"{k['total_tokens']:,}",
+                f"{k['avg_latency_ms']:.1f}",
+            )
+        console.print(kt)
+
+
+# =============================================================================
+# Application Integration Generator
+# =============================================================================
+
+@app.command("connect")
+def app_connect(
+    target_app: str = typer.Argument("opencode", help="Application to connect: opencode, continue, cursor, or generic"),
+    port: int = typer.Option(8080, "--port", "-p", help="Gateway port"),
+    model: str = typer.Option("coding", "--model", "-m", help="Target model alias to connect"),
+    write: bool = typer.Option(False, "--write", "-w", help="Automatically write configuration file if supported"),
+) -> None:
+    """Generate configuration and integration instructions for supported local apps."""
+    target_app = target_app.lower().strip()
+    key_service = ApiKeyService()
+    raw_token, key_record = key_service.create_key(
+        name=f"{target_app.title()} Integration",
+        app_name=target_app,
+    )
+
+    base_url = f"http://127.0.0.1:{port}/v1"
+
+    if target_app == "opencode":
+        cfg = IntegrationTemplateService.get_opencode_template(base_url, raw_token, model_alias=model)
+        default_path = Path(os.path.expanduser("~/.config/opencode/opencode.json"))
+
+        console.print(f"[bold cyan]OpenCode Integration Setup[/bold cyan]")
+        console.print(f"Generated configuration for [bold]{model}[/bold] alias:\n")
+        console.print(json.dumps(cfg, indent=2))
+
+        if write:
+            res = IntegrationTemplateService.apply_opencode_config(default_path, base_url, raw_token, model_alias=model)
+            console.print(f"\n[bold green]✓ Configuration written to: {res['target_path']}[/bold green]")
+            if res.get("backup_path"):
+                console.print(f"[dim]Backup created at: {res['backup_path']}[/dim]")
+        else:
+            console.print(f"\nTo save automatically, re-run with: [bold cyan]localpilot connect opencode --write[/bold cyan]")
+            console.print(f"Or copy above JSON into: [dim]{default_path}[/dim]")
+
+    elif target_app in ("continue", "vscode"):
+        cfg = IntegrationTemplateService.get_continue_template(base_url, raw_token, model_alias=model)
+        default_path = Path(os.path.expanduser("~/.continue/config.json"))
+
+        console.print(f"[bold cyan]VS Code Continue Integration Setup[/bold cyan]")
+        console.print(f"Generated model entry for [bold]{model}[/bold] alias:\n")
+        console.print(json.dumps(cfg, indent=2))
+
+        if write:
+            res = IntegrationTemplateService.apply_continue_config(default_path, base_url, raw_token, model_alias=model)
+            console.print(f"\n[bold green]✓ Configuration updated in: {res['target_path']}[/bold green]")
+            if res.get("backup_path"):
+                console.print(f"[dim]Backup created at: {res['backup_path']}[/dim]")
+        else:
+            console.print(f"\nTo save automatically, re-run with: [bold cyan]localpilot connect continue --write[/bold cyan]")
+            console.print(f"Or add to 'models' array in: [dim]{default_path}[/dim]")
+
+    elif target_app == "cursor":
+        cursor_info = IntegrationTemplateService.get_cursor_instructions(base_url, raw_token, model_alias=model)
+        console.print(f"[bold cyan]Cursor Integration Instructions[/bold cyan]")
+        for idx, step in enumerate(cursor_info["steps"], 1):
+            console.print(f"  {idx}. {step}")
+        console.print(f"\n[dim]Base URL:[/dim]  [bold]{base_url}[/bold]")
+        console.print(f"[dim]API Key:[/dim]   [bold]{raw_token}[/bold]")
+        console.print(f"[dim]Model:[/dim]     [bold]{model}[/bold]")
+
+    else:
+        snippets = IntegrationTemplateService.get_client_snippets(base_url, raw_token, model_alias=model)
+        console.print(f"[bold cyan]Generic OpenAI Client Snippets[/bold cyan]\n")
+        console.print("[bold]cURL:[/bold]")
+        console.print(snippets["curl"])
+        console.print("\n[bold]Python OpenAI SDK:[/bold]")
+        console.print(snippets["python"])
+        console.print("\n[bold]Node.js OpenAI SDK:[/bold]")
+        console.print(snippets["nodejs"])
+

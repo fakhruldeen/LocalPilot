@@ -175,6 +175,52 @@ localpilot support
 localpilot self uninstall --purge-models
 ```
 
+#### 8. Version Management & Model Aliases
+```bash
+# List immutable installed model versions with quantization and pin status
+localpilot versions list
+
+# Pin a model version to prevent automatic cleanup or pruning
+localpilot versions pin <version-id> --reason "Production baseline"
+
+# Compare two versions side-by-side (context, size, quant, profiles)
+localpilot versions compare <version-a> <version-b>
+
+# Manage stable aliases and atomically switch or rollback targets
+localpilot alias list
+localpilot alias set coding <version-id>
+localpilot alias rollback coding
+```
+
+#### 9. Local OpenAI-Compatible Inference API Gateway
+```bash
+# Launch background inference gateway strictly on loopback (127.0.0.1:8080)
+localpilot gateway start --daemon
+
+# Check gateway running state, port, and PID
+localpilot gateway status
+
+# Stop the running gateway server
+localpilot gateway stop
+```
+
+#### 10. Local API Key Management, Accounting & App Integrations
+```bash
+# Issue an API key for OpenCode or VS Code
+localpilot keys create "OpenCode" --app opencode
+
+# List active keys, prefixes, and revocation state
+localpilot keys list
+
+# View real-time token counts, request throughput (TPS), and latency dashboards
+localpilot stats
+
+# Generate integration configurations for OpenCode, Continue, or Cursor
+localpilot connect opencode --write
+localpilot connect continue --write
+localpilot connect cursor
+```
+
 ---
 
 ## 🌍 Arabic Documentation & Website (التوثيق والموقع باللغة العربية)
@@ -243,18 +289,18 @@ If you use LocalPilot in your research, academic study, or open-source projects,
 ```bibtex
 @software{fakhruldeen_2026_localpilot,
   author       = {Mohamed (Fouad) Fakhruldeen},
-  title        = {fakhruldeen/LocalPilot: v0.1.7},
+  title        = {fakhruldeen/LocalPilot: v0.1.8},
   month        = oct,
   year         = 2026,
   publisher    = {Zenodo},
-  version      = {v0.1.7},
+  version      = {v0.1.8},
   doi          = {10.5281/zenodo.23424540},
   url          = {https://doi.org/10.5281/zenodo.23424540}
 }
 ```
 
 **Text / APA Citation:**
-> Mohamed (Fouad) Fakhruldeen. (2026). fakhruldeen/LocalPilot: v0.1.7 (Version v0.1.7) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23424540
+> Mohamed (Fouad) Fakhruldeen. (2026). fakhruldeen/LocalPilot: v0.1.8 (Version v0.1.8) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23424540
 
 ---
 

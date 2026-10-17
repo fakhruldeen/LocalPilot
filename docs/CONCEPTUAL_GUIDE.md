@@ -141,3 +141,24 @@ You do not need to memorize any of this to use LocalPilot:
 2. **`localpilot discover`**: Calculates exact compatibility scores for each model based on your real hardware.
 3. **`localpilot setup <model>`**: Assembles an **Execution Plan**, re-uses existing software if already installed, sets up safe defaults, and verifies readiness.
 4. **`localpilot run <model>`**: Connects you to chat immediately!
+
+---
+
+## 6. Versioning, Local Gateway & Connecting Coding Tools
+
+Modern development workflows often require connecting your local models to external editors (like VS Code Continue, Cursor, or OpenCode):
+
+1. **Model Versioning (`localpilot versions`)**:  
+   Every model download creates an immutable version record. You can pin versions to prevent accidental cleanup, compare versions, and roll back instantly with `localpilot alias rollback`.
+2. **Local OpenAI Gateway (`localpilot gateway start`)**:  
+   Exposes a 100% loopback OpenAI-compatible API (`http://127.0.0.1:8080/v1`) with `/v1/models` and streaming `/v1/chat/completions`. No data leaves your computer.
+3. **Local API Keys & Stats (`localpilot keys`, `localpilot stats`)**:  
+   Generate scoped local tokens for your editor and track real-time tokens-per-second (TPS), time-to-first-token (TTFT), and latency.
+4. **Instant Editor Setup (`localpilot connect`)**:  
+   Automatically configure your favorite local coding assistants:
+   ```bash
+   localpilot connect opencode --write
+   localpilot connect continue --write
+   localpilot connect cursor
+   ```
+

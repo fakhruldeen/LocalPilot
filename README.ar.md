@@ -164,6 +164,52 @@ localpilot self update
 localpilot self uninstall --purge-models
 ```
 
+#### 8. إدارة إصدارات النماذج والأسماء المستعارة:
+```bash
+# استعراض إصدارات النماذج المثبتة وتفاصيل التكميم والتثبيت
+localpilot versions list
+
+# تثبيت إصدار وحمايته من الإزالة التلقائية
+localpilot versions pin <version-id> --reason "إصدار أساسي معتمد"
+
+# مقارنة نسختين جنباً إلى جنب
+localpilot versions compare <version-a> <version-b>
+
+# إدارة الأسماء المستعارة الثابتة والتراجع الفوري للإصدار السابق
+localpilot alias list
+localpilot alias set coding <version-id>
+localpilot alias rollback coding
+```
+
+#### 9. بوابة الاستدلال المحلية المتوافقة مع OpenAI:
+```bash
+# تشغيل خادم الاستدلال المحلي في الخلفية بأمان على loopback (127.0.0.1:8080)
+localpilot gateway start --daemon
+
+# فحص حالة البوابة والمنفذ ورقم المعرف
+localpilot gateway status
+
+# إيقاف خادم البوابة بأمان
+localpilot gateway stop
+```
+
+#### 10. مفاتيح API المحلية ولوحة قياس الأداء وتكامل التطبيقات:
+```bash
+# إصدار مفتاح وصول محلي لتطبيقات مثل OpenCode أو VS Code
+localpilot keys create "OpenCode" --app opencode
+
+# استعراض المفاتيح النشطة والبادئات الآمنة
+localpilot keys list
+
+# لوحة قياس الأداء اللحظي: الرموز، السرعة (TPS)، وزمن الاستجابة
+localpilot stats
+
+# توليد إعدادات الربط الموجهة للتطبيقات بنقرة واحدة
+localpilot connect opencode --write
+localpilot connect continue --write
+localpilot connect cursor
+```
+
 ---
 
 ## 📐 المعمارية البرمجية
@@ -216,18 +262,18 @@ vLLM             LM Studio       local_api_service
 ```bibtex
 @software{fakhruldeen_2026_localpilot,
   author       = {Mohamed (Fouad) Fakhruldeen},
-  title        = {fakhruldeen/LocalPilot: v0.1.7},
+  title        = {fakhruldeen/LocalPilot: v0.1.8},
   month        = oct,
   year         = 2026,
   publisher    = {Zenodo},
-  version      = {v0.1.7},
+  version      = {v0.1.8},
   doi          = {10.5281/zenodo.23424540},
   url          = {https://doi.org/10.5281/zenodo.23424540}
 }
 ```
 
 **صيغة التوثيق النصية (APA):**
-> Mohamed (Fouad) Fakhruldeen. (2026). fakhruldeen/LocalPilot: v0.1.7 (Version v0.1.7) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23424540
+> Mohamed (Fouad) Fakhruldeen. (2026). fakhruldeen/LocalPilot: v0.1.8 (Version v0.1.8) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23424540
 
 ---
 
