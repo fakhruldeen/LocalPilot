@@ -454,13 +454,15 @@ def _do_guide(topic: Optional[str] = None) -> None:
             "[bold cyan]LocalPilot: Comprehensive Guide & Documentation[/bold cyan]\n\n"
             "Learn how to use local AI safely, whether you are a beginner or a power user.\n\n"
             "[bold]Available Guides & Topics:[/bold]\n"
-            "  [bold cyan]•[/bold cyan] [bold]novice[/bold]     - Step-by-step beginner walkthrough from zero to chat\n"
-            "  [bold cyan]•[/bold cyan] [bold]technical[/bold]  - 3-Axis execution, memory offload math & process safety\n"
-            "  [bold cyan]•[/bold cyan] [bold]faq[/bold]        - Answers to common questions for all steps\n"
-            "  [bold cyan]•[/bold cyan] [bold]commands[/bold]   - Full CLI command and flag reference\n"
-            "  [bold cyan]•[/bold cyan] [bold]overview[/bold]   - Privacy principles, local-only architecture\n"
-            "  [bold cyan]•[/bold cyan] [bold]all[/bold]        - Read the complete documentation manual\n\n"
-            "[dim]Usage: localpilot guide <topic> (e.g. localpilot guide novice)[/dim]",
+            "  [bold cyan]•[/bold cyan] [bold]novice[/bold]      - Step-by-step beginner walkthrough from zero to chat\n"
+            "  [bold cyan]•[/bold cyan] [bold]concepts[/bold]    - Essential concepts: memory, context, models & runtimes\n"
+            "  [bold cyan]•[/bold cyan] [bold]terminology[/bold] - Plain-language dictionary of terms and distinctions\n"
+            "  [bold cyan]•[/bold cyan] [bold]technical[/bold]   - 3-Axis execution, memory offload math & process safety\n"
+            "  [bold cyan]•[/bold cyan] [bold]faq[/bold]         - Answers to common questions for all steps\n"
+            "  [bold cyan]•[/bold cyan] [bold]commands[/bold]    - Full CLI command and flag reference\n"
+            "  [bold cyan]•[/bold cyan] [bold]overview[/bold]    - Privacy principles, local-only architecture\n"
+            "  [bold cyan]•[/bold cyan] [bold]all[/bold]         - Read the complete documentation manual\n\n"
+            "[dim]Usage: localpilot guide <topic> (e.g. localpilot guide concepts)[/dim]",
             title="LocalPilot Guide",
             border_style="cyan",
         ))
@@ -526,7 +528,7 @@ def main_menu(ctx: typer.Context) -> None:
 
 @app.command("guide")
 def guide_command(
-    topic: Optional[str] = typer.Argument(None, help="Documentation topic: novice, technical, faq, commands, overview, all"),
+    topic: Optional[str] = typer.Argument(None, help="Documentation topic: novice, technical, faq, commands, concepts, terminology, overview, all"),
 ) -> None:
     """Read comprehensive guides, architecture manuals, and FAQ.
 
@@ -537,6 +539,8 @@ def guide_command(
       localpilot guide
       localpilot guide novice
       localpilot guide technical
+      localpilot guide concepts
+      localpilot guide terminology
       localpilot guide faq
       localpilot guide commands
     """
@@ -545,7 +549,7 @@ def guide_command(
 
 @app.command("docs")
 def docs_command(
-    topic: Optional[str] = typer.Argument(None, help="Documentation topic: novice, technical, faq, commands, overview, all"),
+    topic: Optional[str] = typer.Argument(None, help="Documentation topic: novice, technical, faq, commands, concepts, terminology, overview, all"),
 ) -> None:
     """Read comprehensive guides, architecture manuals, and FAQ (alias for guide).
 
@@ -556,6 +560,7 @@ def docs_command(
       localpilot docs
       localpilot docs novice
       localpilot docs technical
+      localpilot docs terminology
     """
     _do_guide(topic)
 
@@ -1051,7 +1056,7 @@ def self_update() -> None:
     """
     import httpx
     import localpilot
-    current = getattr(localpilot, "__version__", "0.1.6")
+    current = getattr(localpilot, "__version__", "0.1.7")
     console.print(f"[bold cyan]Checking for LocalPilot updates (current: v{current})...[/bold cyan]")
     try:
         resp = httpx.get("https://pypi.org/pypi/localpilot/json", timeout=4.0)

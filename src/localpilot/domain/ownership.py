@@ -31,6 +31,8 @@ class ProcessIdentity(BaseModel):
     mounted_paths: List[str] = Field(default_factory=list)
     exposed_ports: List[int] = Field(default_factory=list)
     deployment_method: str = "local_api_service"
+    runtime_version: Optional[str] = None
+    observed_execution_mode: Optional[str] = None
 
 
 class OwnershipVerifier:

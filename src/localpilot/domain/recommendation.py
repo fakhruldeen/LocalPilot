@@ -15,6 +15,7 @@ import json
 from typing import Any, Dict, List, Optional, Tuple
 from pydantic import BaseModel, Field
 
+from localpilot.domain.capabilities import ManagedServiceId
 from localpilot.domain.compatibility import CompatibilityCheckResult
 from localpilot.domain.execution_plan import ExecutionPlan
 from localpilot.domain.models import ConfidenceLevel, ExecutionMode, NormalizedCandidate, TaskCategory, VerificationStage
@@ -237,21 +238,35 @@ class ModelRecommendationEngine:
         words_est = int(plan.usable_context * 0.75)
         ctx_desc = f"{plan.usable_context:,} tokens (~{words_est:,} words considered at once)"
 
-        # Expected speed tier based on parameter size and backend
+        # Headroom band calculation against measured safe memory budget
+        headroom_ratio = getattr(comp, "ram_headroom_ratio", 0.5)
+        if headroom_ratio >= 0.30:
+            headroom_band = "Comfortable headroom"
+        elif headroom_ratio >= 0.10:
+            headroom_band = "Limited headroom"
+        elif headroom_ratio >= 0.0:
+            headroom_band = "Tight headroom"
+        else:
+            headroom_band = "Temporarily blocked"
+
+        # Expected speed tier: honest estimate with unmeasured disclosure
         params = c.parameter_count_approx_b
         if params <= 3.5:
-            speed_tier = "Fast (minimal delay, highly responsive on standard CPU/GPU)"
+            speed_tier = "Estimated fast (compact parameter footprint; speed not measured on this hardware)"
         elif params <= 8.0:
-            speed_tier = "Balanced (good balance of speed and depth on modern hardware)"
+            speed_tier = "Estimated moderate (standard parameter footprint; speed not measured on this hardware)"
         else:
-            speed_tier = "Heavy (thorough reasoning, requires strong CPU or GPU)"
+            speed_tier = "Estimated heavy (large parameter footprint; speed not measured on this hardware)"
 
         # Badge and why_selected explanation based on distinction and evidence
         task_label = "coding and technical questions" if target_task == TaskCategory.CODING else "writing and everyday questions"
-        
+
+        score_val = getattr(ranked, "score", None)
+        score_num = f"{score_val.total_score:.0f}/100" if score_val else "top ranked"
+
         if distinction == ShortlistDistinction.TOP_PICK:
             badge = "★ Top Pick (Recommended)"
-            why = f"Best overall balance of recent release, manageable size (~{sz_mb:.0f} MB), and comfortable memory headroom for {task_label}."
+            why = f"Best overall suitability score ({score_num}) with ~{sz_mb:.0f} MB download and {headroom_band.lower()} for {task_label}."
         elif distinction == ShortlistDistinction.SMALLER_DOWNLOAD:
             badge = "Compact Choice (Smaller Download)"
             why = f"Significantly smaller download (~{sz_mb:.0f} MB) that downloads quickly while still handling {task_label}."
@@ -265,9 +280,13 @@ class ModelRecommendationEngine:
             badge = "Alternative Option"
             why = f"Strong alternative fit with compatible execution plan for your computer."
 
-        # Supporting setup description
+        # Supporting setup description (truthful distinction between external vs isolated install)
         backend_name = plan.inference_backend.value if hasattr(plan.inference_backend, "value") else str(plan.inference_backend)
-        supporting = f"Isolated {backend_name} engine installed into user folder (no system changes)"
+        if getattr(plan, "managed_service", ManagedServiceId.NONE) != ManagedServiceId.NONE:
+            serv_name = plan.managed_service.value if hasattr(plan.managed_service, "value") else str(plan.managed_service)
+            supporting = f"Existing {serv_name} service (no new engine installation needed)"
+        else:
+            supporting = f"Isolated {backend_name} engine installed into user folder (no system changes)"
 
         # Access requirements
         access = "Open model (no account or access key required)"

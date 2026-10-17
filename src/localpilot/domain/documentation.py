@@ -6,6 +6,7 @@ and technical power users, answering questions for every step of the local AI li
 
 from __future__ import annotations
 from typing import Dict, List, Optional
+from localpilot.domain.help_content import HELP_TOPICS, TERMINOLOGY
 
 
 DOCUMENTATION_TOPICS: Dict[str, Dict[str, str]] = {
@@ -64,6 +65,66 @@ Start an interactive chat right in your terminal. You can ask questions, brainst
 ### Step 5: Cleaning Up (`localpilot stop` / `localpilot remove`)
 - When you stop chatting, the model is unloaded from your memory so other programs run fast again.
 - If you run out of disk space, `localpilot remove` safely deletes the files and reclaims storage.
+""",
+    },
+    "concepts": {
+        "title": "Essential Concepts & Plain Explanations",
+        "audience": "All Users",
+        "summary": "Plain explanations of sources, execution modes, recommendation scores, context, and storage.",
+        "content": """
+# Essential Concepts in Local AI
+
+### 1. Model Sources vs Supporting Software
+- **Model Source**: Where LocalPilot gets model files or model information (e.g. Hugging Face or Ollama Library).
+- **Supporting Software**: The runtime engine installed locally that executes the model (e.g. llama.cpp or Ollama daemon).
+- *Notice*: Not every source supports every execution method. LocalPilot checks compatibility beforehand.
+
+### 2. Execution Preferences
+- **Automatic**: LocalPilot chooses a supported configuration for this computer based on measured hardware.
+- **CPU (Processor)**: Uses your main processor. Reliable across all computers; responses may be slower for larger models.
+- **GPU (Graphics Card)**: Uses supported graphics acceleration (e.g. Metal or CUDA). Availability depends on this computer and the model.
+- **Supported CPU + GPU**: Shares supported work between processor memory and graphics memory where the engine supports layer offloading.
+
+### 3. Recommendation Score & Shortlist
+- This score ranks how well the proposed model configuration matches your preferences and computer.
+- It is NOT an intelligence score.
+- Incompatible configurations are strictly excluded before ranking.
+- Scoring weights: **Release Newness (40%)**, **Smaller Download (25%)**, **Usable Context (20%)**, and **Memory Headroom (15%)**.
+
+### 4. Download Size vs Total Storage
+- **Download Size**: How much data must be transferred across your network.
+- **Total Storage**: May also include supporting software, temporary files, and recovery copies.
+
+### 5. Context Window & Memory Headroom
+- **Context**: How much text the model can consider at once. Larger settings require additional memory.
+- **Memory Headroom**: Memory left available for your operating system and other apps while the model runs.
+
+### 6. Compact Model Versions (Quantization)
+- These versions reduce memory use through quantization (e.g. Q4_K_M). They can also subtly change output quality or performance.
+
+### 7. Stop vs Remove
+- **Stop**: Unloads or stops the model through its runtime. Memory is freed, but downloaded files are kept.
+- **Remove**: Removes the installation and deletes approved files from disk to reclaim storage.
+
+### 8. What Happens When You Close LocalPilot
+- Direct workers started by LocalPilot are stopped cleanly to prevent orphaned processes.
+- External services (like an existing Ollama service) are left untouched.
+""",
+    },
+    "terminology": {
+        "title": "Preferred Terminology Guide",
+        "audience": "All Users",
+        "summary": "Clear, friendly definitions for local AI terms.",
+        "content": """
+# LocalPilot Terminology Guide
+
+- **Model**: The AI you download and use on your computer.
+- **Supporting software**: The runtime that runs the model (e.g. llama.cpp, Ollama).
+- **Context**: How much text the model can consider at once.
+- **Graphics memory**: Memory on your graphics card (VRAM).
+- **Compact model version**: A version designed to use less memory.
+- **Running model**: A model currently loaded or active according to observed state.
+- **Access key**: Permission to access a source repository (never an account password).
 """,
     },
     "technical": {
@@ -165,19 +226,19 @@ Model execution is partitioned into three independent, orthogonal dimensions:
 - `localpilot setup [candidate_id] [--scope isolated|user|system] [-y]`
   Download and prepare a model with real weights, verify live inference, and register it in local inventory.
 
-- `localpilot run <installation_id>`
+- `localpilot run [installation_id | name]`
   Start an installed model instance in the background and establish a local endpoint.
 
-- `localpilot chat <target>`
+- `localpilot chat [installation_id | name]`
   Open an interactive terminal chat session with an installed or running model.
 
-- `localpilot stop <instance_id> [--force]`
+- `localpilot stop [instance_id | name] [--force]`
   Safely unload model memory without terminating shared external background daemons.
 
 - `localpilot update <installation_id> [-y]`
   Check upstream repositories for newer revisions and safely apply updates with rollback protection.
 
-- `localpilot remove <installation_id> [--delete-files|--keep-files] [-y]`
+- `localpilot remove [installation_id | name] [--delete-files|--keep-files] [-y]`
   Remove an installation and safely delete physical weights if no other model references them.
 
 - `localpilot storage [--plain] [--json]`
@@ -192,7 +253,7 @@ Model execution is partitioned into three independent, orthogonal dimensions:
 - `localpilot support [-o output_path]`
   Export an audit-reviewed, fully redacted diagnostic bundle for troubleshooting.
 
-- `localpilot help [topic]`
+- `localpilot guide [topic]`
   Display comprehensive documentation and step-by-step guidance.
 """,
     },
@@ -217,4 +278,4 @@ def get_documentation_markdown(topic: Optional[str] = None) -> str:
             return data["content"].strip()
 
     valid_topics = ", ".join(DOCUMENTATION_TOPICS.keys())
-    return f"# Topic '{topic}' Not Found\n\nAvailable documentation topics:\n- **{valid_topics}**\n\nRun `localpilot help <topic>` to view."
+    return f"# Topic '{topic}' Not Found\n\nAvailable documentation topics:\n- **{valid_topics}**\n\nRun `localpilot guide <topic>` to view."

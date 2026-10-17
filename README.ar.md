@@ -216,18 +216,18 @@ vLLM             LM Studio       local_api_service
 ```bibtex
 @software{fakhruldeen_2026_localpilot,
   author       = {Mohamed (Fouad) Fakhruldeen},
-  title        = {fakhruldeen/LocalPilot: v0.1.6},
+  title        = {fakhruldeen/LocalPilot: v0.1.7},
   month        = oct,
   year         = 2026,
   publisher    = {Zenodo},
-  version      = {v0.1.6},
+  version      = {v0.1.7},
   doi          = {10.5281/zenodo.23424540},
   url          = {https://doi.org/10.5281/zenodo.23424540}
 }
 ```
 
 **صيغة التوثيق النصية (APA):**
-> Mohamed (Fouad) Fakhruldeen. (2026). fakhruldeen/LocalPilot: v0.1.6 (Version v0.1.6) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23424540
+> Mohamed (Fouad) Fakhruldeen. (2026). fakhruldeen/LocalPilot: v0.1.7 (Version v0.1.7) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23424540
 
 ---
 

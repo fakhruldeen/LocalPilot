@@ -209,6 +209,7 @@ class LlamaCppRuntimeAdapter(BaseRuntimeAdapter):
         candidate: NormalizedCandidate,
         instance_id: str,
         log_file: Path,
+        spec: Optional[Any] = None,
     ) -> ProcessIdentity:
         existing = self.detect_existing_installation()
         bin_path = existing[1] if existing else await self.prepare_runtime(InstallationScope.ISOLATED)
@@ -216,13 +217,25 @@ class LlamaCppRuntimeAdapter(BaseRuntimeAdapter):
         port = find_free_port()
         endpoint = f"http://127.0.0.1:{port}"
 
+        ctx = getattr(spec, "context_window", None) or getattr(candidate, "usable_context", 2048)
+
         cmd = [
             bin_path,
             "-m", model_path_or_id,
             "--host", "127.0.0.1",
             "--port", str(port),
-            "-c", str(candidate.usable_context),
+            "-c", str(ctx),
         ]
+
+        offload = getattr(spec, "offload_layers", None)
+        if offload is not None:
+            cmd.extend(["-ngl", str(offload)])
+        elif getattr(candidate, "execution_mode", None) == "cpu":
+            cmd.extend(["-ngl", "0"])
+
+        concurrency = getattr(spec, "concurrency", 1)
+        if concurrency and concurrency > 1:
+            cmd.extend(["-np", str(concurrency)])
 
         log_file.parent.mkdir(parents=True, exist_ok=True)
         log_fd = open(log_file, "a", encoding="utf-8")
@@ -259,6 +272,19 @@ class LlamaCppRuntimeAdapter(BaseRuntimeAdapter):
                     proc.kill()
             raise RuntimeError(f"llama-server failed to become ready on {endpoint} within 20 seconds.")
 
+        # Probe real runtime version
+        runtime_version = None
+        try:
+            v_proc = subprocess.run([bin_path, "--version"], capture_output=True, text=True, timeout=2)
+            if v_proc.returncode == 0 and v_proc.stdout.strip():
+                runtime_version = v_proc.stdout.strip().split("\n")[0]
+        except Exception:
+            pass
+
+        observed_mode = "cpu"
+        if offload is not None and offload > 0:
+            observed_mode = "gpu"
+
         p_proc = psutil.Process(proc.pid)
         return ProcessIdentity(
             pid=proc.pid,
@@ -268,6 +294,8 @@ class LlamaCppRuntimeAdapter(BaseRuntimeAdapter):
             ownership_class=OwnershipClass.LOCALPILOT_OWNED,
             service_id="llamacpp",
             deployment_method="local_api_service",
+            runtime_version=runtime_version,
+            observed_execution_mode=observed_mode,
         )
 
     async def stop_instance(self, identity: ProcessIdentity) -> bool:

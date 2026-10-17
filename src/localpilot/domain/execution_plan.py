@@ -74,6 +74,79 @@ class ExecutionPlan(BaseModel):
     def format(self) -> str:
         return self.model_format
 
+    def to_execution_spec(
+        self,
+        installation_id: str,
+        artifact_path: str,
+        artifact_sha256: Optional[str] = None,
+        approval_hash: Optional[str] = None,
+    ) -> ExecutionSpecification:
+        offload = 0
+        if self.requested_execution_mode == ExecutionMode.GPU:
+            offload = 99
+        elif self.requested_execution_mode == ExecutionMode.CPU_GPU:
+            offload = 32
+        elif self.requested_execution_mode == ExecutionMode.CPU:
+            offload = 0
+        else:  # AUTO
+            offload = 99 if self.estimated_vram_bytes > 0 else 0
+
+        return ExecutionSpecification(
+            installation_id=installation_id,
+            plan_id=self.plan_id,
+            model_id=self.model_id,
+            canonical_artifact_id=self.artifact_id,
+            artifact_path=artifact_path,
+            artifact_sha256=artifact_sha256,
+            inference_backend=self.inference_backend,
+            managed_service=self.managed_service,
+            deployment_method=self.deployment_method,
+            requested_execution_mode=self.requested_execution_mode,
+            offload_layers=offload,
+            expected_device_placement=self.expected_device_placement,
+            context_window=self.target_context or self.usable_context or 2048,
+            concurrency=self.concurrency or 1,
+            required_memory_budget_bytes=self.estimated_ram_bytes,
+            memory_accounting_model=self.memory_accounting_model,
+            approval_hash=approval_hash,
+            is_verified=True,
+        )
+
+
+class ExecutionSpecification(BaseModel):
+    """Canonical, immutable specification defining exact runtime execution.
+
+    Persisted in installations table and loaded during start_installed_model to ensure
+    the approved execution plan strictly governs execution without relying on
+    the catalog or guessing parameters.
+    """
+    installation_id: str
+    plan_id: str
+    model_id: str
+    canonical_artifact_id: str
+    artifact_path: str
+    artifact_sha256: Optional[str] = None
+
+    # 3-Axis dimensions
+    inference_backend: InferenceBackendId
+    managed_service: ManagedServiceId = ManagedServiceId.NONE
+    deployment_method: DeploymentMethod = DeploymentMethod.LOCAL_API_SERVICE
+
+    # Hardware offloading & placement
+    requested_execution_mode: ExecutionMode = ExecutionMode.AUTO
+    offload_layers: int = 0
+    expected_device_placement: Optional[str] = None
+
+    # Inference bounds
+    context_window: int = 2048
+    concurrency: int = 1
+
+    # Resource budgets & verification
+    required_memory_budget_bytes: int
+    memory_accounting_model: MemoryAccountingModel = MemoryAccountingModel.SEPARATE
+    approval_hash: Optional[str] = None
+    is_verified: bool = False
+
 
 class ExecutionPlanGenerator:
     """Generates valid candidate execution plans based on platform capabilities and detected services."""

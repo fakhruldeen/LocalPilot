@@ -247,6 +247,19 @@ class DatabaseManager:
                 conn.execute(
                     "INSERT INTO schema_migrations (version, applied_at, description) VALUES (2, datetime('now'), 'v2: 3-dimension execution model (backend, service, deployment)')"
                 )
+                applied.add(2)
+
+            if 3 not in applied:
+                inst_cols = {row[1] for row in conn.execute("PRAGMA table_info(installations)").fetchall()}
+                if "execution_spec_json" not in inst_cols:
+                    conn.execute("ALTER TABLE installations ADD COLUMN execution_spec_json TEXT")
+                run_cols = {row[1] for row in conn.execute("PRAGMA table_info(running_instances)").fetchall()}
+                if "execution_spec_json" not in run_cols:
+                    conn.execute("ALTER TABLE running_instances ADD COLUMN execution_spec_json TEXT")
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, applied_at, description) VALUES (3, datetime('now'), 'v3: canonical execution specification')"
+                )
+                applied.add(3)
 
 
 # Global shared instance

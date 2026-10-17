@@ -162,15 +162,30 @@ class UpdateWorkflow:
         try:
             self.job_mgr.update_checkpoint(job.job_id, "staging_update", checkpoint_name="staged")
 
-            # Create real recovery backup if physical file exists
-            if target_file and target_file.exists():
+            # 1. Pre-activation verification of staged file existence
+            if staged_source_path:
+                if not staged_source_path.exists():
+                    raise FileNotFoundError(f"Staged update file not found at {staged_source_path}")
+
+            # Check if artifact is shared across multiple installations
+            is_shared = False
+            orig_art_row = None
+            if artifact_ids:
+                orig_art_row = conn.execute(
+                    "SELECT * FROM storage_artifacts WHERE artifact_id = ?",
+                    (artifact_ids[0],),
+                ).fetchone()
+                if orig_art_row and orig_art_row["ref_count"] > 1:
+                    is_shared = True
+
+            # 2. Create recovery backup if single-reference physical file exists
+            if not is_shared and target_file and target_file.exists():
                 backup_file = self.backups_dir / f"{installation_id}_{target_file.name}.bak"
                 if target_file.is_file():
                     shutil.copy2(target_file, backup_file)
                     backup_created = True
 
             if simulate_failure_for_test:
-                # Mark as modified if testing rollback of modified file
                 if target_file and target_file.exists():
                     file_modified = True
                     target_file.write_bytes(b"CORRUPT_STAGED_TEST_BYTES")
@@ -178,34 +193,81 @@ class UpdateWorkflow:
 
             new_sha = None
             new_size = None
-            if staged_source_path:
-                if not staged_source_path.exists():
-                    raise FileNotFoundError(f"Staged update file not found at {staged_source_path}")
-                if target_file:
-                    shutil.copy2(staged_source_path, target_file)
-                    file_modified = True
-                    if verify_callback and not verify_callback(target_file):
-                        raise RuntimeError("Staged update failed verification test.")
-                    import hashlib
-                    hasher = hashlib.sha256()
-                    with open(target_file, "rb") as f:
-                        for chunk in iter(lambda: f.read(65536), b""):
-                            hasher.update(chunk)
-                    new_sha = hasher.hexdigest()
-                    new_size = target_file.stat().st_size
 
-            # Apply update to installation record and canonical artifact metadata
-            now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
-            with conn:
-                conn.execute(
-                    "UPDATE installations SET update_status = ?, updated_at = ? WHERE installation_id = ?",
-                    ("up_to_date", now, installation_id),
-                )
-                if artifact_ids and new_size is not None and new_sha is not None:
-                    conn.execute(
-                        "UPDATE storage_artifacts SET bytes = ?, sha256 = ? WHERE artifact_id = ?",
-                        (new_size, new_sha, artifact_ids[0]),
-                    )
+            if staged_source_path:
+                import hashlib
+                hasher = hashlib.sha256()
+                with open(staged_source_path, "rb") as f:
+                    for chunk in iter(lambda: f.read(65536), b""):
+                        hasher.update(chunk)
+                new_sha = hasher.hexdigest()
+                new_size = staged_source_path.stat().st_size
+
+                if is_shared:
+                    # Immutable shared artifact: do not overwrite in place!
+                    # Allocate new artifact path and reference for this installation
+                    new_art_id = f"art_upd_{installation_id}_{target_version}"
+                    models_dir = self.data_dir / "models"
+                    models_dir.mkdir(parents=True, exist_ok=True)
+                    new_target = models_dir / f"{installation_id}_{staged_source_path.name}"
+                    shutil.copy2(staged_source_path, new_target)
+
+                    if verify_callback and not verify_callback(new_target):
+                        new_target.unlink(missing_ok=True)
+                        raise RuntimeError("Staged update failed verification test.")
+
+                    now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+
+                    with conn:
+                        # Register new artifact
+                        conn.execute(
+                            """
+                            INSERT OR REPLACE INTO storage_artifacts (
+                                artifact_id, physical_path, bytes, sha256, is_managed,
+                                install_scope, management_mode, deletion_method, ref_count, created_at
+                            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """,
+                            (
+                                new_art_id,
+                                str(new_target),
+                                new_size,
+                                new_sha,
+                                1,
+                                orig_art_row["install_scope"] if orig_art_row else "isolated",
+                                orig_art_row["management_mode"] if orig_art_row else "directly_managed",
+                                orig_art_row["deletion_method"] if orig_art_row else "delete_files",
+                                1,
+                                now_iso,
+                            ),
+                        )
+                        # Decrement old shared artifact ref_count
+                        conn.execute(
+                            "UPDATE storage_artifacts SET ref_count = MAX(0, ref_count - 1) WHERE artifact_id = ?",
+                            (artifact_ids[0],),
+                        )
+                        # Re-point installation to new artifact
+                        conn.execute(
+                            "UPDATE installations SET artifact_ids_json = ?, update_status = ?, updated_at = ? WHERE installation_id = ?",
+                            (json.dumps([new_art_id]), "up_to_date", now_iso, installation_id),
+                        )
+                else:
+                    if target_file:
+                        shutil.copy2(staged_source_path, target_file)
+                        file_modified = True
+                        if verify_callback and not verify_callback(target_file):
+                            raise RuntimeError("Staged update failed verification test.")
+
+                    now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+                    with conn:
+                        conn.execute(
+                            "UPDATE installations SET update_status = ?, updated_at = ? WHERE installation_id = ?",
+                            ("up_to_date", now, installation_id),
+                        )
+                        if artifact_ids and new_size is not None and new_sha is not None:
+                            conn.execute(
+                                "UPDATE storage_artifacts SET bytes = ?, sha256 = ? WHERE artifact_id = ?",
+                                (new_size, new_sha, artifact_ids[0]),
+                            )
 
             # Cleanup backup copy after successful update
             if backup_file and backup_file.exists():

@@ -60,6 +60,9 @@ from localpilot.storage.inventory import StorageManager
 from localpilot.tui.chat_screen import ChatScreen
 
 
+from localpilot.domain.help_content import get_contextual_guidance, get_help_topic, HELP_TOPICS, TERMINOLOGY
+
+
 class HelpModal(ModalScreen[None]):
     """Comprehensive documentation modal for beginners and technical users."""
 
@@ -68,6 +71,7 @@ class HelpModal(ModalScreen[None]):
         ("q", "dismiss", "Close"),
         ("?", "dismiss", "Close"),
         ("h", "dismiss", "Close"),
+        ("f1", "dismiss", "Close"),
     ]
 
     def compose(self) -> ComposeResult:
@@ -77,6 +81,12 @@ class HelpModal(ModalScreen[None]):
                 with TabPane("Beginner Guide", id="help-novice"):
                     with VerticalScroll(id="help-scroll-novice"):
                         yield Markdown(DOCUMENTATION_TOPICS["novice"]["content"])
+                with TabPane("Essential Concepts", id="help-concepts"):
+                    with VerticalScroll(id="help-scroll-concepts"):
+                        yield Markdown(DOCUMENTATION_TOPICS.get("concepts", {}).get("content", ""))
+                with TabPane("Terminology", id="help-terminology"):
+                    with VerticalScroll(id="help-scroll-terminology"):
+                        yield Markdown(DOCUMENTATION_TOPICS.get("terminology", {}).get("content", ""))
                 with TabPane("Technical Architecture", id="help-technical"):
                     with VerticalScroll(id="help-scroll-tech"):
                         yield Markdown(DOCUMENTATION_TOPICS["technical"]["content"])
@@ -87,7 +97,7 @@ class HelpModal(ModalScreen[None]):
                     with VerticalScroll(id="help-scroll-cmd"):
                         yield Markdown(DOCUMENTATION_TOPICS["commands"]["content"])
             with Horizontal(id="help-buttons"):
-                yield Button("Close (Esc)", variant="primary", id="close-help-btn")
+                yield Button("Close (Esc)", variant="primary", id="close-help-btn", tooltip="Close documentation and return to previous view (Esc)")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "close-help-btn":
@@ -95,26 +105,52 @@ class HelpModal(ModalScreen[None]):
 
 
 class ConfirmModal(ModalScreen[bool]):
-    """Modal dialog for confirming an action."""
+    """Modal dialog for confirming an action with clear, specific action labels."""
 
-    def __init__(self, title: str, message: str) -> None:
+    BINDINGS = [
+        ("escape", "action_cancel", "Cancel"),
+    ]
+
+    def __init__(
+        self,
+        title: str,
+        message: str,
+        confirm_label: str = "Proceed",
+        cancel_label: str = "Cancel",
+    ) -> None:
         super().__init__()
         self._dialog_title = title
         self._dialog_message = message
+        self._confirm_label = confirm_label
+        self._cancel_label = cancel_label
+
+    @property
+    def confirm_label(self) -> str:
+        return self._confirm_label
+
+    @property
+    def cancel_label(self) -> str:
+        return self._cancel_label
 
     def compose(self) -> ComposeResult:
         with Vertical(id="confirm-dialog"):
             yield Label(f"[bold]{self._dialog_title}[/bold]", id="confirm-title")
             yield Label(self._dialog_message, id="confirm-message")
             with Horizontal(id="confirm-buttons"):
-                yield Button("Confirm", variant="primary", id="confirm-btn")
-                yield Button("Cancel", variant="default", id="cancel-btn")
+                yield Button(self._cancel_label, variant="default", id="cancel-btn", tooltip="Cancel and make no changes (Esc)")
+                yield Button(self._confirm_label, variant="primary", id="confirm-btn", tooltip="Proceed with this specific action")
+
+    def on_mount(self) -> None:
+        self.query_one("#confirm-btn", Button).focus()
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "confirm-btn":
             self.dismiss(True)
         else:
             self.dismiss(False)
+
+    def action_cancel(self) -> None:
+        self.dismiss(False)
 
 
 class RemoveModelModal(ModalScreen[bool]):
@@ -128,6 +164,7 @@ class RemoveModelModal(ModalScreen[bool]):
         super().__init__()
         self.model_name = model_name
         self.install_id = install_id
+        self.installation_id = install_id
         self.size_str = size_str
 
     def compose(self) -> ComposeResult:
@@ -136,13 +173,14 @@ class RemoveModelModal(ModalScreen[bool]):
             size_clause = f"delete ~{self.size_str}" if self.size_str else "delete model files"
             yield Label(
                 f"This will remove the model from your library and {size_clause} to free up disk space.\n\n"
-                "[dim]• What will change:[/dim] Downloaded model weights will be removed.\n"
+                "[dim]• Stop vs Remove:[/dim] 'Stop' unloads the model from RAM while keeping files. 'Remove' deletes files to reclaim disk space.\n"
+                "[dim]• What will change:[/dim] Downloaded model weights will be deleted from your computer.\n"
                 "[dim]• What remains untouched:[/dim] Other installed models, conversation history, and supporting runtimes remain safe and untouched.",
                 id="remove-message",
             )
             with Horizontal(id="remove-buttons"):
-                yield Button("Keep Model (Cancel)", variant="primary", id="keep-btn")
-                yield Button("Remove and Free Space", variant="error", id="confirm-remove-btn")
+                yield Button("Keep Model (Cancel)", variant="primary", id="keep-btn", tooltip="Keep model installed and safe on disk (Esc)")
+                yield Button("Remove and Free Space", variant="error", id="confirm-remove-btn", tooltip="Permanently delete model files and unregister from library")
 
     def on_mount(self) -> None:
         self.query_one("#keep-btn", Button).focus()
@@ -181,7 +219,7 @@ class ModelDetailsModal(ModalScreen[None]):
                     lines.append(f"• [bold]{k}:[/bold] {v}")
                 yield Label("\n".join(lines), id="details-body")
             with Horizontal(id="details-buttons"):
-                yield Button("Close (Esc)", variant="primary", id="close-details-btn")
+                yield Button("Close (Esc)", variant="primary", id="close-details-btn", tooltip="Close details dialog (Esc)")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         self.dismiss(None)
@@ -201,13 +239,33 @@ class PerformanceSettingsModal(ModalScreen[str]):
             yield Label("[bold cyan]Performance & Hardware Settings[/bold cyan]", id="perf-title")
             yield Label("Choose how LocalPilot utilizes your hardware to run models:", id="perf-desc")
             with RadioSet(id="perf-radioset"):
-                yield RadioButton("Automatic (Recommended - LocalPilot selects the best fit for your RAM/GPU)", value="automatic", id="perf-auto")
-                yield RadioButton("Processor / CPU only (Reliable vector execution with AVX2)", value="cpu", id="perf-cpu")
-                yield RadioButton("Graphics card / GPU (Accelerate inference with GPU offload)", value="gpu", id="perf-gpu")
-                yield RadioButton("Supported CPU + GPU (Hybrid memory allocation)", value="hybrid", id="perf-hybrid")
+                yield RadioButton(
+                    "Automatic (LocalPilot chooses a supported configuration for this computer)",
+                    value="automatic",
+                    id="perf-auto",
+                    tooltip="LocalPilot inspects your CPU, RAM, and GPU to select the best fit.",
+                )
+                yield RadioButton(
+                    "Processor / CPU (Use your processor. Responses may be slower for some models)",
+                    value="cpu",
+                    id="perf-cpu",
+                    tooltip="Runs on standard CPU and RAM. Safe on all computers; larger models run more slowly.",
+                )
+                yield RadioButton(
+                    "Graphics card / GPU (Use supported graphics acceleration. Availability depends on this computer and the model)",
+                    value="gpu",
+                    id="perf-gpu",
+                    tooltip="Accelerates generation with your graphics card (e.g. Metal or CUDA) if available.",
+                )
+                yield RadioButton(
+                    "Supported CPU + GPU (Share supported work between processor memory and graphics memory)",
+                    value="hybrid",
+                    id="perf-hybrid",
+                    tooltip="Shares computation between system RAM and graphics memory where supported.",
+                )
             with Horizontal(id="perf-buttons"):
-                yield Button("Apply Settings", variant="primary", id="perf-apply-btn")
-                yield Button("Cancel", variant="default", id="perf-cancel-btn")
+                yield Button("Apply Settings", variant="primary", id="perf-apply-btn", tooltip="Save execution preference")
+                yield Button("Cancel", variant="default", id="perf-cancel-btn", tooltip="Discard changes (Esc)")
 
     def on_mount(self) -> None:
         rs = self.query_one("#perf-radioset", RadioSet)
@@ -223,7 +281,14 @@ class PerformanceSettingsModal(ModalScreen[str]):
             rs = self.query_one("#perf-radioset", RadioSet)
             val = "automatic"
             if rs.pressed_button:
-                val = getattr(rs.pressed_button, "value", "automatic")
+                btn_id = getattr(rs.pressed_button, "id", "")
+                mode_map = {
+                    "perf-auto": "automatic",
+                    "perf-cpu": "cpu",
+                    "perf-gpu": "gpu",
+                    "perf-hybrid": "hybrid",
+                }
+                val = mode_map.get(btn_id, "automatic")
             self.dismiss(val)
         else:
             self.dismiss(self.current_pref)
@@ -428,10 +493,10 @@ class GuidedSetupModal(ModalScreen[Optional[str]]):
                     yield Label("", id="wizard-hw-verdict")
                     yield Label("[dim]Action required: None. Your computer is ready to run local AI.[/dim]", id="wizard-hw-action")
                 with Horizontal(classes="wizard-buttons"):
-                    yield Button("Cancel", variant="default", id="step1-cancel-btn")
-                    yield Button("Computer details", variant="default", id="step1-details-btn")
-                    yield Button("Performance settings", variant="default", id="step1-perf-btn")
-                    yield Button("Continue →", variant="primary", id="step1-next-btn")
+                    yield Button("Cancel", variant="default", id="step1-cancel-btn", tooltip="Cancel guided setup and return to home (Esc)")
+                    yield Button("Computer details", variant="default", id="step1-details-btn", tooltip="Inspect full CPU, RAM, and GPU diagnostics")
+                    yield Button("Performance settings", variant="default", id="step1-perf-btn", tooltip="Choose processor (CPU) or graphics card (GPU) execution")
+                    yield Button("Continue →", variant="primary", id="step1-next-btn", tooltip="Proceed to select your intended goal")
 
             # Step 2: Choose Goal (Section 6)
             with Vertical(id="wizard-step-2", classes="wizard-step hidden"):
@@ -441,18 +506,34 @@ class GuidedSetupModal(ModalScreen[Optional[str]]):
                     classes="wizard-desc",
                 )
                 with RadioSet(id="goal-radioset"):
-                    yield RadioButton("Everyday questions and writing (Draft emails, summarize documents, brainstorm ideas)", value="writing", id="goal-writing")
-                    yield RadioButton("Coding assistance (Write functions, debug scripts, explain code)", value="coding", id="goal-coding")
-                    yield RadioButton("Browse all compatible models (Explore all models tested on your computer)", value="general", id="goal-general")
+                    yield RadioButton(
+                        "Everyday questions and writing (Draft emails, summarize documents, brainstorm ideas)",
+                        value="writing",
+                        id="goal-writing",
+                        tooltip="Tailored for general conversation, writing assistance, and document comprehension.",
+                    )
+                    yield RadioButton(
+                        "Coding assistance (Write functions, debug scripts, explain code)",
+                        value="coding",
+                        id="goal-coding",
+                        tooltip="Tailored for programming languages, software debugging, and technical reasoning.",
+                    )
+                    yield RadioButton(
+                        "Browse all compatible models (Explore all models tested on your computer)",
+                        value="general",
+                        id="goal-general",
+                        tooltip="View all models in the catalog that fit safely within your computer's RAM.",
+                    )
                 with Horizontal(classes="wizard-buttons"):
-                    yield Button("← Back", variant="default", id="step2-back-btn")
-                    yield Button("Find Best Models →", variant="primary", id="step2-next-btn")
+                    yield Button("← Back", variant="default", id="step2-back-btn", tooltip="Go back to computer capability check")
+                    yield Button("Find Best Models →", variant="primary", id="step2-next-btn", tooltip="Search for models that match your chosen goal")
 
             # Step 3: Recommended Models (Section 7)
             with Vertical(id="wizard-step-3", classes="wizard-step hidden"):
                 yield Label("[bold]Step 3 of 4: Recommended Models for Your Computer[/bold]", classes="wizard-step-title")
                 yield Label(
-                    "Here are the top models that fit within your computer's safe memory budget:",
+                    "Here are the top models that fit within your computer's safe memory budget:\n"
+                    "[dim]• Scoring weights: Newness 40%, Smaller download 25%, Usable context 20%, Memory headroom 15%.[/dim]",
                     classes="wizard-desc",
                 )
                 with VerticalScroll(id="wizard-shortlist-scroll"):
@@ -460,26 +541,27 @@ class GuidedSetupModal(ModalScreen[Optional[str]]):
                     with RadioSet(id="candidate-radioset"):
                         pass
                 with Horizontal(classes="wizard-buttons"):
-                    yield Button("← Back", variant="default", id="step3-back-btn")
-                    yield Button("Compare Options (c)", variant="default", id="step3-compare-btn")
-                    yield Button("Browse Full Catalog", variant="default", id="step3-catalog-btn")
-                    yield Button("Review Setup →", variant="primary", id="step3-next-btn")
+                    yield Button("← Back", variant="default", id="step3-back-btn", tooltip="Go back to goal selection")
+                    yield Button("Compare Options (c)", variant="default", id="step3-compare-btn", tooltip="Open side-by-side comparison matrix (c)")
+                    yield Button("Browse Full Catalog", variant="default", id="step3-catalog-btn", tooltip="Explore all models in the catalog")
+                    yield Button("Review Setup →", variant="primary", id="step3-next-btn", tooltip="Review download size, storage, and safety before setup")
 
             # Step 3.5: Authentication Step (Section 8 - Conditional)
             with Vertical(id="wizard-step-auth", classes="wizard-step hidden"):
                 yield Label("[bold cyan]Access Key Required[/bold cyan]", classes="wizard-step-title")
                 yield Label(
                     "This model requires agreeing to publisher terms on Hugging Face before download.\n\n"
-                    "1. Visit [bold cyan]https://huggingface.co/settings/tokens[/bold cyan]\n"
-                    "2. Create a read-only token and paste it below:\n",
+                    "• Source: Hugging Face (https://huggingface.co/settings/tokens)\n"
+                    "• Permission: A free read-only personal access token (never enter your account password).\n"
+                    "• Security: Saved in your operating system's secure credential store and never logged.\n",
                     classes="wizard-desc",
                 )
                 with Vertical(classes="wizard-card"):
-                    yield Input(placeholder="hf_...", password=True, id="auth-token-input")
+                    yield Input(placeholder="hf_...", password=True, id="auth-token-input", tooltip="Paste your read-only Hugging Face access token here")
                     yield Label("[dim]Your key will be securely saved in your local credential store and never logged.[/dim]")
                 with Horizontal(classes="wizard-buttons"):
-                    yield Button("← Back to Models", variant="default", id="auth-back-btn")
-                    yield Button("Save Key and Continue →", variant="primary", id="auth-save-btn")
+                    yield Button("← Back to Models", variant="default", id="auth-back-btn", tooltip="Return to model shortlist")
+                    yield Button("Save Key and Continue →", variant="primary", id="auth-save-btn", tooltip="Save token and proceed to setup review")
 
             # Step 4: Review Setup & Approval (Section 9)
             with Vertical(id="wizard-step-4", classes="wizard-step hidden"):
@@ -500,9 +582,9 @@ class GuidedSetupModal(ModalScreen[Optional[str]]):
                         classes="wizard-guarantee",
                     )
                 with Horizontal(classes="wizard-buttons"):
-                    yield Button("← Back", variant="default", id="step4-back-btn")
-                    yield Button("Technical Details", variant="default", id="step4-tech-btn")
-                    yield Button("Set Up Model", variant="primary", id="step4-approve-btn")
+                    yield Button("← Back", variant="default", id="step4-back-btn", tooltip="Return to model selection")
+                    yield Button("Technical Details", variant="default", id="step4-tech-btn", tooltip="Inspect technical execution plan and SHA-256 digests")
+                    yield Button("Set Up Model", variant="primary", id="step4-approve-btn", tooltip="Approve plan and begin downloading model weights")
 
             # Step 5: Progress Wizard (Section 10)
             with Vertical(id="wizard-step-5", classes="wizard-step hidden"):
@@ -521,8 +603,8 @@ class GuidedSetupModal(ModalScreen[Optional[str]]):
                     yield Label("Initializing setup...", id="wizard-progress-detail")
                     yield Label("Downloading model weights... You can cancel safely at any time.", id="wizard-progress-wait-note")
                 with Horizontal(classes="wizard-buttons"):
-                    yield Button("Cancel Setup", variant="default", id="step5-cancel-btn")
-                    yield Button("Technical Details", variant="default", id="step5-tech-btn")
+                    yield Button("Cancel Setup", variant="default", id="step5-cancel-btn", tooltip="Stop setup and safely clean up partial files (Esc)")
+                    yield Button("Technical Details", variant="default", id="step5-tech-btn", tooltip="View underlying technical events and logs")
                     yield Button("Back to Recommendations", variant="primary", id="step5-cancelled-back-btn", classes="hidden")
 
             # Step 6: Completion & Chat (Section 11)
@@ -537,9 +619,9 @@ class GuidedSetupModal(ModalScreen[Optional[str]]):
                     yield Label("Verification: Passed live test query", id="finish-test-status")
                     yield Label("Privacy: 100% private and offline on your hardware", id="finish-privacy-status")
                 with Horizontal(classes="wizard-buttons"):
-                    yield Button("Finish", variant="default", id="step6-finish-btn")
-                    yield Button("My Models", variant="default", id="step6-library-btn")
-                    yield Button("Start Chatting", variant="primary", id="step6-chat-btn")
+                    yield Button("Finish", variant="default", id="step6-finish-btn", tooltip="Return to home dashboard")
+                    yield Button("My Models", variant="default", id="step6-library-btn", tooltip="View your installed models library")
+                    yield Button("Start Chatting", variant="primary", id="step6-chat-btn", tooltip="Start conversation with your model right now")
 
     def on_mount(self) -> None:
         self._load_step1_hardware()
@@ -787,7 +869,12 @@ class GuidedSetupModal(ModalScreen[Optional[str]]):
         self._built_plan = built_plan
 
         self.query_one("#review-model-name", Label).update(f"• Selected Model: [bold]{cand.name}[/bold]")
-        self.query_one("#review-download-size", Label).update(f"• Download Size: ~{sz_mb:.0f} MB")
+        runtime_mb = 250 if built_plan.requires_runtime_install else 0
+        total_est_mb = sz_mb + runtime_mb
+        self.query_one("#review-download-size", Label).update(
+            f"• Download Transfer Size: ~{sz_mb:.0f} MB (network transfer)\n"
+            f"• Estimated Total Storage: ~{total_est_mb:.0f} MB (includes runtime & recovery files)"
+        )
         self.query_one("#review-storage-path", Label).update(f"• Storage Location: {built_plan.target_install_dir}")
         backend = getattr(built_plan.inference_backend, "value", str(built_plan.inference_backend))
         self.query_one("#review-exec-mode", Label).update(f"• Friendly Execution Preference: {self._execution_preference.title()} ({backend})")
@@ -1134,8 +1221,16 @@ class LocalPilotTUI(App):
         height: 3;
         margin-top: 1;
     }
-    #help-buttons Button {
-        margin-left: 1;
+    #context-help-container {
+        dock: bottom;
+        height: 1;
+        background: #181818;
+        border-top: solid #333333;
+        padding: 0 1;
+    }
+    #context-help-text {
+        color: #00e5ff;
+        text-style: dim;
     }
     """
 
@@ -1151,6 +1246,7 @@ class LocalPilotTUI(App):
         ("enter", "select_action", "Action / Chat"),
         ("x", "stop_action", "Stop"),
         ("delete", "remove_action", "Remove"),
+        ("f1", "show_help", "Help & Guide"),
         ("?", "show_help", "Help"),
         ("h", "show_help", "Guide"),
         ("1", "switch_to_home", "Home"),
@@ -1187,8 +1283,8 @@ class LocalPilotTUI(App):
                     with Container(id="interrupted-card", classes="hidden"):
                         yield Label("[bold yellow]Notice:[/bold yellow] An earlier model setup was interrupted.", id="interrupted-notice-text")
                         with Horizontal():
-                            yield Button("Resume Setup", variant="primary", id="btn-resume-interrupted")
-                            yield Button("Clean Up Partial Files", variant="default", id="btn-cleanup-interrupted")
+                            yield Button("Resume Setup", variant="primary", id="btn-resume-interrupted", tooltip="Continue setup from where it was interrupted")
+                            yield Button("Clean Up Partial Files", variant="default", id="btn-cleanup-interrupted", tooltip="Safely delete temporary download files")
 
                     with Container(id="welcome-box"):
                         yield Label("LOCAL AI, MADE SIMPLE", id="home-heading")
@@ -1199,15 +1295,15 @@ class LocalPilotTUI(App):
                         yield Label("", id="home-recommendation-note")
 
                     with Horizontal(id="home-primary-actions"):
-                        yield Button("Help me get started", variant="primary", id="btn-get-started")
-                        yield Button("Continue with AI", variant="primary", id="btn-continue-chat", classes="hidden")
+                        yield Button("Help me get started", variant="primary", id="btn-get-started", tooltip="Start 4-step guided wizard to find and run an AI model (Enter)")
+                        yield Button("Continue with AI", variant="primary", id="btn-continue-chat", classes="hidden", tooltip="Open chat session with your most recent model")
 
                     with Horizontal(id="home-secondary-actions"):
-                        yield Button("Browse models", variant="default", id="btn-home-discover")
-                        yield Button("My models", variant="default", id="btn-home-installed", classes="hidden")
-                        yield Button("Find another model", variant="default", id="btn-home-find-another", classes="hidden")
-                        yield Button("Running now", variant="default", id="btn-home-running", classes="hidden")
-                        yield Button("Help and settings", variant="default", id="btn-home-help")
+                        yield Button("Browse models", variant="default", id="btn-home-discover", tooltip="Explore all models tested to fit this computer")
+                        yield Button("My models", variant="default", id="btn-home-installed", classes="hidden", tooltip="View your installed model library")
+                        yield Button("Find another model", variant="default", id="btn-home-find-another", classes="hidden", tooltip="Search for an additional model")
+                        yield Button("Running now", variant="default", id="btn-home-running", classes="hidden", tooltip="View active models currently consuming RAM")
+                        yield Button("Help and settings", variant="default", id="btn-home-help", tooltip="Open documentation manual and FAQ (F1 / ?)")
 
                     with Horizontal(id="home-panels"):
                         with Vertical(classes="panel"):
@@ -1223,30 +1319,30 @@ class LocalPilotTUI(App):
             with TabPane("Find a Model", id="discover-tab"):
                 with Vertical():
                     with Horizontal():
-                        yield Input(placeholder="Search models (e.g. coding, llama, 3b)...", id="search-input")
+                        yield Input(placeholder="Search models (e.g. coding, llama, 3b)...", id="search-input", tooltip="Filter models by task or name (Type to search)")
                     yield DataTable(id="discover-table")
                     with Vertical(id="explanation-box"):
                         yield Label("[bold]Why this model?[/bold]")
                         yield Label("Select a model above to see why it matches your computer. Press Enter to Setup.", id="explanation-text")
                         yield Label("", id="setup-progress-text")
                     with Horizontal(classes="table-actions-bar"):
-                        yield Button("Set Up Selected Model (Enter)", variant="primary", id="btn-discover-setup")
+                        yield Button("Set Up Selected Model (Enter)", variant="primary", id="btn-discover-setup", tooltip="Review and set up highlighted model")
 
             with TabPane("Installed Models", id="installed-tab"):
                 with Vertical():
                     yield DataTable(id="installed-table")
                     with Horizontal(classes="table-actions-bar"):
-                        yield Button("Chat with Model (Enter / C)", variant="primary", id="btn-installed-chat")
-                        yield Button("View Details (V)", variant="default", id="btn-installed-details")
-                        yield Button("Remove Model (Delete)", variant="error", id="btn-installed-remove")
+                        yield Button("Chat with Model (Enter / C)", variant="primary", id="btn-installed-chat", tooltip="Open chat session with selected model (Enter or C)")
+                        yield Button("View Details (V)", variant="default", id="btn-installed-details", tooltip="View technical metadata and file paths (V)")
+                        yield Button("Remove Model (Delete)", variant="error", id="btn-installed-remove", tooltip="Delete model and reclaim disk space (Delete)")
 
             with TabPane("Running Models", id="running-tab"):
                 with Vertical():
                     yield DataTable(id="running-table")
                     with Horizontal(classes="table-actions-bar"):
-                        yield Button("Chat with Model (Enter / C)", variant="primary", id="btn-running-chat")
-                        yield Button("View Details (V)", variant="default", id="btn-running-details")
-                        yield Button("Stop Model (X)", variant="default", id="btn-running-stop")
+                        yield Button("Chat with Model (Enter / C)", variant="primary", id="btn-running-chat", tooltip="Switch directly into active chat session (Enter or C)")
+                        yield Button("View Details (V)", variant="default", id="btn-running-details", tooltip="View live process ID, endpoint, and health (V)")
+                        yield Button("Stop Model (X)", variant="default", id="btn-running-stop", tooltip="Unload model and free RAM/GPU memory (X)")
 
             with TabPane("Storage", id="storage-tab"):
                 with VerticalScroll():
@@ -1257,6 +1353,8 @@ class LocalPilotTUI(App):
                 with Vertical():
                     yield DataTable(id="activity-table")
 
+        with Container(id="context-help-container"):
+            yield Label("• Use Tab / Arrow keys to navigate. Press '?' or F1 for documentation manual.", id="context-help-text")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -1322,12 +1420,32 @@ class LocalPilotTUI(App):
         results = self.cat_svc.discover(query=query)
         self.call_from_thread(self._update_discover_table, results, seq)
 
+    def on_descendant_focus(self, event) -> None:
+        """Update contextual help bar with Layer 2 guidance when user navigates controls."""
+        ctrl_id = getattr(event.widget, "id", None) or ""
+        msg = get_contextual_guidance(ctrl_id)
+        try:
+            self.query_one("#context-help-text", Label).update(f"• {msg}")
+        except Exception:
+            pass
+
     def _update_discover_table(self, results: List[RankedCandidate], seq: int) -> None:
         if seq < self._search_seq:
             return
         self._ranked_candidates = results
         table = self.query_one("#discover-table", DataTable)
         table.clear()
+        if not results:
+            table.add_row(
+                "-",
+                "No compatible models in memory budget",
+                "Catalog",
+                "0 MB",
+                "0",
+                "Close background apps or check compact models",
+                key="empty_discover",
+            )
+            return
         for r in results:
             cand = r.candidate
             sz_mb = cand.total_bytes / (1024 * 1024)
@@ -1419,36 +1537,46 @@ class LocalPilotTUI(App):
             home_tagline.update("We will find a suitable model and help you set it up.")
             home_note.update("")
 
-        for r in rows:
-            name = r["name"]
-            nl = name.lower()
-            if "coder" in nl or "code" in nl:
-                purpose = "Coding assistance"
-            elif "llama" in nl or "qwen" in nl or "phi" in nl:
-                purpose = "Everyday questions and writing"
-            else:
-                purpose = "General reasoning"
+        if not rows:
+            # Empty state guidance
+            table.add_row(
+                "No models installed yet",
+                "Find a suitable model to get started",
+                "Press 'd' or '2' to browse",
+                "0 MB",
+                key="empty_installed",
+            )
+        else:
+            for r in rows:
+                name = r["name"]
+                nl = name.lower()
+                if "coder" in nl or "code" in nl:
+                    purpose = "Coding assistance"
+                elif "llama" in nl or "qwen" in nl or "phi" in nl:
+                    purpose = "Everyday questions and writing"
+                else:
+                    purpose = "General reasoning"
 
-            stage = r["readiness_stage"]
-            if stage == "tested_here":
-                status = "Ready to chat (Verified)"
-            elif stage == "downloaded_prepared":
-                status = "Ready to start"
-            else:
-                status = stage.replace("_", " ").title()
+                stage = r["readiness_stage"]
+                if stage == "tested_here":
+                    status = "Ready to chat (Verified)"
+                elif stage == "downloaded_prepared":
+                    status = "Ready to start"
+                else:
+                    status = stage.replace("_", " ").title()
 
-            sz_str = "Managed"
-            try:
-                art_ids = json.loads(r["artifact_ids_json"] or "[]")
-                if art_ids:
-                    art = conn.execute("SELECT bytes FROM storage_artifacts WHERE artifact_id = ?", (art_ids[0],)).fetchone()
-                    if art and art["bytes"]:
-                        mb = art["bytes"] / (1024 * 1024)
-                        sz_str = f"{mb:.0f} MB" if mb < 1000 else f"{mb/1024:.1f} GB"
-            except Exception:
-                pass
+                sz_str = "Managed"
+                try:
+                    art_ids = json.loads(r["artifact_ids_json"] or "[]")
+                    if art_ids:
+                        art = conn.execute("SELECT bytes FROM storage_artifacts WHERE artifact_id = ?", (art_ids[0],)).fetchone()
+                        if art and art["bytes"]:
+                            mb = art["bytes"] / (1024 * 1024)
+                            sz_str = f"{mb:.0f} MB" if mb < 1000 else f"{mb/1024:.1f} GB"
+                except Exception:
+                    pass
 
-            table.add_row(name, purpose, status, sz_str, key=r["installation_id"])
+                table.add_row(name, purpose, status, sz_str, key=r["installation_id"])
 
     def _setup_running_table(self) -> None:
         table = self.query_one("#running-table", DataTable)
@@ -1462,29 +1590,39 @@ class LocalPilotTUI(App):
         table.clear()
         active = self.runtime_svc.reconcile_running_instances()
 
-        conn = get_db().get_connection()
-        for r in active:
-            health = r.get("health_status", "healthy")
-            if health == "healthy":
-                status_label = "Running (Healthy)"
-            elif health == "degraded":
-                status_label = "Running (Degraded)"
-            elif health == "unresponsive":
-                status_label = "Running (Unresponsive)"
-            else:
-                status_label = f"Running ({health})"
-
-            m_id = r.get("model_id", "")
-            inst_row = conn.execute("SELECT name FROM installations WHERE model_id = ? OR installation_id = ?", (m_id, m_id)).fetchone()
-            display_name = inst_row["name"] if inst_row else m_id
-
+        if not active:
+            # Empty state guidance
             table.add_row(
-                display_name,
-                status_label,
-                r.get("execution_mode", "Local CPU/GPU"),
-                "Active now",
-                key=r.get("instance_id", ""),
+                "No models currently running",
+                "System memory is 100% free",
+                "Select an installed model to chat",
+                "Idle",
+                key="empty_running",
             )
+        else:
+            conn = get_db().get_connection()
+            for r in active:
+                health = r.get("health_status", "healthy")
+                if health == "healthy":
+                    status_label = "Running (Healthy)"
+                elif health == "degraded":
+                    status_label = "Running (Degraded)"
+                elif health == "unresponsive":
+                    status_label = "Running (Unresponsive)"
+                else:
+                    status_label = f"Running ({health})"
+
+                m_id = r.get("model_id", "")
+                inst_row = conn.execute("SELECT name FROM installations WHERE model_id = ? OR installation_id = ?", (m_id, m_id)).fetchone()
+                display_name = inst_row["name"] if inst_row else m_id
+
+                table.add_row(
+                    display_name,
+                    status_label,
+                    r.get("execution_mode", "Local CPU/GPU"),
+                    "Active now",
+                    key=r.get("instance_id", ""),
+                )
 
         try:
             self.query_one("#home-running-status", Label).update(
@@ -1611,6 +1749,8 @@ class LocalPilotTUI(App):
 
     # Enter / Select action
     def action_select_action(self) -> None:
+        if isinstance(self.focused, (Input,)):
+            return
         current_tab = self.query_one("#main-tabs", TabbedContent).active
         if current_tab == "home-tab":
             self.action_continue_most_recent()
@@ -1642,13 +1782,18 @@ class LocalPilotTUI(App):
                     f"• Hardware Mode: {mode_str}\n\n"
                     "No system drivers or administrator settings will be modified."
                 )
-                self.push_screen(ConfirmModal("Approve Model Setup", msg), _on_confirm)
+                self.push_screen(
+                    ConfirmModal("Approve Model Setup", msg, confirm_label="Set Up Model", cancel_label="Cancel"),
+                    _on_confirm,
+                )
 
         elif current_tab in ("installed-tab", "running-tab"):
             self.action_chat_selected()
 
     def action_chat_selected(self) -> None:
         """Starts (if needed) and opens integrated ChatScreen directly for selected model."""
+        if isinstance(self.focused, (Input,)):
+            return
         current_tab = self.query_one("#main-tabs", TabbedContent).active
         if current_tab == "installed-tab":
             table = self.query_one("#installed-table", DataTable)
@@ -1657,6 +1802,9 @@ class LocalPilotTUI(App):
                 return
             row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
             installation_id = str(row_key.value) if row_key else ""
+            if installation_id == "empty_installed":
+                self.action_start_guided_setup()
+                return
             if installation_id:
                 self.start_and_chat(installation_id)
         elif current_tab == "running-tab":
@@ -1666,6 +1814,9 @@ class LocalPilotTUI(App):
                 return
             row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
             instance_id = str(row_key.value) if row_key else ""
+            if instance_id == "empty_running":
+                self.notify("No models are currently running.", title="Chat")
+                return
             if instance_id:
                 self.start_and_chat(instance_id)
 
@@ -1712,6 +1863,8 @@ class LocalPilotTUI(App):
 
     def action_details_selected(self) -> None:
         """Opens the inspection modal with technical details for the selected item."""
+        if isinstance(self.focused, (Input,)):
+            return
         current_tab = self.query_one("#main-tabs", TabbedContent).active
         conn = get_db().get_connection()
 
@@ -1721,6 +1874,8 @@ class LocalPilotTUI(App):
                 return
             row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
             inst_id = str(row_key.value) if row_key else ""
+            if not inst_id or inst_id == "empty_installed":
+                return
             row = conn.execute("SELECT * FROM installations WHERE installation_id = ?", (inst_id,)).fetchone()
             if not row:
                 return
@@ -1760,6 +1915,8 @@ class LocalPilotTUI(App):
                 return
             row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
             instance_id = str(row_key.value) if row_key else ""
+            if not instance_id or instance_id == "empty_running":
+                return
             active = self.runtime_svc.reconcile_running_instances()
             match = next((i for i in active if i.get("instance_id") == instance_id), None)
             if not match:
@@ -1779,6 +1936,8 @@ class LocalPilotTUI(App):
             self.push_screen(ModelDetailsModal(match.get("model_id", "Active Model"), details))
 
     def action_stop_action(self) -> None:
+        if isinstance(self.focused, (Input,)):
+            return
         current_tab = self.query_one("#main-tabs", TabbedContent).active
         if current_tab == "running-tab":
             table = self.query_one("#running-table", DataTable)
@@ -1787,7 +1946,8 @@ class LocalPilotTUI(App):
                 return
             row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
             instance_id = str(row_key.value) if row_key else ""
-            if not instance_id:
+            if not instance_id or instance_id == "empty_running":
+                self.notify("No active model is currently running.", title="Stop Instance")
                 return
 
             def _on_confirm(confirmed: bool) -> None:
@@ -1795,7 +1955,15 @@ class LocalPilotTUI(App):
                     self.notify(f"Stopping instance {instance_id}...", title="Stopping")
                     self._run_stop_worker(instance_id)
 
-            self.push_screen(ConfirmModal("Stop Instance", f"Stop running model instance {instance_id}?"), _on_confirm)
+            msg = (
+                f"Stop running model instance '{instance_id}'?\n\n"
+                "• What happens: The model is unloaded and system memory is freed.\n"
+                "• Your files: All downloaded model files and configuration are preserved."
+            )
+            self.push_screen(
+                ConfirmModal("Stop Model", msg, confirm_label="Stop Model", cancel_label="Keep Running"),
+                _on_confirm,
+            )
 
     @work(exclusive=True, thread=True)
     def _run_stop_worker(self, instance_id: str) -> None:
@@ -1841,6 +2009,8 @@ class LocalPilotTUI(App):
         self._reconcile_and_populate_running()
 
     def action_remove_action(self) -> None:
+        if isinstance(self.focused, (Input,)):
+            return
         current_tab = self.query_one("#main-tabs", TabbedContent).active
         if current_tab == "installed-tab":
             table = self.query_one("#installed-table", DataTable)
@@ -1849,7 +2019,8 @@ class LocalPilotTUI(App):
                 return
             row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
             installation_id = str(row_key.value) if row_key else ""
-            if not installation_id:
+            if not installation_id or installation_id == "empty_installed":
+                self.notify("No models are currently installed.", title="Remove Model")
                 return
 
             conn = get_db().get_connection()
@@ -1936,7 +2107,10 @@ class LocalPilotTUI(App):
             f"'{name}' is installed, verified, and ready to use!\n\n"
             "Would you like to start chatting with it right now?"
         )
-        self.push_screen(ConfirmModal("Ready to Chat!", msg), _on_chat_prompt)
+        self.push_screen(
+            ConfirmModal("Ready to Chat!", msg, confirm_label="Start Chatting", cancel_label="Later"),
+            _on_chat_prompt,
+        )
 
     def action_show_help(self) -> None:
         self.push_screen(HelpModal())

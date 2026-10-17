@@ -461,6 +461,16 @@ class SetupWorkflow:
                     deletion_method=artifact_del_method,
                 )
 
+                spec_json = "{}"
+                if plan.execution_plan:
+                    spec = plan.execution_plan.to_execution_spec(
+                        installation_id=inst_id,
+                        artifact_path=str(model_file) if model_file else "",
+                        artifact_sha256=calc_sha if "calc_sha" in locals() and calc_sha else None,
+                        approval_hash=approval.plan_hash if approval else None,
+                    )
+                    spec_json = spec.model_dump_json()
+
                 now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
                 conn = self.db.get_connection()
                 with conn:
@@ -470,9 +480,9 @@ class SetupWorkflow:
                             installation_id, model_id, name, runtime_name, artifact_ids_json,
                             readiness_stage, compatibility_status, update_status, ownership_class,
                             inference_backend, managed_service, deployment_method,
-                            execution_plan_json, alternative_plans_json,
+                            execution_plan_json, alternative_plans_json, execution_spec_json,
                             created_at, updated_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                         (
                             inst_id,
@@ -489,6 +499,7 @@ class SetupWorkflow:
                             plan.deployment_method,
                             plan.execution_plan.model_dump_json() if plan.execution_plan else "{}",
                             json.dumps([p.model_dump() for p in plan.alternative_plans]),
+                            spec_json,
                             now,
                             now,
                         ),

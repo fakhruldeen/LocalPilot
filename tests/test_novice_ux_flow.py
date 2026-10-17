@@ -91,6 +91,14 @@ async def test_remove_model_modal_safe_defaults():
     assert modal.model_name == "Qwen 2.5 Coder 1.5B"
     assert modal.size_str == "1.0 GB"
 
+    # Mount modal in running app to assert real widget focus
+    tui = LocalPilotTUI()
+    async with tui.run_test(size=(100, 30)) as pilot:
+        tui.push_screen(modal)
+        await pilot.pause()
+        keep_btn = modal.query_one("#keep-btn")
+        assert modal.focused == keep_btn, "Expected safe 'Keep Model' button to have default focus"
+
 
 @pytest.mark.asyncio
 async def test_model_details_modal_renders_metadata():
@@ -131,17 +139,14 @@ async def test_chat_screen_initialization():
 
 
 def test_cli_friendly_name_resolution(mock_db_with_installed):
-    """Verify that CLI commands accept friendly recognizable names."""
-    conn = mock_db_with_installed.get_connection()
+    """Verify that CLI commands accept friendly recognizable names via Typer runner."""
+    from typer.testing import CliRunner
+    from localpilot.cli.main import app
 
-    # Test that querying by friendly name finds the record
-    target = "Qwen 2.5 Coder 1.5B"
-    row = conn.execute(
-        "SELECT * FROM installations WHERE installation_id = ? OR model_id = ? OR name = ? OR name LIKE ?",
-        (target, target, target, f"%{target}%"),
-    ).fetchone()
-    assert row is not None
-    assert row["installation_id"] == "inst_test_qwen"
+    runner = CliRunner()
+    res = runner.invoke(app, ["remove", "Qwen 2.5 Coder 1.5B", "-y"])
+    assert res.exit_code == 0
+    assert "Removed model 'Qwen 2.5 Coder 1.5B'" in res.stdout
 
 
 @pytest.mark.asyncio
@@ -156,7 +161,7 @@ async def test_tui_home_screen_actions_and_buttons():
         # Check that welcome container and tagline are present
         tagline = tui.query_one("#home-tagline")
         assert tagline is not None
-        assert "Run AI on this computer" in str(tagline.render()) or "Welcome" in str(tagline.render())
+        assert "suitable model" in str(tagline.render()) or "Run AI on this computer" in str(tagline.render())
 
         # Check secondary action buttons
         assert tui.query_one("#btn-home-installed") is not None
@@ -209,9 +214,24 @@ async def test_tui_guided_setup_wizard_flow():
 
 @pytest.mark.asyncio
 async def test_performance_settings_modal_selection():
-    """Verify PerformanceSettingsModal initializes with current mode and allows selection."""
+    """Verify PerformanceSettingsModal initializes with current mode and allows selection and application."""
     modal = PerformanceSettingsModal(current_pref="gpu")
     assert modal.current_pref == "gpu"
+
+    tui = LocalPilotTUI()
+    async with tui.run_test(size=(100, 30)) as pilot:
+        result_holder = []
+        tui.push_screen(modal, callback=lambda res: result_holder.append(res))
+        await pilot.pause()
+
+        # Select CPU radio
+        await pilot.click("#perf-cpu")
+        await pilot.pause()
+        await pilot.click("#perf-apply-btn")
+        await pilot.pause()
+
+        assert len(result_holder) == 1
+        assert result_holder[0] == "cpu"
 
 
 @pytest.mark.asyncio

@@ -45,6 +45,8 @@ class ChatScreen(Screen[None]):
     BINDINGS = [
         ("escape", "action_back", "Back to Models"),
         ("ctrl+n", "action_new_chat", "New Chat"),
+        ("f1", "action_help", "Help & Guide"),
+        ("?", "action_help", "Help"),
     ]
 
     CSS = """
@@ -143,11 +145,12 @@ class ChatScreen(Screen[None]):
             yield Input(
                 placeholder="Type your message here... (Press Enter to send)",
                 id="chat-user-input",
+                tooltip="Type your message or question and press Enter to chat.",
             )
             with Horizontal(id="chat-actions"):
-                yield Button("Send", variant="primary", id="send-msg-btn")
-                yield Button("New Chat", variant="default", id="new-chat-btn")
-                yield Button("Back", variant="default", id="back-to-models-btn")
+                yield Button("Send", variant="primary", id="send-msg-btn", tooltip="Send prompt to the model (Enter)")
+                yield Button("New Chat", variant="default", id="new-chat-btn", tooltip="Clear current history and start a new conversation (Ctrl+N)")
+                yield Button("Back", variant="default", id="back-to-models-btn", tooltip="Return to models dashboard (Esc)")
 
     def on_mount(self) -> None:
         self.query_one("#chat-user-input", Input).focus()
@@ -253,3 +256,7 @@ class ChatScreen(Screen[None]):
 
     def action_back(self) -> None:
         self.app.pop_screen()
+
+    def action_help(self) -> None:
+        from localpilot.tui.app import HelpModal
+        self.app.push_screen(HelpModal())

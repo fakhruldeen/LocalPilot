@@ -1,17 +1,22 @@
 """Runtime instance reconciliation and lifecycle management service."""
 
 from __future__ import annotations
+import asyncio
 import json
 import logging
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 import httpx
+import psutil
 
-from localpilot.domain.models import NormalizedCandidate, StopResult, StopStatus
+from localpilot.domain.capabilities import InferenceBackendId, ManagedServiceId, DeploymentMethod
+from localpilot.domain.execution_plan import ExecutionPlan, ExecutionSpecification
+from localpilot.domain.models import ExecutionMode, NormalizedCandidate, StopResult, StopStatus
 from localpilot.domain.ownership import OwnershipClass, OwnershipVerifier, ProcessIdentity
 from localpilot.hardware.inspector import SystemInspector
 from localpilot.platforms import get_platform_adapter
+from localpilot.platforms.base import MemoryAccountingModel
 from localpilot.runtimes.base import BaseRuntimeAdapter
 from localpilot.runtimes.llamacpp import LlamaCppRuntimeAdapter
 from localpilot.runtimes.ollama import OllamaRuntimeAdapter
@@ -97,7 +102,7 @@ class RuntimeLifecycleService:
         installation_id: str,
         plan_id: Optional[str] = None,
     ) -> Dict[str, Any]:
-        """Starts an installed model and returns the running instance metadata."""
+        """Starts an installed model adhering strictly to its canonical ExecutionSpecification."""
         conn = self.db.get_connection()
         inst_row = conn.execute(
             "SELECT * FROM installations WHERE installation_id = ?",
@@ -110,86 +115,151 @@ class RuntimeLifecycleService:
         model_id = inst_row["model_id"]
         runtime_name = inst_row["runtime_name"]
 
-        # Prevent duplicate instances if already running and verified
+        # Resolve artifact path and size
+        art_ids = json.loads(inst_row["artifact_ids_json"]) if inst_row["artifact_ids_json"] else []
+        artifact_path = ""
+        artifact_bytes = 0
+        artifact_sha256 = None
+        if art_ids:
+            art_row = conn.execute(
+                "SELECT physical_path, bytes, sha256 FROM storage_artifacts WHERE artifact_id = ?",
+                (art_ids[0],),
+            ).fetchone()
+            if art_row:
+                artifact_path = art_row["physical_path"]
+                artifact_bytes = art_row["bytes"]
+                artifact_sha256 = art_row["sha256"]
+
+        # 1. Load canonical ExecutionSpecification from installation record
+        spec: Optional[ExecutionSpecification] = None
+        raw_spec = inst_row["execution_spec_json"] if "execution_spec_json" in inst_row.keys() else None
+        if raw_spec and raw_spec.strip() and raw_spec != "{}":
+            try:
+                spec = ExecutionSpecification.model_validate_json(raw_spec)
+            except Exception:
+                spec = None
+
+        if not spec and inst_row["execution_plan_json"] and inst_row["execution_plan_json"] != "{}":
+            try:
+                plan = ExecutionPlan.model_validate_json(inst_row["execution_plan_json"])
+                spec = plan.to_execution_spec(
+                    installation_id=installation_id,
+                    artifact_path=artifact_path,
+                    artifact_sha256=artifact_sha256,
+                )
+            except Exception:
+                spec = None
+
+        if not spec:
+            spec = ExecutionSpecification(
+                installation_id=installation_id,
+                plan_id=f"plan-legacy-{installation_id}",
+                model_id=model_id,
+                canonical_artifact_id=art_ids[0] if art_ids else f"art-{model_id}",
+                artifact_path=artifact_path,
+                artifact_sha256=artifact_sha256,
+                inference_backend=InferenceBackendId.LLAMACPP if runtime_name == "llamacpp" else InferenceBackendId.UNKNOWN_SERVICE_MANAGED,
+                managed_service=ManagedServiceId.OLLAMA if runtime_name == "ollama" else ManagedServiceId.NONE,
+                deployment_method=DeploymentMethod.LOCAL_API_SERVICE,
+                requested_execution_mode=ExecutionMode.AUTO,
+                context_window=2048,
+                required_memory_budget_bytes=artifact_bytes or (2 * 1024**3),
+                memory_accounting_model=MemoryAccountingModel.SEPARATE,
+                is_verified=False,
+            )
+
+        # 2. Launch-Time Revalidation
+        sys_report = self.inspector.inspect()
+        avail_ram = sys_report.hardware.ram_available_bytes
+
+        # Check memory budget
+        required_ram = spec.required_memory_budget_bytes
+        if required_ram > avail_ram:
+            raise RuntimeError(
+                f"Insufficient memory to start {inst_row['name']}: requires at least "
+                f"{required_ram / (1024**3):.1f} GB RAM, but only "
+                f"{avail_ram / (1024**3):.1f} GB is currently available."
+            )
+
+        # Revalidate requested GPU mode: no silent GPU to CPU fallback
+        if spec.requested_execution_mode in (ExecutionMode.GPU, ExecutionMode.CPU_GPU):
+            is_macos = sys_report.hardware.os_name.lower() == "macos"
+            is_apple_silicon = is_macos and sys_report.hardware.memory_model == MemoryAccountingModel.UNIFIED
+            has_gpu = bool(sys_report.hardware.gpu_devices) or is_apple_silicon
+            if not has_gpu:
+                raise RuntimeError(
+                    f"Explicit GPU execution mode was approved for {inst_row['name']}, but no compatible "
+                    "GPU or graphics accelerator was detected on this computer. LocalPilot will not silently fall back to CPU."
+                )
+
+        # Revalidate artifact existence on disk
+        if spec.artifact_path and not Path(spec.artifact_path).exists():
+            raise FileNotFoundError(
+                f"Model weight file not found at '{spec.artifact_path}'. Installation needs repair."
+            )
+
+        # 3. Duplicate instance & configuration reuse check
         existing_run = conn.execute(
             "SELECT * FROM running_instances WHERE installation_id = ? OR model_id = ?",
             (installation_id, model_id),
         ).fetchone()
         if existing_run:
             existing_data = dict(existing_run)
-            pid = existing_data.get("pid")
-            create_time = existing_data.get("process_create_time")
-            identity = ProcessIdentity(
-                pid=pid if pid and pid > 0 else None,
-                process_create_time=create_time,
-                executable_path=existing_data.get("executable_path"),
-                endpoint_url=existing_data.get("endpoint_url"),
-                ownership_class=OwnershipClass.LOCALPILOT_OWNED if pid else OwnershipClass.READONLY_DISCOVERED,
-            )
-            if OwnershipVerifier.verify_process(identity):
-                return {
-                    "instance_id": existing_data["instance_id"],
-                    "model_id": existing_data["model_id"],
-                    "installation_id": existing_data.get("installation_id") or installation_id,
-                    "endpoint_url": existing_data["endpoint_url"],
-                    "pid": existing_data["pid"],
-                    "started_at": existing_data["started_at"],
-                    "already_running": True,
-                }
+            can_reuse = True
+            existing_spec_raw = existing_data.get("execution_spec_json")
+            if existing_spec_raw:
+                try:
+                    existing_spec = ExecutionSpecification.model_validate_json(existing_spec_raw)
+                    if (
+                        existing_spec.artifact_path != spec.artifact_path
+                        or existing_spec.requested_execution_mode != spec.requested_execution_mode
+                        or existing_spec.context_window != spec.context_window
+                    ):
+                        can_reuse = False
+                except Exception:
+                    pass
+
+            if can_reuse:
+                pid = existing_data.get("pid")
+                create_time = existing_data.get("process_create_time")
+                identity = ProcessIdentity(
+                    pid=pid if pid and pid > 0 else None,
+                    process_create_time=create_time,
+                    executable_path=existing_data.get("executable_path"),
+                    endpoint_url=existing_data.get("endpoint_url"),
+                    ownership_class=OwnershipClass.LOCALPILOT_OWNED if pid else OwnershipClass.READONLY_DISCOVERED,
+                )
+                if OwnershipVerifier.verify_process(identity):
+                    return {
+                        "instance_id": existing_data["instance_id"],
+                        "model_id": existing_data["model_id"],
+                        "installation_id": existing_data.get("installation_id") or installation_id,
+                        "endpoint_url": existing_data["endpoint_url"],
+                        "pid": existing_data["pid"],
+                        "started_at": existing_data["started_at"],
+                        "already_running": True,
+                    }
 
         adapter = self.get_adapter(runtime_name)
+        target = spec.artifact_path or model_id
 
-        # Resolve artifact path and size
-        art_ids = json.loads(inst_row["artifact_ids_json"]) if inst_row["artifact_ids_json"] else []
-        artifact_path = ""
-        artifact_bytes = 0
-        if art_ids:
-            art_row = conn.execute(
-                "SELECT physical_path, bytes FROM storage_artifacts WHERE artifact_id = ?",
-                (art_ids[0],),
-            ).fetchone()
-            if art_row:
-                artifact_path = art_row["physical_path"]
-                artifact_bytes = art_row["bytes"]
-
-        # If no physical artifact, check model_id
-        target = artifact_path or model_id
-
-        # Memory verification against actual system capabilities
-        sys_report = self.inspector.inspect()
-        avail_ram = sys_report.hardware.ram_available_bytes
-
-        # Candidate reconstruction
-        c_row = conn.execute(
-            "SELECT payload_json FROM catalog_models WHERE model_id = ? LIMIT 1",
-            (model_id,),
-        ).fetchone()
-        if c_row:
-            candidate = NormalizedCandidate.model_validate_json(c_row["payload_json"])
-        else:
-            cand_bytes = artifact_bytes or (1024 * 1024 * 1024)
-            candidate = NormalizedCandidate(
-                candidate_id=f"inst-{installation_id}",
-                model_id=model_id,
-                name=inst_row["name"],
-                source="local",
-                artifact_id=Path(artifact_path).name if artifact_path else f"{model_id}.gguf",
-                architecture="llama",
-                family="Local Model",
-                runtime=runtime_name,
-                format="gguf" if runtime_name != "ollama" else "ollama_blob",
-                total_bytes=cand_bytes,
-                estimated_ram_bytes=cand_bytes,
-                estimated_disk_bytes=cand_bytes,
-                metadata_fetched_at=datetime.now(timezone.utc).isoformat(),
-            )
-
-        if candidate.estimated_ram_bytes > avail_ram:
-            raise RuntimeError(
-                f"Insufficient memory to start {candidate.name}: requires at least "
-                f"{candidate.estimated_ram_bytes / (1024**3):.1f} GB RAM, but only "
-                f"{avail_ram / (1024**3):.1f} GB is currently available."
-            )
+        # Candidate wrapper for adapter interface
+        candidate = NormalizedCandidate(
+            candidate_id=f"inst-{installation_id}",
+            model_id=model_id,
+            name=inst_row["name"],
+            source="local",
+            artifact_id=spec.canonical_artifact_id,
+            architecture="llama",
+            family="Local Model",
+            runtime=runtime_name,
+            format="gguf" if runtime_name != "ollama" else "ollama_blob",
+            total_bytes=artifact_bytes or required_ram,
+            estimated_ram_bytes=required_ram,
+            estimated_disk_bytes=artifact_bytes or required_ram,
+            usable_context=spec.context_window,
+            metadata_fetched_at=datetime.now(timezone.utc).isoformat(),
+        )
 
         import uuid
         instance_id = f"inst-{uuid.uuid4().hex[:8]}"
@@ -201,14 +271,15 @@ class RuntimeLifecycleService:
             candidate=candidate,
             instance_id=instance_id,
             log_file=log_file,
+            spec=spec,
         )
 
-        # Verify endpoint readiness probe
+        # 4. Multi-Stage Readiness Probe
         if proc_id.endpoint_url:
             ready = False
             async with httpx.AsyncClient(timeout=2.0) as client:
                 probe_url = proc_id.endpoint_url.rstrip("/") + ("/api/tags" if runtime_name == "ollama" else "/v1/models")
-                for _ in range(10):
+                for _ in range(15):
                     try:
                         r = await client.get(probe_url)
                         if r.status_code == 200:
@@ -217,17 +288,37 @@ class RuntimeLifecycleService:
                     except Exception:
                         await asyncio.sleep(0.3)
             if not ready:
-                logger.warning(f"Instance started at {proc_id.endpoint_url} but probe did not confirm 200 OK within timeout.")
+                # Cleanup owned process safely on readiness failure
+                if proc_id.pid and proc_id.ownership_class == OwnershipClass.LOCALPILOT_OWNED:
+                    try:
+                        p = psutil.Process(proc_id.pid)
+                        p.terminate()
+                        try:
+                            p.wait(timeout=2)
+                        except Exception:
+                            p.kill()
+                    except Exception:
+                        pass
+                raise RuntimeError(
+                    f"Instance started at {proc_id.endpoint_url} (PID: {proc_id.pid}) but readiness probe "
+                    "failed to confirm HTTP 200 OK within timeout. Process terminated safely."
+                )
 
         now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        runtime_ver = getattr(proc_id, "runtime_version", None)
+        obs_mode = getattr(proc_id, "observed_execution_mode", None) or (
+            "gpu" if spec.offload_layers > 0 else "cpu"
+        )
+
         with conn:
             conn.execute(
                 """
                 INSERT OR REPLACE INTO running_instances (
                     instance_id, model_id, installation_id, pid, process_create_time,
                     executable_path, endpoint_url, runtime_version, launch_config_json,
-                    log_path, ownership_class, observed_execution_mode, started_at
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    log_path, ownership_class, observed_execution_mode, started_at,
+                    execution_spec_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     instance_id,
@@ -237,12 +328,13 @@ class RuntimeLifecycleService:
                     proc_id.process_create_time or 0.0,
                     proc_id.executable_path or "",
                     proc_id.endpoint_url or "",
-                    "1.0",
-                    json.dumps({"plan_id": plan_id}),
+                    runtime_ver,
+                    json.dumps({"plan_id": spec.plan_id}),
                     str(log_file),
                     proc_id.ownership_class.value,
-                    "auto",
+                    obs_mode,
                     now_iso,
+                    spec.model_dump_json(),
                 ),
             )
 
