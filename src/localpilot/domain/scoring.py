@@ -123,12 +123,13 @@ class ScoringPolicy:
         self,
         items: List[Tuple[NormalizedCandidate, ScoreResult, CompatibilityCheckResult]],
     ) -> List[Tuple[NormalizedCandidate, ScoreResult, CompatibilityCheckResult]]:
-        """Deterministic tie-breaking: score desc -> confidence desc -> size asc -> ID asc."""
+        """Deterministic tie-breaking: is_official desc -> score desc -> confidence desc -> size asc -> ID asc."""
         confidence_order = {"verified": 3, "estimated": 2, "unknown": 1}
 
         def sort_key(item: Tuple[NormalizedCandidate, ScoreResult, CompatibilityCheckResult]):
             cand, scr, _ = item
+            is_off = 1 if getattr(cand, "is_official", False) else 0
             conf_val = confidence_order.get(cand.confidence.value, 0)
-            return (-scr.total_score, -conf_val, cand.total_bytes, cand.candidate_id)
+            return (-is_off, -scr.total_score, -conf_val, cand.total_bytes, cand.candidate_id)
 
         return sorted(items, key=sort_key)

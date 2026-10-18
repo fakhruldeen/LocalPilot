@@ -113,10 +113,12 @@ class NormalizedCandidate(BaseModel):
     estimated_disk_bytes: int
     temp_disk_bytes: int = 0
 
-    # Verification and confidence
+    # Verification, provenance, and official status
     confidence: ConfidenceLevel = ConfidenceLevel.ESTIMATED
     verification_stage: VerificationStage = VerificationStage.SUPPORTED
     provenance: Dict[str, Any] = Field(default_factory=dict)
+    is_official: bool = False
+    official_resource_url: Optional[str] = None
 
     @property
     def parameter_count_approx_b(self) -> float:

@@ -88,3 +88,44 @@ def test_cli_favorite_commands(tmp_path, monkeypatch):
     res = runner.invoke(app, ["favorite", "toggle", "qwen2.5:3b"])
     assert res.exit_code == 0
     assert "Removed" in res.output
+
+
+def test_official_models_prioritized_sorting():
+    cat_svc = CatalogService()
+    cands = cat_svc.discover(query="", only_compatible=False)
+    assert len(cands) > 0
+
+    # Ensure top models from major labs exist and have official flags
+    official_candidates = [m.candidate for m in cands if getattr(m.candidate, "is_official", False)]
+    assert len(official_candidates) >= 12
+
+    # Verify official resource URLs and publishers
+    publishers = {((cand.provenance or {}).get("publisher") or "").lower() for cand in official_candidates}
+    assert "google" in publishers
+    assert "meta" in publishers
+    assert any("qwen" in p or "alibaba" in p for p in publishers)
+    assert any("deepseek" in p for p in publishers)
+
+    for cand in official_candidates:
+        assert cand.official_resource_url is not None
+        assert cand.official_resource_url.startswith("http")
+
+    # Verify sorting: all official candidates must appear before non-official candidates
+    saw_nonofficial = False
+    for m in cands:
+        is_off = getattr(m.candidate, "is_official", False)
+        if not is_off:
+            saw_nonofficial = True
+        else:
+            assert not saw_nonofficial, f"Official candidate {m.candidate.short_alias or m.candidate.name} appeared after a non-official candidate!"
+
+
+
+def test_cli_discover_official_resources():
+    res = runner.invoke(app, ["discover", "--plain"])
+    assert res.exit_code == 0
+    assert "Official" in res.output
+    # Check that top official models are present in output
+    assert "gemma" in res.output.lower()
+    assert "llama" in res.output.lower()
+

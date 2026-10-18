@@ -127,7 +127,20 @@ class HuggingFaceSourceAdapter(BaseSourceAdapter):
                             if q in selected_file.lower():
                                 quant_part = q
                                 break
-                        dyn_alias = f"{clean_base}:{quant_part}"
+                        author_part = model_id.split("/")[0].lower() if "/" in model_id else ""
+                        is_off = author_part in ("google", "meta-llama", "qwen", "deepseek-ai", "mistralai", "microsoft", "thudm", "moonshot-ai")
+                        official_urls = {
+                            "google": "https://ai.google.dev/gemma",
+                            "meta-llama": "https://llama.meta.com",
+                            "qwen": "https://qwenlm.github.io",
+                            "deepseek-ai": "https://www.deepseek.com",
+                            "mistralai": "https://mistral.ai",
+                            "microsoft": "https://www.microsoft.com/research",
+                            "thudm": "https://github.com/THUDM/GLM-4",
+                            "moonshot-ai": "https://www.moonshot.cn",
+                        }
+                        off_url = official_urls.get(author_part)
+
                         candidate = NormalizedCandidate(
                             candidate_id=f"hf-{model_id.replace('/', '-')}-{selected_file}",
                             model_id=model_id,
@@ -160,9 +173,11 @@ class HuggingFaceSourceAdapter(BaseSourceAdapter):
                             estimated_ram_bytes=int(total_bytes * 1.3),
                             estimated_vram_bytes=int(total_bytes * 1.1),
                             estimated_disk_bytes=total_bytes,
-                            confidence=ConfidenceLevel.ESTIMATED,
+                            confidence=ConfidenceLevel.VERIFIED if is_off else ConfidenceLevel.ESTIMATED,
                             verification_stage=VerificationStage.SUPPORTED,
-                            provenance={"api": "huggingface_hub"},
+                            provenance={"api": "huggingface_hub", "publisher": author_part.title(), "is_official": is_off},
+                            is_official=is_off,
+                            official_resource_url=off_url,
                         )
                         candidates.append(candidate)
         except Exception:

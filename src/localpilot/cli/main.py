@@ -202,7 +202,8 @@ def _do_discover(
             compat_str = "Compatible" if r.compatibility.is_compatible else "Exceeds RAM"
             fav_str = " ★" if r.is_favorite else ""
             alias_str = cand.short_alias or cand.display_alias
-            print(f"{cand.name}{fav_str} | Alias: {alias_str} | Source: {cand.source} | Size: {sz_mb:.0f}MB | Score: {r.score.total_score} | Fit: {compat_str} | ID: {cand.candidate_id}")
+            off_str = f"Official ({cand.provenance.get('publisher', 'Lab')})" if cand.is_official else f"Community ({cand.provenance.get('publisher', 'Contrib')})"
+            print(f"{cand.name}{fav_str} | Alias: {alias_str} | Resource: {off_str} | Source: {cand.source} | Size: {sz_mb:.0f}MB | Score: {r.score.total_score} | Fit: {compat_str} | ID: {cand.candidate_id}")
         return
 
     title = "Favorite Models" if fav_val else ("All Catalog Models" if all_val else "Compatible Models for Your Computer")
@@ -210,6 +211,7 @@ def _do_discover(
     table.add_column("Score", style="bold green", justify="right")
     table.add_column("Model Name", style="bold")
     table.add_column("Short Alias", style="bold cyan")
+    table.add_column("Resource", style="bold")
     table.add_column("Source")
     table.add_column("Size", justify="right")
     table.add_column("Context", justify="right")
@@ -222,10 +224,17 @@ def _do_discover(
         score_styled = f"{r.score.total_score:.0f}" if r.compatibility.is_compatible else f"[dim yellow]{r.score.total_score:.0f}[/dim yellow]"
         name_styled = f"[yellow]★[/yellow] {cand.name}" if r.is_favorite else cand.name
         alias_str = cand.short_alias or cand.display_alias
+        if cand.is_official:
+            pub = cand.provenance.get("publisher", "Official")
+            resource_styled = f"[bold green]✓ Official ({pub})[/bold green]"
+        else:
+            pub = cand.provenance.get("publisher", "Community")
+            resource_styled = f"[dim]Community ({pub})[/dim]"
         table.add_row(
             score_styled,
             name_styled,
             alias_str,
+            resource_styled,
             cand.source.title(),
             f"{sz_mb:.0f} MB",
             str(cand.usable_context),
@@ -235,7 +244,8 @@ def _do_discover(
 
     console.print(table)
     console.print("\nTo set up a model, run: [cyan]localpilot setup <alias>[/cyan] (e.g. [cyan]localpilot setup gemma2:2b[/cyan])")
-    console.print("To manage favorites: [cyan]localpilot favorite add <alias>[/cyan] or press [bold]F[/bold] in TUI\n")
+    console.print("To manage favorites: [cyan]localpilot favorite add <alias>[/cyan] or press [bold]F[/bold] in TUI")
+    console.print("[dim]Note: Models from official resources are verified from original creators, marked with [bold green]✓ Official[/bold green], and listed first.[/dim]\n")
 
 
 def _do_installed(plain: bool = False, json_output: bool = False) -> None:

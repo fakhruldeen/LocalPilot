@@ -173,12 +173,15 @@ class CatalogService:
             elif src == "huggingface":
                 try:
                     search_queries = [
-                        "gguf",
-                        "gemma 2 gguf",
-                        "deepseek r1 gguf",
+                        "google gemma gguf",
+                        "meta-llama gguf",
                         "qwen2.5 gguf",
+                        "deepseek-ai gguf",
+                        "mistralai gguf",
+                        "microsoft phi gguf",
                         "moonlight gguf",
                         "glm-4 gguf",
+                        "gguf",
                     ]
                     all_candidates: List[NormalizedCandidate] = []
                     seen_cids = set()

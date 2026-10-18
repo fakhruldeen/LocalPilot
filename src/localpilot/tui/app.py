@@ -1896,7 +1896,7 @@ class LocalPilotTUI(App):
     def _setup_discover_table(self) -> None:
         table = self.query_one("#discover-table", DataTable)
         table.cursor_type = "row"
-        table.add_columns("Score", "Model Name", "Short Alias", "Source", "Size", "Context (tokens)", "Fit Status")
+        table.add_columns("Score", "Model Name", "Short Alias", "Resource", "Source", "Size", "Context (tokens)", "Fit Status")
         try:
             initial_results = self.cat_svc.discover(query="")
             self._update_discover_table(initial_results, self._search_seq)
@@ -1965,6 +1965,7 @@ class LocalPilotTUI(App):
                 "-",
                 "No compatible models in memory budget",
                 "-",
+                "-",
                 "Catalog",
                 "0 MB",
                 "0",
@@ -1977,10 +1978,12 @@ class LocalPilotTUI(App):
             sz_mb = cand.total_bytes / (1024 * 1024)
             name_display = f"★ {cand.name}" if r.is_favorite else cand.name
             alias_display = cand.short_alias or cand.display_alias
+            resource_display = f"✓ Official ({cand.provenance.get('publisher', cand.source.title())})" if cand.is_official else f"Community ({cand.provenance.get('publisher', 'Contrib')})"
             table.add_row(
                 f"{r.score.total_score:.0f}",
                 name_display,
                 alias_display,
+                resource_display,
                 cand.source.title(),
                 f"{sz_mb:.0f} MB",
                 str(cand.usable_context),
@@ -2010,8 +2013,13 @@ class LocalPilotTUI(App):
             compat_info = f" • Fit: {item.compatibility.friendly_explanation}"
             fav_prefix = "★ [bold yellow]Favorited[/bold yellow] • " if item.is_favorite else ""
             alias_str = item.candidate.short_alias or item.candidate.display_alias
+            official_badge = ""
+            if item.candidate.is_official:
+                pub = item.candidate.provenance.get("publisher", "Official")
+                url_part = f" • [underline cyan]{item.candidate.official_resource_url}[/underline cyan]" if item.candidate.official_resource_url else ""
+                official_badge = f"\n[bold green]✓ Official Resource ({pub})[/bold green]{url_part}"
             expl_label.update(
-                f"{fav_prefix}[bold cyan]{item.candidate.name}[/bold cyan] [bold yellow](Alias: {alias_str})[/bold yellow] ({item.candidate.source.title()} • {sz_mb:.0f} MB • Score: [bold green]{item.score.total_score:.0f}/100[/bold green]){compat_info}\n"
+                f"{fav_prefix}[bold cyan]{item.candidate.name}[/bold cyan] [bold yellow](Alias: {alias_str})[/bold yellow] ({item.candidate.source.title()} • {sz_mb:.0f} MB • Score: [bold green]{item.score.total_score:.0f}/100[/bold green]){compat_info}{official_badge}\n"
                 f"{item.score.explanation}{plan_info}\n"
                 f"[dim]Recommendation confidence: {item.candidate.confidence.value}{context_info} • Press Enter to Setup • Press F to Favorite[/dim]"
             )
