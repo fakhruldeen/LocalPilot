@@ -86,6 +86,16 @@ class CatalogService:
                 """
             )
 
+    def is_first_run(self) -> bool:
+        """Returns True if the catalog has never been refreshed from online sources."""
+        conn = self.db.get_connection()
+        row = conn.execute(
+            "SELECT last_refreshed_at FROM catalog_sources WHERE source_id = 'huggingface'"
+        ).fetchone()
+        if not row or row["last_refreshed_at"] is None:
+            return True
+        return False
+
     async def refresh_catalog_async(self, sources: Optional[List[str]] = None) -> Dict[str, Any]:
         """Refreshes catalog models from active sources and updates catalog_sources status."""
         from datetime import datetime, timezone

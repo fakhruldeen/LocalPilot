@@ -1622,6 +1622,7 @@ class LocalPilotTUI(App):
         ("enter", "select_action", "Action / Chat"),
         ("x", "stop_action", "Stop"),
         ("delete", "remove_action", "Remove"),
+        ("u", "refresh_catalog_action", "Update List"),
         ("f1", "show_help", "Help & Guide"),
         ("?", "show_help", "Help"),
         ("h", "show_help", "Guide"),
@@ -1736,7 +1737,8 @@ class LocalPilotTUI(App):
                         yield Label("Select a model above to see why it matches your computer. Press Enter to Setup.", id="explanation-text")
                         yield Label("", id="setup-progress-text")
                     with Horizontal(classes="table-actions-bar"):
-                        yield Button("Set Up Selected Model (Enter)", variant="primary", id="btn-discover-setup", tooltip="Review and set up highlighted model")
+                        yield Button("Set Up Selected Model (Enter)", variant="primary", id="btn-discover-setup", tooltip="Review and set up highlighted model (Enter)")
+                        yield Button("Update List (U)", variant="default", id="btn-discover-refresh", tooltip="Download and update models list from Hugging Face & Ollama (U)")
 
             with TabPane("Installed Models", id="installed-tab"):
                 with Vertical():
@@ -1849,6 +1851,8 @@ class LocalPilotTUI(App):
         self._refresh_storage()
         self._load_health_background()
         self._check_for_interrupted_work()
+        if self.cat_svc.is_first_run():
+            self._run_first_time_catalog_update()
         self.set_interval(3.0, self._on_live_refresh_tick)
 
         if self._start_wizard_on_mount:
@@ -1904,6 +1908,39 @@ class LocalPilotTUI(App):
     def _run_discover_worker(self, query: str, seq: int) -> None:
         results = self.cat_svc.discover(query=query)
         self.call_from_thread(self._update_discover_table, results, seq)
+
+    @work(exclusive=True, thread=True)
+    def _run_first_time_catalog_update(self) -> None:
+        try:
+            self.notify("First launch: downloading latest model list from registries...", title="Initial Catalog Download")
+            res = self.cat_svc.refresh_catalog()
+            hf_cnt = res.get("sources", {}).get("huggingface", {}).get("count", 0)
+            ol_cnt = res.get("sources", {}).get("ollama_library", {}).get("count", 0)
+            self.notify(f"✓ Initial catalog downloaded ({hf_cnt} from Hugging Face, {ol_cnt} from Ollama)", title="Catalog Ready")
+            self.call_from_thread(self._refresh_discover_table, "")
+        except Exception:
+            pass
+
+    def action_refresh_catalog_action(self) -> None:
+        """Download and update models list from Hugging Face & Ollama."""
+        self.notify("Contacting model registries (Hugging Face Hub, Ollama)...", title="Updating Models List")
+        try:
+            self.query_one("#explanation-text", Label).update("[cyan]🔄 Updating model catalog from online sources...[/cyan]")
+        except Exception:
+            pass
+        self._run_catalog_refresh_worker()
+
+    @work(exclusive=True, thread=True)
+    def _run_catalog_refresh_worker(self) -> None:
+        try:
+            res = self.cat_svc.refresh_catalog()
+            hf_cnt = res.get("sources", {}).get("huggingface", {}).get("count", 0)
+            ol_cnt = res.get("sources", {}).get("ollama_library", {}).get("count", 0)
+            msg = f"✓ Model list updated ({hf_cnt} from Hugging Face, {ol_cnt} from Ollama)"
+            self.notify(msg, title="Catalog Updated")
+        except Exception as e:
+            self.notify(f"Catalog update finished with notices: {e}", severity="warning", title="Catalog Notice")
+        self.call_from_thread(self._refresh_discover_table, "")
 
     def on_descendant_focus(self, event) -> None:
         """Update contextual help bar with Layer 2 guidance when user navigates controls."""
@@ -2753,6 +2790,8 @@ class LocalPilotTUI(App):
             self.action_show_help()
         elif btn_id == "btn-discover-setup":
             self.action_select_action()
+        elif btn_id == "btn-discover-refresh":
+            self.action_refresh_catalog_action()
         elif btn_id == "btn-installed-chat":
             self.action_chat_selected()
         elif btn_id == "btn-installed-pin":

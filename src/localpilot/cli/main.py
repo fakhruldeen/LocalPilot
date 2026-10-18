@@ -156,9 +156,10 @@ def _do_discover(
     json_val = bool(_val(json_output, False))
 
     cat_svc = CatalogService()
-    if refresh_val:
+    if refresh_val or cat_svc.is_first_run():
         if not plain_val and not json_val:
-            console.print("[bold cyan]🔄 Contacting model registries (Hugging Face Hub, Ollama Library)...[/bold cyan]")
+            msg = "🔄 First run: Downloading and updating model catalog (Hugging Face Hub, Ollama)..." if cat_svc.is_first_run() and not refresh_val else "🔄 Contacting model registries (Hugging Face Hub, Ollama Library)..."
+            console.print(f"[bold cyan]{msg}[/bold cyan]")
         try:
             refresh_res = cat_svc.refresh_catalog()
             if not plain_val and not json_val:
@@ -529,49 +530,24 @@ def _do_guide(topic: Optional[str] = None) -> None:
 
 @app.callback(invoke_without_command=True)
 def main_menu(ctx: typer.Context) -> None:
-    """Default entry point: opens interactive home menu if no subcommand provided."""
+    """Default entry point: opens visual TUI dashboard if interactive, or CLI guide summary."""
     if ctx.invoked_subcommand is None:
-        render_banner()
         if sys.stdin.isatty() and sys.stdout.isatty():
-            console.print("[bold]Select an option to begin:[/bold]")
-            console.print("  [bold cyan]1[/bold cyan]) Help me get started (Guided Setup Wizard)")
-            console.print("  [bold cyan]2[/bold cyan]) Open Visual Dashboard (TUI)")
-            console.print("  [bold cyan]3[/bold cyan]) Chat with an installed model")
-            console.print("  [bold cyan]4[/bold cyan]) View installed models")
-            console.print("  [bold cyan]5[/bold cyan]) Discover & browse compatible models")
-            console.print("  [bold cyan]6[/bold cyan]) Run computer diagnostics (Doctor)")
-            console.print("  [bold cyan]7[/bold cyan]) View storage breakdown")
-            console.print("  [bold cyan]8[/bold cyan]) Read user guide & documentation")
-            console.print("  [bold cyan]q[/bold cyan]) Exit\n")
-            try:
-                choice = typer.prompt("Enter choice", default="1").strip().lower()
-                if choice in ("1", "setup", "wizard", "start"):
-                    from localpilot.tui.app import LocalPilotTUI
-                    LocalPilotTUI(start_wizard=True).run()
-                elif choice in ("2", "tui", "dashboard"):
-                    from localpilot.tui.app import LocalPilotTUI
-                    LocalPilotTUI().run()
-                elif choice in ("3", "chat"):
-                    chat_model()
-                elif choice in ("4", "installed", "models"):
-                    _do_installed()
-                elif choice in ("5", "discover"):
-                    _do_discover()
-                elif choice in ("6", "doctor"):
-                    _do_doctor()
-                elif choice in ("7", "storage"):
-                    _do_storage()
-                elif choice in ("8", "guide", "docs", "help"):
-                    _do_guide()
-                else:
-                    return
-            except (KeyboardInterrupt, EOFError):
-                return
+            cat_svc = CatalogService()
+            if cat_svc.is_first_run():
+                console.print("[bold cyan]🔄 Welcome to LocalPilot! Downloading and updating models list for the first time...[/bold cyan]")
+                try:
+                    cat_svc.refresh_catalog()
+                    console.print("[bold green]✓ Models catalog successfully initialized.[/bold green]\n")
+                except Exception as ex:
+                    console.print(f"[yellow]⚠ Notice: Initial catalog update deferred: {ex}[/yellow]\n")
+            from localpilot.tui.app import LocalPilotTUI
+            LocalPilotTUI().run()
         else:
+            render_banner()
             console.print("[bold]LocalPilot: Run AI on this computer. We will find a suitable model and help you set it up.[/bold]\n")
             console.print("Common commands:")
-            console.print("  [cyan]localpilot[/cyan]             Launch interactive guided menu")
-            console.print("  [cyan]localpilot tui[/cyan]         Open full visual dashboard")
+            console.print("  [cyan]localpilot[/cyan]             Launch visual TUI dashboard")
             console.print("  [cyan]localpilot chat[/cyan]        Chat directly with your model")
             console.print("  [cyan]localpilot discover[/cyan]    Find compatible models")
             console.print("  [cyan]localpilot installed[/cyan]   View your installed models")

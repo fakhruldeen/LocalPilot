@@ -145,3 +145,23 @@ def test_cli_api_and_keys_rotation():
     assert "Key Rotated" in res_rotate.stdout
     assert "sk-local-" in res_rotate.stdout
 
+
+@pytest.mark.asyncio
+async def test_tui_update_list_button_and_first_run():
+    from localpilot.sources.catalog_service import CatalogService
+    cat = CatalogService()
+    assert isinstance(cat.is_first_run(), bool)
+
+    tui = LocalPilotTUI()
+    async with tui.run_test() as pilot:
+        await pilot.press("d")
+        assert tui.query_one("#main-tabs").active == "discover-tab"
+        refresh_btn = tui.query_one("#btn-discover-refresh")
+        assert refresh_btn is not None
+        assert "Update List" in str(refresh_btn.label)
+
+        # Trigger catalog refresh action
+        tui.action_refresh_catalog_action()
+        await pilot.pause()
+
+
