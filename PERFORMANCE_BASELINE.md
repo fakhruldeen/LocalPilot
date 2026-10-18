@@ -1,4 +1,4 @@
-# LocalPilot v0.1.9 Performance Baseline & Resource Budgets
+# LocalPilot v0.2.0 Performance Baseline & Resource Budgets
 
 **Measurement Date**: October 18, 2026  
 **Environment**: Linux 6.8.0-101-generic x86_64 | 12 Cores / 24 Threads | 64 GB RAM  

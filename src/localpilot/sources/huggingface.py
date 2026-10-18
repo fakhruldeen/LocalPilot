@@ -39,7 +39,7 @@ class HuggingFaceSourceAdapter(BaseSourceAdapter):
         )
 
     def _get_headers(self) -> Dict[str, str]:
-        headers = {"User-Agent": "LocalPilot/0.1.9"}
+        headers = {"User-Agent": "LocalPilot/0.2.0"}
         token = get_stored_secret("localpilot", "hf_token")
         if token:
             headers["Authorization"] = f"Bearer {token}"

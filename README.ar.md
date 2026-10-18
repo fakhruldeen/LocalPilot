@@ -36,6 +36,10 @@
 
 ## ✨ أهم المميزات
 
+- 🏆 **أولوية الموارد الرسمية الموثقة (v0.2.0):** إبراز نماذج مختبرات الذكاء الاصطناعي العالمية المعتمدة في صدارة القوائم تلقائياً (Google Gemma 2، Meta Llama 3.x، Alibaba Qwen 2.5 وQwen Coder، DeepSeek R1 Distill، Mistral AI، Microsoft Phi-3.5/Phi-4، Zhipu GLM-4، وMoonshot Kimi/Moonlight).
+- ⚡ **أسماء مستعارة قصيرة وبديهية (v0.2.0):** تشغيل وتثبيت فوري بأسماء سهلة مثل `gemma2:2b` و`deepseek-r1:1.5b` و`llama3.2:3b` و`qwen2.5-coder:1.5b` دون الحاجة للتعامل مع معرفات المستودعات الطويلة.
+- ⭐ **نظام النماذج المفضلة (v0.2.0):** تمييز نماذجك المفضلة بزر واحد (`F` داخل الواجهة أو `localpilot favorite add <alias>`) وتصفية القوائم بسهولة.
+- 🖥️ **واجهة رسومية تفاعلية افتراضية (v0.2.0):** تشغيل مباشر للوحة التحكم النصية الكاملة عند كتابة `localpilot` مع تنزيل تلقائي لقائمة النماذج وزر لتحديث القائمة مباشرة من الإنترنت.
 - 🧙‍♂️ **معالج تثبيت موجّه للمبتدئين (6 خطوات):** تجربة سهلة للمستخدم غير التقني تبدأ بفحص مواصفات الحاسوب، واختيار الهدف (كتابة وصياغة نصوص، أسئلة يومية، أو مساعدة برمجية)، واقتراح النماذج المثبت توافقها، ومتابعة التحميل لحظياً مع إمكانية الإلغاء الآمن.
 - 💬 **محادثة تفاعلية مدمجة داخل الطرفية (In-TUI Chat):** شاشة محادثة كاملة تدفق الردود كلمة بكلمة مع فقاعات حوارية أنيقة وتمرير تلقائي دون الحاجة لأي أدوات خارجية.
 - 🧠 **جودة القرار ومقارنة النماذج جنباً إلى جنب:**
@@ -262,18 +266,18 @@ vLLM             LM Studio       local_api_service
 ```bibtex
 @software{fakhruldeen_2026_localpilot,
   author       = {Mohamed (Fouad) Fakhruldeen},
-  title        = {fakhruldeen/LocalPilot: v0.1.9},
+  title        = {fakhruldeen/LocalPilot: v0.2.0},
   month        = oct,
   year         = 2026,
   publisher    = {Zenodo},
-  version      = {v0.1.9},
+  version      = {v0.2.0},
   doi          = {10.5281/zenodo.23424540},
   url          = {https://doi.org/10.5281/zenodo.23424540}
 }
 ```
 
 **صيغة التوثيق النصية (APA):**
-> Mohamed (Fouad) Fakhruldeen. (2026). fakhruldeen/LocalPilot: v0.1.9 (Version v0.1.9) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23424540
+> Mohamed (Fouad) Fakhruldeen. (2026). fakhruldeen/LocalPilot: v0.2.0 (Version v0.2.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23424540
 
 ---
 

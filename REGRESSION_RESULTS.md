@@ -1,4 +1,4 @@
-# LocalPilot v0.1.9 Regression Test Suite Results
+# LocalPilot v0.2.0 Regression Test Suite Results
 
 **Test Session Date**: October 18, 2026  
 **Test Runner**: Pytest 9.1.1 (Python 3.14.6, pluggy 1.7.0)  

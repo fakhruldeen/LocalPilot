@@ -157,7 +157,7 @@
                 <img src="img/logo.png" alt="LocalPilot Logo" class="w-10 h-10 rounded-xl object-contain border border-white/10 group-hover:scale-105 transition-transform duration-300">
                 <span class="font-bold text-xl tracking-tight text-white flex items-center gap-2">
                     LocalPilot
-                    <span class="text-xs bg-brand/10 text-brand px-2 py-0.5 rounded-full border border-brand/20 font-mono font-medium">v0.1.9</span>
+                    <span class="text-xs bg-brand/10 text-brand px-2 py-0.5 rounded-full border border-brand/20 font-mono font-medium">v0.2.0</span>
                 </span>
             </a>
 
@@ -400,6 +400,71 @@
             </div>
             
             <div class="grid md:grid-cols-3 gap-6">
+                <!-- Gemma 2 2B (Official Google) -->
+                <div id="gemma-2-2b" class="bg-dark-900 p-6 rounded-2xl border border-white/10 hover:border-brand/40 transition-all flex flex-col justify-between space-y-4">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-mono font-semibold text-emerald-400">✓ Official Google</span>
+                            <span class="text-[11px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">~1.6 GB RAM</span>
+                        </div>
+                        <h4 class="text-lg font-bold text-white mb-2">Gemma 2 (2B)</h4>
+                        <p class="text-slate-400 text-xs leading-relaxed mb-4">
+                            Google DeepMind\'s lightweight masterpiece. Blazing fast inference, exceptional reasoning, and low memory footprint.
+                        </p>
+                        <div class="space-y-1.5 text-[11px] text-slate-300 bg-dark-850 p-3 rounded-xl border border-white/5 mb-4">
+                            <div class="flex justify-between"><span class="text-slate-400">Resource:</span> <a href="https://ai.google.dev/gemma" target="_blank" class="text-brand hover:underline font-mono">ai.google.dev/gemma</a></div>
+                            <div class="flex justify-between"><span class="text-slate-400">Download Size:</span> <span class="font-mono text-white">~1.6 GB</span></div>
+                            <div class="flex justify-between"><span class="text-slate-400">Best for:</span> <span class="text-slate-200">Everyday chat, notes, quick answers</span></div>
+                        </div>
+                    </div>
+                    <div class="pt-4 border-t border-white/5 font-mono text-[11px] text-slate-300">
+                        <code class="text-brand">localpilot chat gemma2:2b</code>
+                    </div>
+                </div>
+
+                <!-- DeepSeek R1 Distill 1.5B (Official DeepSeek) -->
+                <div id="deepseek-r1-1-5b" class="bg-dark-900 p-6 rounded-2xl border border-white/10 hover:border-brand/40 transition-all flex flex-col justify-between space-y-4">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-mono font-semibold text-emerald-400">✓ Official DeepSeek</span>
+                            <span class="text-[11px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">~1.1 GB RAM</span>
+                        </div>
+                        <h4 class="text-lg font-bold text-white mb-2">DeepSeek R1 Distill (1.5B)</h4>
+                        <p class="text-slate-400 text-xs leading-relaxed mb-4">
+                            DeepSeek AI\'s open reasoning distilled model. Features chain-of-thought mathematical reasoning in an ultra-compact package.
+                        </p>
+                        <div class="space-y-1.5 text-[11px] text-slate-300 bg-dark-850 p-3 rounded-xl border border-white/5 mb-4">
+                            <div class="flex justify-between"><span class="text-slate-400">Resource:</span> <a href="https://github.com/deepseek-ai/DeepSeek-R1" target="_blank" class="text-brand hover:underline font-mono">DeepSeek-R1</a></div>
+                            <div class="flex justify-between"><span class="text-slate-400">Download Size:</span> <span class="font-mono text-white">~1.1 GB</span></div>
+                            <div class="flex justify-between"><span class="text-slate-400">Best for:</span> <span class="text-slate-200">Math, logic, step-by-step reasoning</span></div>
+                        </div>
+                    </div>
+                    <div class="pt-4 border-t border-white/5 font-mono text-[11px] text-slate-300">
+                        <code class="text-brand">localpilot chat deepseek-r1:1.5b</code>
+                    </div>
+                </div>
+
+                <!-- Qwen 2.5 Coder 1.5B (Official Qwen) -->
+                <div id="qwen-2-5-coder-1-5b" class="bg-dark-900 p-6 rounded-2xl border border-white/10 hover:border-brand/40 transition-all flex flex-col justify-between space-y-4">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-mono font-semibold text-emerald-400">✓ Official Qwen</span>
+                            <span class="text-[11px] px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">~1.0 GB RAM</span>
+                        </div>
+                        <h4 class="text-lg font-bold text-white mb-2">Qwen 2.5 Coder (1.5B)</h4>
+                        <p class="text-slate-400 text-xs leading-relaxed mb-4">
+                            Alibaba\'s specialized coding model. Code completion, debugging, script generation, and terminal explanations.
+                        </p>
+                        <div class="space-y-1.5 text-[11px] text-slate-300 bg-dark-850 p-3 rounded-xl border border-white/5 mb-4">
+                            <div class="flex justify-between"><span class="text-slate-400">Resource:</span> <a href="https://qwenlm.github.io" target="_blank" class="text-brand hover:underline font-mono">qwenlm.github.io</a></div>
+                            <div class="flex justify-between"><span class="text-slate-400">Download Size:</span> <span class="font-mono text-white">~1.0 GB</span></div>
+                            <div class="flex justify-between"><span class="text-slate-400">Best for:</span> <span class="text-slate-200">Python, Bash, web code, bug fixing</span></div>
+                        </div>
+                    </div>
+                    <div class="pt-4 border-t border-white/5 font-mono text-[11px] text-slate-300">
+                        <code class="text-brand">localpilot chat qwen2.5-coder:1.5b</code>
+                    </div>
+                </div>
                 <!-- Model 1 -->
                 <div id="llama-3-2" class="bg-dark-900 p-6 rounded-2xl border border-white/10 hover:border-brand/40 transition-all flex flex-col justify-between space-y-4">
                     <div>
@@ -482,6 +547,71 @@
             </div>
             
             <div class="grid md:grid-cols-3 gap-6">
+                <!-- DeepSeek R1 Distill 7B (Official DeepSeek) -->
+                <div id="deepseek-r1-7b" class="bg-dark-900 p-6 rounded-2xl border border-white/10 hover:border-brand/40 transition-all flex flex-col justify-between space-y-4">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-mono font-semibold text-cyan-400">✓ Official DeepSeek</span>
+                            <span class="text-[11px] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold">~4.7 GB RAM</span>
+                        </div>
+                        <h4 class="text-lg font-bold text-white mb-2">DeepSeek R1 Distill (7B)</h4>
+                        <p class="text-slate-400 text-xs leading-relaxed mb-4">
+                            DeepSeek AI\'s full 7B distilled reasoning model. Deep thinking, chain-of-thought mathematical solutions, and competitive logic.
+                        </p>
+                        <div class="space-y-1.5 text-[11px] text-slate-300 bg-dark-850 p-3 rounded-xl border border-white/5 mb-4">
+                            <div class="flex justify-between"><span class="text-slate-400">Resource:</span> <a href="https://github.com/deepseek-ai/DeepSeek-R1" target="_blank" class="text-brand hover:underline font-mono">DeepSeek-R1</a></div>
+                            <div class="flex justify-between"><span class="text-slate-400">Download Size:</span> <span class="font-mono text-white">~4.7 GB</span></div>
+                            <div class="flex justify-between"><span class="text-slate-400">Best for:</span> <span class="text-slate-200">Complex math, logic, reasoning</span></div>
+                        </div>
+                    </div>
+                    <div class="pt-4 border-t border-white/5 font-mono text-[11px] text-slate-300">
+                        <code class="text-brand">localpilot chat deepseek-r1:7b</code>
+                    </div>
+                </div>
+
+                <!-- Qwen 2.5 Coder 7B (Official Qwen) -->
+                <div id="qwen-2-5-coder-7b" class="bg-dark-900 p-6 rounded-2xl border border-white/10 hover:border-brand/40 transition-all flex flex-col justify-between space-y-4">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-mono font-semibold text-cyan-400">✓ Official Qwen</span>
+                            <span class="text-[11px] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold">~4.7 GB RAM</span>
+                        </div>
+                        <h4 class="text-lg font-bold text-white mb-2">Qwen 2.5 Coder (7B)</h4>
+                        <p class="text-slate-400 text-xs leading-relaxed mb-4">
+                            Flagship 7B coding model. Code architecture, unit test writing, complex refactoring, and multi-file debugging.
+                        </p>
+                        <div class="space-y-1.5 text-[11px] text-slate-300 bg-dark-850 p-3 rounded-xl border border-white/5 mb-4">
+                            <div class="flex justify-between"><span class="text-slate-400">Resource:</span> <a href="https://qwenlm.github.io" target="_blank" class="text-brand hover:underline font-mono">qwenlm.github.io</a></div>
+                            <div class="flex justify-between"><span class="text-slate-400">Download Size:</span> <span class="font-mono text-white">~4.7 GB</span></div>
+                            <div class="flex justify-between"><span class="text-slate-400">Best for:</span> <span class="text-slate-200">Software development, algorithms</span></div>
+                        </div>
+                    </div>
+                    <div class="pt-4 border-t border-white/5 font-mono text-[11px] text-slate-300">
+                        <code class="text-brand">localpilot chat qwen2.5-coder:7b</code>
+                    </div>
+                </div>
+
+                <!-- GLM-4 9B (Official Zhipu AI) -->
+                <div id="glm-4-9b" class="bg-dark-900 p-6 rounded-2xl border border-white/10 hover:border-brand/40 transition-all flex flex-col justify-between space-y-4">
+                    <div>
+                        <div class="flex items-center justify-between mb-3">
+                            <span class="text-xs font-mono font-semibold text-cyan-400">✓ Official Zhipu AI</span>
+                            <span class="text-[11px] px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold">~5.5 GB RAM</span>
+                        </div>
+                        <h4 class="text-lg font-bold text-white mb-2">GLM-4 (9B)</h4>
+                        <p class="text-slate-400 text-xs leading-relaxed mb-4">
+                            Zhipu AI & THUDM open bilingual powerhouse. Exceptionally strong in both Chinese and English comprehension and synthesis.
+                        </p>
+                        <div class="space-y-1.5 text-[11px] text-slate-300 bg-dark-850 p-3 rounded-xl border border-white/5 mb-4">
+                            <div class="flex justify-between"><span class="text-slate-400">Resource:</span> <a href="https://github.com/THUDM/GLM-4" target="_blank" class="text-brand hover:underline font-mono">THUDM/GLM-4</a></div>
+                            <div class="flex justify-between"><span class="text-slate-400">Download Size:</span> <span class="font-mono text-white">~5.5 GB</span></div>
+                            <div class="flex justify-between"><span class="text-slate-400">Best for:</span> <span class="text-slate-200">Bilingual tasks, reasoning, translation</span></div>
+                        </div>
+                    </div>
+                    <div class="pt-4 border-t border-white/5 font-mono text-[11px] text-slate-300">
+                        <code class="text-brand">localpilot chat glm4:9b</code>
+                    </div>
+                </div>
                 <!-- Model 4 -->
                 <div id="llama-3-1" class="bg-dark-900 p-6 rounded-2xl border border-white/10 hover:border-brand/40 transition-all flex flex-col justify-between space-y-4">
                     <div>
@@ -637,7 +767,7 @@
                     <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="hover:text-brand transition-colors underline font-mono text-slate-300">10.5281/zenodo.23424540</a>
                 </div>
                 <div class="text-center md:text-right leading-relaxed">
-                    Mohamed (Fouad) Fakhruldeen. (2026). <em class="text-slate-300">fakhruldeen/LocalPilot: v0.1.9</em> (Version v0.1.9) [Computer software]. Zenodo. <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="text-brand hover:underline font-mono">https://doi.org/10.5281/zenodo.23424540</a>
+                    Mohamed (Fouad) Fakhruldeen. (2026). <em class="text-slate-300">fakhruldeen/LocalPilot: v0.2.0</em> (Version v0.2.0) [Computer software]. Zenodo. <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="text-brand hover:underline font-mono">https://doi.org/10.5281/zenodo.23424540</a>
                 </div>
             </div>
         </div>

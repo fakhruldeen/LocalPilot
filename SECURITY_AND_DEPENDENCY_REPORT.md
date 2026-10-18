@@ -1,4 +1,4 @@
-# LocalPilot v0.1.9 Security and Dependency Audit Report
+# LocalPilot v0.2.0 Security and Dependency Audit Report
 
 **Date**: October 18, 2026  
 **Commit**: `9006eb8a0ec12404c72acff5dceb4f31b6d1c882` (with Phase 7 release hardening)  

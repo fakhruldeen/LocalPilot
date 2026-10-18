@@ -37,6 +37,10 @@ Running local AI shouldn't require configuring build flags, figuring out CUDA or
 
 ## ✨ Key Features
 
+- **🏆 Official Research Lab Prioritization (v0.2.0)**: Verified models directly from Google DeepMind (Gemma 2), Meta (Llama 3.x), Alibaba Qwen (Qwen 2.5 & Qwen Coder), DeepSeek AI (R1 Distill), Mistral AI, Microsoft (Phi-3.5 / Phi-4), THUDM (GLM-4), and Moonshot AI (Moonlight) are pinned first at the top of discovery.
+- **⚡ Short & Intuitive Model Aliases (v0.2.0)**: Clean, human-friendly aliases like `gemma2:2b`, `deepseek-r1:1.5b`, `llama3.2:3b`, and `qwen2.5-coder:1.5b` make installing and chatting instant and painless.
+- **⭐ Model Favorites Management (v0.2.0)**: Star your go-to models (`localpilot favorite add <alias>`, press <kbd>F</kbd> in TUI), view favorites in a dedicated dashboard, and filter catalogs with `--favorites`.
+- **🖥️ Full-Screen Interactive TUI by Default (v0.2.0)**: Simply running `localpilot` opens the rich Textual dashboard with automatic online catalog seeding and a one-click "Update List" refresh button.
 - **🧙‍♂️ 6-Step Guided Setup Wizard**: Welcoming non-technical onboarding checking computer capabilities, setting practical goals (writing, questions, coding), recommending pre-verified models, and executing multi-stage setups with live progress.
 - **💬 Integrated In-TUI Chat**: Full-screen token-streaming terminal chat screen (`ChatScreen`) with styled message bubbles, auto-scrolling, and responsive cancellation directly within the terminal UI.
 - **🧠 Decision Quality & Shortlist Comparison**:
@@ -123,29 +127,48 @@ localpilot doctor
 ```
 Audits CPU cores, available RAM, memory safety thresholds, hardware acceleration (Metal on Mac, CUDA on Linux), and active background services.
 
-#### 2. Discover Compatible Models
+#### 2. Discover Compatible Models & Official Labs
 ```bash
-# List all models verified to fit your memory safely
+# List all models (official lab models pinned first)
 localpilot discover
 
-# Filter by task or search query
+# Filter by task, search query, or lab
 localpilot discover --task chat
-localpilot discover -q "llama"
+localpilot discover -q "gemma"
+localpilot discover -q "deepseek"
+
+# View only your starred favorite models
+localpilot discover --favorites
 ```
 
-#### 3. Guided Model Setup
+#### 3. Guided Model Install & Setup
 ```bash
-localpilot setup <candidate-id>
+# Install directly using clean short aliases
+localpilot install gemma2:2b
+localpilot install deepseek-r1:1.5b
+localpilot install qwen2.5:3b
+
+# Or perform full guided multi-stage verification
+localpilot setup gemma2:2b
 ```
-Downloads real weights, validates SHA-256 integrity, configures local runtime adapters, and executes automated smoke inference before marking the model ready.
 
 #### 4. Instant Offline Chat
 ```bash
-localpilot chat <candidate-id-or-model-id>
+# Chat immediately using model alias
+localpilot chat gemma2:2b
+localpilot chat deepseek-r1:1.5b
+localpilot chat llama3.2:3b
 ```
-Launches an immediate private conversation. When you exit with `/exit` or <kbd>Ctrl + C</kbd>, memory is instantly returned to your operating system.
 
-#### 5. Inventory & Process Inspection
+#### 5. Model Favorites Management
+```bash
+# Star a model for quick access
+localpilot favorite add gemma2:2b
+localpilot favorite list
+localpilot favorite toggle gemma2:2b
+```
+
+#### 6. Inventory & Process Inspection
 ```bash
 # View installed models on this computer
 localpilot installed
@@ -154,7 +177,7 @@ localpilot installed
 localpilot running
 ```
 
-#### 6. Storage Inspection & Safe Removal
+#### 7. Storage Inspection & Safe Removal
 ```bash
 # View storage breakdown across weights and databases
 localpilot storage
@@ -163,7 +186,7 @@ localpilot storage
 localpilot remove <installation-id> --delete-files
 ```
 
-#### 7. Application Updates & Support
+#### 8. Application Updates & Support
 ```bash
 # Check PyPI and update LocalPilot application
 localpilot self update
@@ -175,7 +198,7 @@ localpilot support
 localpilot self uninstall --purge-models
 ```
 
-#### 8. Version Management & Model Aliases
+#### 9. Version Management & Model Aliases
 ```bash
 # List immutable installed model versions with quantization and pin status
 localpilot versions list
@@ -192,7 +215,7 @@ localpilot alias set coding <version-id>
 localpilot alias rollback coding
 ```
 
-#### 9. Local OpenAI-Compatible Inference API Gateway
+#### 10. Local OpenAI-Compatible Inference API Gateway
 ```bash
 # Launch background inference gateway strictly on loopback (127.0.0.1:8080)
 localpilot gateway start --daemon
@@ -204,7 +227,7 @@ localpilot gateway status
 localpilot gateway stop
 ```
 
-#### 10. Local API Key Management, Accounting & App Integrations
+#### 11. Local API Key Management, Accounting & App Integrations
 ```bash
 # Issue an API key for OpenCode or VS Code
 localpilot keys create "OpenCode" --app opencode
@@ -289,18 +312,18 @@ If you use LocalPilot in your research, academic study, or open-source projects,
 ```bibtex
 @software{fakhruldeen_2026_localpilot,
   author       = {Mohamed (Fouad) Fakhruldeen},
-  title        = {fakhruldeen/LocalPilot: v0.1.9},
+  title        = {fakhruldeen/LocalPilot: v0.2.0},
   month        = oct,
   year         = 2026,
   publisher    = {Zenodo},
-  version      = {v0.1.9},
+  version      = {v0.2.0},
   doi          = {10.5281/zenodo.23424540},
   url          = {https://doi.org/10.5281/zenodo.23424540}
 }
 ```
 
 **Text / APA Citation:**
-> Mohamed (Fouad) Fakhruldeen. (2026). fakhruldeen/LocalPilot: v0.1.9 (Version v0.1.9) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23424540
+> Mohamed (Fouad) Fakhruldeen. (2026). fakhruldeen/LocalPilot: v0.2.0 (Version v0.2.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23424540
 
 ---
 

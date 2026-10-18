@@ -1,4 +1,4 @@
-# LocalPilot v0.1.9 Recovery and Resilience Validation
+# LocalPilot v0.2.0 Recovery and Resilience Validation
 
 **Date**: October 18, 2026  
 **Status**: Verified Resilient across All Primary Fault Domains  
@@ -36,4 +36,4 @@ Production polish requires zero unhandled crashes, zero zombie processes, zero c
 
 ## 4. Recovery Conclusion
 
-All automated recovery pathways have been tested and verified. LocalPilot v0.1.9 reliably restores consistent state following network failures, disk write aborts, process crashes, and faulty user scripts.
+All automated recovery pathways have been tested and verified. LocalPilot v0.2.0 reliably restores consistent state following network failures, disk write aborts, process crashes, and faulty user scripts.

@@ -157,7 +157,7 @@
                 <img src="img/logo.png" alt="LocalPilot Logo" class="w-10 h-10 rounded-xl object-contain border border-white/10 group-hover:scale-105 transition-transform duration-300">
                 <span class="font-bold text-xl tracking-tight text-white flex items-center gap-2">
                     LocalPilot
-                    <span class="text-xs bg-brand/10 text-brand px-2 py-0.5 rounded-full border border-brand/20 font-mono font-medium">v0.1.9</span>
+                    <span class="text-xs bg-brand/10 text-brand px-2 py-0.5 rounded-full border border-brand/20 font-mono font-medium">v0.2.0</span>
                 </span>
             </a>
 
@@ -564,6 +564,40 @@
             </div>
         </article>
 
+            <!-- Deep Dive: Aliases, Favorites & Official Lab Models -->
+        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">9</span>
+                <h2 class="text-2xl font-bold text-white">New in v0.2.0: Friendly Aliases, Favorites &amp; Official Models</h2>
+            </div>
+            
+            <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+                LocalPilot v0.2.0 makes working with local AI models faster and easier than ever with three major usability upgrades:
+            </p>
+
+            <div class="grid sm:grid-cols-3 gap-4 text-xs">
+                <div class="p-5 rounded-2xl bg-dark-850 border border-emerald-500/20 space-y-2">
+                    <span class="text-emerald-400 font-bold text-sm block">1. Short &amp; Intuitive Aliases</span>
+                    <p class="text-slate-400 leading-relaxed">No need to memorize long filenames or candidate IDs. Launch models directly with clean aliases like <code class="text-brand">gemma2:2b</code>, <code class="text-brand">deepseek-r1:1.5b</code>, or <code class="text-brand">qwen2.5-coder:7b</code>.</p>
+                </div>
+                <div class="p-5 rounded-2xl bg-dark-850 border border-yellow-500/20 space-y-2">
+                    <span class="text-yellow-400 font-bold text-sm block">2. Model Favorites (★)</span>
+                    <p class="text-slate-400 leading-relaxed">Star your preferred models with <code class="text-white">localpilot favorite add &lt;alias&gt;</code> or press <kbd class="px-1.5 py-0.5 rounded bg-dark-800 text-yellow-300 font-bold border border-yellow-500/30">F</kbd> in the TUI to toggle favorites and filter your catalog.</p>
+                </div>
+                <div class="p-5 rounded-2xl bg-dark-850 border border-cyan-500/20 space-y-2">
+                    <span class="text-cyan-400 font-bold text-sm block">3. Official Lab Prioritization</span>
+                    <p class="text-slate-400 leading-relaxed">Models from official research labs (Google, Meta, DeepSeek, Alibaba Qwen, Mistral, Microsoft) are verified and pinned first at the top of the catalog.</p>
+                </div>
+            </div>
+
+            <div class="p-4 rounded-xl bg-dark-850 border border-white/5 font-mono text-xs text-slate-300 space-y-1">
+                <div><span class="text-slate-400"># Chat with official Google Gemma 2:</span> <code class="text-brand">localpilot chat gemma2:2b</code></div>
+                <div><span class="text-slate-400"># Chat with official DeepSeek R1 reasoning:</span> <code class="text-brand">localpilot chat deepseek-r1:1.5b</code></div>
+                <div><span class="text-slate-400"># Star a model to favorites:</span> <code class="text-brand">localpilot favorite add gemma2:2b</code></div>
+                <div><span class="text-slate-400"># View only your starred models:</span> <code class="text-brand">localpilot discover --favorites</code></div>
+            </div>
+        </article>
+
     </main>
 
     <!-- Prominent Disclaimer Banner -->
@@ -605,7 +639,7 @@
                     <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="hover:text-brand transition-colors underline font-mono text-slate-300">10.5281/zenodo.23424540</a>
                 </div>
                 <div class="text-center md:text-right leading-relaxed">
-                    Mohamed (Fouad) Fakhruldeen. (2026). <em class="text-slate-300">fakhruldeen/LocalPilot: v0.1.9</em> (Version v0.1.9) [Computer software]. Zenodo. <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="text-brand hover:underline font-mono">https://doi.org/10.5281/zenodo.23424540</a>
+                    Mohamed (Fouad) Fakhruldeen. (2026). <em class="text-slate-300">fakhruldeen/LocalPilot: v0.2.0</em> (Version v0.2.0) [Computer software]. Zenodo. <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="text-brand hover:underline font-mono">https://doi.org/10.5281/zenodo.23424540</a>
                 </div>
             </div>
         </div>

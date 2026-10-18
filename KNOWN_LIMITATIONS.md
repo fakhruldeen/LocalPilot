@@ -1,6 +1,6 @@
-# LocalPilot v0.1.9 Known Limitations & Operational Boundaries
+# LocalPilot v0.2.0 Known Limitations & Operational Boundaries
 
-**Version**: 0.1.9  
+**Version**: 0.2.0  
 **Date**: October 18, 2026  
 **Status**: Authoritative Disclosure of Boundaries  
 
@@ -25,7 +25,7 @@
      - macOS: launchd LaunchAgents (`~/Library/LaunchAgents/com.localpilot.gateway.plist`)
    - System-wide root init services (`/etc/systemd/system/`) are intentionally not supported and require no `sudo` escalation.
 2. **Microsoft Windows Support**:
-   - In v0.1.9, Windows is supported via the Windows Subsystem for Linux (WSL2).
+   - In v0.2.0, Windows is supported via the Windows Subsystem for Linux (WSL2).
    - Native Windows service integration (Windows Service Manager / Task Scheduler) is scheduled for a future milestone.
 
 ---
