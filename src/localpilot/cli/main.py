@@ -39,8 +39,11 @@ from localpilot.observability.schema import EventCategory, EventLevel
 from localpilot.sources.catalog_service import CatalogService
 from localpilot.application.accounting_service import ApiAccountingService
 from localpilot.application.api_key_service import ApiKeyService
-from localpilot.application.integration_service import IntegrationTemplateService
+from localpilot.application.integration_service import ConnectionManager, IntegrationTemplateService
+from localpilot.application.startup_service import StartupService
+from localpilot.application.hook_service import LifecycleHookService
 from localpilot.application.version_service import ModelVersionService
+from localpilot.domain.api_contract import HookEvent
 from localpilot.gateway.server import GatewayServer
 from localpilot.storage.db import get_db, get_default_data_dir, get_default_log_dir
 from localpilot.storage.inventory import StorageManager
@@ -72,6 +75,16 @@ app.add_typer(gateway_app, name="api")
 
 keys_app = typer.Typer(help="Manage local API keys and application permissions.")
 app.add_typer(keys_app, name="keys")
+
+connections_app = typer.Typer(help="Manage connected applications, configurations, and verification.")
+app.add_typer(connections_app, name="connections")
+
+startup_app = typer.Typer(help="Manage automatic user-level startup on login.")
+app.add_typer(startup_app, name="startup")
+
+hooks_app = typer.Typer(help="Manage isolated lifecycle event hooks and circuit breakers.")
+app.add_typer(hooks_app, name="hooks")
+
 
 
 def _val(arg: Any, default: Any = None) -> Any:
@@ -622,7 +635,7 @@ def discover_models(
     plain: bool = typer.Option(False, "--plain", help="Print plain tabular text without rich styling"),
     json_output: bool = typer.Option(False, "--json", help="Output machine-readable JSON candidate models"),
 ) -> None:
-    """Find and score models that are 100% compatible with your computer.
+    """Find and score models that are hardware-compatible with your computer.
 
     Non-technical: Lists models you can actually run. Red/incompatible models are filtered out so you never waste bandwidth or download something that won't work.
     Technical: Evaluates 3-axis matrix (CPU/GPU/RAM) against catalog candidates, computes memory fit (Exact Fit, Comfortable, Tight, Partial GPU Offload), and scores candidates based on your hardware profile and task.
@@ -1073,7 +1086,7 @@ def self_update() -> None:
     """
     import httpx
     import localpilot
-    current = getattr(localpilot, "__version__", "0.1.8")
+    current = getattr(localpilot, "__version__", "0.1.9")
     console.print(f"[bold cyan]Checking for LocalPilot updates (current: v{current})...[/bold cyan]")
     try:
         resp = httpx.get("https://pypi.org/pypi/localpilot/json", timeout=4.0)
@@ -1163,12 +1176,45 @@ def self_uninstall(
 def versions_list(
     model_id: Optional[str] = typer.Argument(None, help="Optional model family ID to filter by"),
     all: bool = typer.Option(False, "--all", "-a", help="Include deleted versions"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
 ) -> None:
     """List installed model versions with pinning, size, and variant details."""
+    plain = bool(_val(plain, False))
+    json_output = bool(_val(json_output, False))
+
     service = ModelVersionService()
     versions = service.list_versions(model_id=model_id, include_deleted=all)
+
+    if json_output:
+        data = [
+            {
+                "version_id": v.version_id,
+                "logical_model_id": v.logical_model_id,
+                "version_label": v.version_label,
+                "quantization": v.quantization,
+                "artifact_size_bytes": v.artifact_size_bytes,
+                "is_pinned": v.is_pinned,
+                "created_at": v.created_at,
+                "installed_path": v.installed_path,
+            }
+            for v in versions
+        ]
+        typer.echo(json.dumps(data, indent=2))
+        return
+
     if not versions:
-        console.print("[yellow]No model versions found.[/yellow]")
+        if plain:
+            print("No model versions found.")
+        else:
+            console.print("[yellow]No model versions found.[/yellow]")
+        return
+
+    if plain:
+        print("VERSION_ID\tLOGICAL_MODEL\tTAG\tQUANT\tSIZE_MB\tPINNED\tCREATED_AT")
+        for v in versions:
+            size_mb = f"{v.artifact_size_bytes / (1024*1024):.1f}" if v.artifact_size_bytes else "-"
+            print(f"{v.version_id}\t{v.logical_model_id}\t{v.version_label}\t{v.quantization or 'n/a'}\t{size_mb}\t{v.is_pinned}\t{v.created_at}")
         return
 
     table = Table(title="Installed Model Versions", show_header=True, header_style="bold cyan")
@@ -1329,12 +1375,42 @@ def versions_remove(
 # =============================================================================
 
 @alias_app.command("list")
-def alias_list() -> None:
+def alias_list(
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
     """List stable model aliases, target versions, and logical models."""
+    plain = bool(_val(plain, False))
+    json_output = bool(_val(json_output, False))
+
     service = ModelVersionService()
     aliases = service.list_aliases()
+
+    if json_output:
+        data = [
+            {
+                "alias_name": a.alias_name,
+                "version_id": a.version_id,
+                "logical_model_id": a.logical_model_id,
+                "is_system_alias": a.is_system_alias,
+                "updated_at": a.updated_at,
+            }
+            for a in aliases
+        ]
+        typer.echo(json.dumps(data, indent=2))
+        return
+
     if not aliases:
-        console.print("[yellow]No aliases found.[/yellow]")
+        if plain:
+            print("No aliases found.")
+        else:
+            console.print("[yellow]No aliases found.[/yellow]")
+        return
+
+    if plain:
+        print("ALIAS\tTARGET_VERSION\tLOGICAL_MODEL\tSYSTEM\tUPDATED_AT")
+        for a in aliases:
+            print(f"{a.alias_name}\t{a.version_id}\t{a.logical_model_id or '-'}\t{a.is_system_alias}\t{a.updated_at}")
         return
 
     table = Table(title="Model Aliases", show_header=True, header_style="bold cyan")
@@ -1591,13 +1667,48 @@ def gateway_test(
 # =============================================================================
 
 @keys_app.command("list")
-def keys_list() -> None:
+def keys_list(
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
     """List all registered local API keys and applications."""
+    plain = bool(_val(plain, False))
+    json_output = bool(_val(json_output, False))
+
     service = ApiKeyService()
     keys = service.list_keys()
+
+    if json_output:
+        data = [
+            {
+                "key_id": k.key_id,
+                "display_name": k.display_name,
+                "app_name": k.app_name,
+                "prefix": k.secret_prefix,
+                "is_active": k.is_active,
+                "created_at": k.created_at,
+                "expires_at": k.expires_at,
+                "revoked_at": k.revoked_at,
+                "policy": k.policy.model_dump() if k.policy else None,
+            }
+            for k in keys
+        ]
+        typer.echo(json.dumps(data, indent=2))
+        return
+
     if not keys:
-        console.print("[yellow]No API keys found.[/yellow]")
-        console.print("Create one using [bold cyan]localpilot keys create <name>[/bold cyan].")
+        if plain:
+            print("No API keys found.")
+        else:
+            console.print("[yellow]No API keys found.[/yellow]")
+            console.print("Create one using [bold cyan]localpilot keys create <name>[/bold cyan].")
+        return
+
+    if plain:
+        print("KEY_ID\tNAME\tAPP\tPREFIX\tSTATUS")
+        for k in keys:
+            status = "ACTIVE" if k.is_active else "REVOKED"
+            print(f"{k.key_id}\t{k.display_name}\t{k.app_name or '-'}\t{k.secret_prefix}\t{status}")
         return
 
     table = Table(title="Local API Keys", show_header=True, header_style="bold cyan")
@@ -1626,8 +1737,10 @@ def keys_create(
     name: str = typer.Argument(..., help="Friendly label for this key (e.g., 'OpenCode', 'VS Code')"),
     app: Optional[str] = typer.Option(None, "--app", "-a", help="Application name identifier"),
     expires_days: Optional[int] = typer.Option(None, "--expires-days", help="Optional expiry in days"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
 ) -> None:
     """Create a new local API key with secure token generation."""
+    json_output = bool(_val(json_output, False))
     service = ApiKeyService()
     expires_at = None
     if expires_days:
@@ -1641,6 +1754,19 @@ def keys_create(
         expires_at=expires_at,
     )
 
+    if json_output:
+        data = {
+            "key_id": record.key_id,
+            "display_name": record.display_name,
+            "app_name": record.app_name,
+            "prefix": record.secret_prefix,
+            "token": raw_token,
+            "created_at": record.created_at,
+            "expires_at": record.expires_at,
+        }
+        typer.echo(json.dumps(data, indent=2))
+        return
+
     console.print(f"\n[bold green]✓ Local API Key Created Successfully![/bold green]")
     console.print(f"  [bold]Key ID:[/bold]       {record.key_id}")
     console.print(f"  [bold]Name:[/bold]         {record.display_name}")
@@ -1653,13 +1779,21 @@ def keys_create(
 @keys_app.command("revoke")
 def keys_revoke(
     key_id: str = typer.Argument(..., help="API key ID to revoke"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
 ) -> None:
     """Revoke an API key immediately, blocking future access."""
+    json_output = bool(_val(json_output, False))
     service = ApiKeyService()
     try:
         service.revoke_key(key_id)
+        if json_output:
+            typer.echo(json.dumps({"key_id": key_id, "status": "revoked", "success": True}, indent=2))
+            return
         render_message_box("Key Revoked", f"API Key '{key_id}' has been permanently revoked.")
     except Exception as exc:
+        if json_output:
+            typer.echo(json.dumps({"key_id": key_id, "error": str(exc), "success": False}, indent=2))
+            raise typer.Exit(code=1)
         render_error_box("Revoke Failed", str(exc))
         raise typer.Exit(code=1)
 
@@ -1667,17 +1801,32 @@ def keys_revoke(
 @keys_app.command("rotate")
 def keys_rotate(
     key_id: str = typer.Argument(..., help="API key ID to rotate"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
 ) -> None:
     """Rotate secret token for an existing key, preserving its identity and policy."""
+    json_output = bool(_val(json_output, False))
     service = ApiKeyService()
     try:
         raw_token, record = service.rotate_key(key_id)
+        if json_output:
+            data = {
+                "key_id": record.key_id,
+                "display_name": record.display_name,
+                "prefix": record.secret_prefix,
+                "token": raw_token,
+                "success": True,
+            }
+            typer.echo(json.dumps(data, indent=2))
+            return
         render_message_box("Key Rotated", f"API Key '{record.display_name}' ({key_id}) rotated successfully.")
         console.print(f"  [bold]Key ID:[/bold]          {record.key_id}")
         console.print(f"  [bold]New Safe Prefix:[/bold] {record.secret_prefix}")
         console.print(f"\n[bold yellow]New Plaintext API Token (copy now, will not be shown again):[/bold yellow]")
         console.print(f"  [bold cyan]{raw_token}[/bold cyan]\n")
     except Exception as exc:
+        if json_output:
+            typer.echo(json.dumps({"key_id": key_id, "error": str(exc), "success": False}, indent=2))
+            raise typer.Exit(code=1)
         render_error_box("Rotation Failed", str(exc))
         raise typer.Exit(code=1)
 
@@ -1685,10 +1834,15 @@ def keys_rotate(
 @keys_app.command("delete")
 def keys_delete(
     key_id: str = typer.Argument(..., help="API key ID to delete"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
 ) -> None:
     """Permanently delete an API key record."""
+    json_output = bool(_val(json_output, False))
     service = ApiKeyService()
     service.delete_key(key_id)
+    if json_output:
+        typer.echo(json.dumps({"key_id": key_id, "deleted": True}, indent=2))
+        return
     render_message_box("Key Deleted", f"API Key '{key_id}' removed from database.")
 
 
@@ -1700,12 +1854,47 @@ def keys_delete(
 def app_stats(
     key_id: Optional[str] = typer.Option(None, "--key", "-k", help="Filter statistics by API key ID"),
     model: Optional[str] = typer.Option(None, "--model", "-m", help="Filter statistics by model alias"),
+    time_window: Optional[str] = typer.Option(None, "--time-window", "-w", help="Filter by time window: 1h, 24h, 7d, 30d, all"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text without rich tables"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
 ) -> None:
     """Display real-time operational metrics, token usage, and latency summary."""
-    acct = ApiAccountingService()
-    summary = acct.get_usage_summary(key_id=key_id, model_alias=model)
+    plain = bool(_val(plain, False))
+    json_output = bool(_val(json_output, False))
+    time_window = _val(time_window, None)
 
-    table = Table(title="Inference Gateway Operational Metrics", show_header=True, header_style="bold cyan")
+    acct = ApiAccountingService()
+    summary = acct.get_usage_summary(key_id=key_id, model_alias=model, time_window=time_window)
+    model_breakdown = acct.get_per_model_breakdown(time_window=time_window)
+    key_breakdown = acct.get_per_key_breakdown(time_window=time_window)
+
+    if json_output:
+        data = {
+            "summary": summary,
+            "per_model": model_breakdown,
+            "per_key": key_breakdown,
+        }
+        typer.echo(json.dumps(data, indent=2))
+        return
+
+    if plain:
+        print(f"Time Window: {summary.get('time_window', 'all')}")
+        print(f"Total Requests: {summary['total_requests']}")
+        print(f"Successful Requests: {summary['successful_requests']}")
+        print(f"Error Requests: {summary['error_requests']}")
+        print(f"Prompt Tokens: {summary['total_prompt_tokens']}")
+        print(f"Completion Tokens: {summary['total_completion_tokens']}")
+        print(f"Total Tokens: {summary['total_tokens']}")
+        print(f"Average Latency (ms): {summary['avg_latency_ms']}")
+        print(f"P50 Latency (ms): {summary.get('p50_latency_ms', 0.0)}")
+        print(f"P95 Latency (ms): {summary.get('p95_latency_ms', 0.0)}")
+        print(f"TTFT (ms): {summary['avg_first_token_latency_ms']}")
+        print(f"Generation Speed (TPS): {summary['tokens_per_second']}")
+        print(f"Token Reporting: {summary.get('token_reporting_status', 'none')}")
+        return
+
+    title_suffix = f" ({time_window})" if time_window else ""
+    table = Table(title=f"Inference Gateway Operational Metrics{title_suffix}", show_header=True, header_style="bold cyan")
     table.add_column("Metric", style="bold")
     table.add_column("Value", justify="right")
 
@@ -1716,12 +1905,19 @@ def app_stats(
     table.add_row("Completion Tokens", f"{summary['total_completion_tokens']:,}")
     table.add_row("Total Tokens", f"[bold]{summary['total_tokens']:,}[/bold]")
     table.add_row("Average Latency (ms)", f"{summary['avg_latency_ms']:.1f}")
-    table.add_row("Time to First Token (TTFT ms)", f"{summary['avg_first_token_latency_ms']:.1f}")
-    table.add_row("Estimated Generation Speed (TPS)", f"{summary['tokens_per_second']:.1f} tokens/s")
+    table.add_row("Median Latency (p50 ms)", f"{summary.get('p50_latency_ms', 0.0):.1f}")
+    table.add_row("95th Percentile (p95 ms)", f"{summary.get('p95_latency_ms', 0.0):.1f}")
+    table.add_row("Time to First Content (TTFT ms)", f"{summary['avg_first_token_latency_ms']:.1f}")
+    table.add_row("Measured Generation Speed (TPS)", f"{summary['tokens_per_second']:.1f} tokens/s")
+
+    if summary.get("token_reporting_status") == "unreported":
+        table.add_row("Token Usage Status", "[dim yellow]Unreported by runtime[/dim yellow]")
+    elif summary.get("token_reporting_status") == "partial":
+        table.add_row("Token Usage Status", f"[yellow]Partial ({summary.get('unreported_token_requests', 0)} requests unobservable)[/yellow]")
+
     console.print(table)
 
     # Per-Model breakdown
-    model_breakdown = acct.get_per_model_breakdown()
     if model_breakdown:
         console.print("\n[bold]Usage by Model Alias:[/bold]")
         mt = Table(show_header=True, header_style="bold magenta")
@@ -1743,7 +1939,6 @@ def app_stats(
         console.print(mt)
 
     # Per-Key breakdown
-    key_breakdown = acct.get_per_key_breakdown()
     if key_breakdown:
         console.print("\n[bold]Usage by Application / Key:[/bold]")
         kt = Table(show_header=True, header_style="bold blue")
@@ -1773,67 +1968,482 @@ def app_connect(
     port: int = typer.Option(8080, "--port", "-p", help="Gateway port"),
     model: str = typer.Option("coding", "--model", "-m", help="Target model alias to connect"),
     write: bool = typer.Option(False, "--write", "-w", help="Automatically write configuration file if supported"),
+    dry_run: bool = typer.Option(False, "--dry-run", help="Preview configuration changes without writing to disk"),
+    key: Optional[str] = typer.Option(None, "--key", "-k", help="Reuse existing API key ID instead of creating new key"),
+    test: bool = typer.Option(False, "--test", "-t", help="Run 5-stage connection diagnostic test after creation"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text without rich formatting"),
 ) -> None:
     """Generate configuration and integration instructions for supported local apps."""
-    target_app = target_app.lower().strip()
-    key_service = ApiKeyService()
-    raw_token, key_record = key_service.create_key(
-        name=f"{target_app.title()} Integration",
-        app_name=target_app,
-    )
+    write = bool(_val(write, False))
+    dry_run = bool(_val(dry_run, False))
+    test = bool(_val(test, False))
+    json_output = bool(_val(json_output, False))
+    plain = bool(_val(plain, False))
+    target_app = str(_val(target_app, "opencode")).lower().strip()
+    port = int(_val(port, 8080))
+    model = str(_val(model, "coding"))
+    key_id = _val(key, None)
 
-    base_url = f"http://127.0.0.1:{port}/v1"
+    gateway_url = f"http://127.0.0.1:{port}/v1"
+    mgr = ConnectionManager()
+    is_preview = dry_run or not write
 
-    if target_app == "opencode":
-        cfg = IntegrationTemplateService.get_opencode_template(base_url, raw_token, model_alias=model)
-        default_path = Path(os.path.expanduser("~/.config/opencode/opencode.json"))
+    try:
+        raw_token, profile, diff_text = mgr.create_connection(
+            name=f"{target_app.title()} Connection",
+            client_type=target_app,
+            model_alias=model,
+            gateway_url=gateway_url,
+            key_id=key_id,
+            dry_run=is_preview,
+        )
+    except Exception as exc:
+        if json_output:
+            typer.echo(json.dumps({"error": str(exc), "success": False}, indent=2))
+            raise typer.Exit(code=1)
+        render_error_box("Connection Setup Failed", str(exc))
+        raise typer.Exit(code=1)
 
-        console.print(f"[bold cyan]OpenCode Integration Setup[/bold cyan]")
-        console.print(f"Generated configuration for [bold]{model}[/bold] alias:\n")
-        console.print(json.dumps(cfg, indent=2))
+    verification_data = None
+    if test and not is_preview:
+        try:
+            ver_res = mgr.test_connection(profile.connection_id)
+            verification_data = ver_res.model_dump()
+        except Exception:
+            pass
 
-        if write:
-            res = IntegrationTemplateService.apply_opencode_config(default_path, base_url, raw_token, model_alias=model)
-            console.print(f"\n[bold green]✓ Configuration written to: {res['target_path']}[/bold green]")
-            if res.get("backup_path"):
-                console.print(f"[dim]Backup created at: {res['backup_path']}[/dim]")
-        else:
-            console.print(f"\nTo save automatically, re-run with: [bold cyan]localpilot connect opencode --write[/bold cyan]")
-            console.print(f"Or copy above JSON into: [dim]{default_path}[/dim]")
+    if json_output:
+        res_data = {
+            "success": True,
+            "preview_only": is_preview,
+            "connection": profile.model_dump(),
+            "diff": diff_text,
+            "api_key_secret": raw_token,
+            "verification": verification_data,
+        }
+        typer.echo(json.dumps(res_data, indent=2))
+        return
 
-    elif target_app in ("continue", "vscode"):
-        cfg = IntegrationTemplateService.get_continue_template(base_url, raw_token, model_alias=model)
-        default_path = Path(os.path.expanduser("~/.continue/config.json"))
+    # Rich / Plain interactive rendering
+    console.print(f"\n[bold cyan]LocalPilot Guided Integration: {target_app.title()}[/bold cyan]")
+    console.print(f"  [bold]Model Alias:[/bold]   {model}")
+    console.print(f"  [bold]Gateway URL:[/bold]   {gateway_url}")
+    console.print(f"  [bold]API Key ID:[/bold]    {profile.key_id}")
+    if profile.target_path:
+        console.print(f"  [bold]Target Config:[/bold] {profile.target_path}")
 
-        console.print(f"[bold cyan]VS Code Continue Integration Setup[/bold cyan]")
-        console.print(f"Generated model entry for [bold]{model}[/bold] alias:\n")
-        console.print(json.dumps(cfg, indent=2))
+    if raw_token:
+        console.print(f"\n[bold yellow]Plaintext API Token (copy now, will not be shown again):[/bold yellow]")
+        console.print(f"  [bold cyan]{raw_token}[/bold cyan]")
 
-        if write:
-            res = IntegrationTemplateService.apply_continue_config(default_path, base_url, raw_token, model_alias=model)
-            console.print(f"\n[bold green]✓ Configuration updated in: {res['target_path']}[/bold green]")
-            if res.get("backup_path"):
-                console.print(f"[dim]Backup created at: {res['backup_path']}[/dim]")
-        else:
-            console.print(f"\nTo save automatically, re-run with: [bold cyan]localpilot connect continue --write[/bold cyan]")
-            console.print(f"Or add to 'models' array in: [dim]{default_path}[/dim]")
+    if diff_text:
+        console.print(f"\n[bold]Configuration Preview (Redacted):[/bold]")
+        console.print(diff_text)
 
-    elif target_app == "cursor":
-        cursor_info = IntegrationTemplateService.get_cursor_instructions(base_url, raw_token, model_alias=model)
-        console.print(f"[bold cyan]Cursor Integration Instructions[/bold cyan]")
-        for idx, step in enumerate(cursor_info["steps"], 1):
-            console.print(f"  {idx}. {step}")
-        console.print(f"\n[dim]Base URL:[/dim]  [bold]{base_url}[/bold]")
-        console.print(f"[dim]API Key:[/dim]   [bold]{raw_token}[/bold]")
-        console.print(f"[dim]Model:[/dim]     [bold]{model}[/bold]")
-
+    if is_preview:
+        console.print(f"\n[bold yellow]Preview Mode Only[/bold yellow]")
+        console.print(f"To apply and write these changes to disk, re-run with: [bold cyan]--write[/bold cyan]")
     else:
-        snippets = IntegrationTemplateService.get_client_snippets(base_url, raw_token, model_alias=model)
-        console.print(f"[bold cyan]Generic OpenAI Client Snippets[/bold cyan]\n")
-        console.print("[bold]cURL:[/bold]")
-        console.print(snippets["curl"])
-        console.print("\n[bold]Python OpenAI SDK:[/bold]")
-        console.print(snippets["python"])
-        console.print("\n[bold]Node.js OpenAI SDK:[/bold]")
-        console.print(snippets["nodejs"])
+        console.print(f"\n[bold green]✓ Configuration successfully applied![/bold green]")
+        if profile.backup_path:
+            console.print(f"  [dim]Backup saved at: {profile.backup_path}[/dim]")
+
+    if verification_data:
+        console.print("\n[bold]Connection Diagnostic Verification:[/bold]")
+        console.print(f"  Config Syntax:      {'✓' if verification_data.get('config_valid') else '✗'}")
+        console.print(f"  Gateway Reachable:  {'✓' if verification_data.get('gateway_reachable') else '✗'}")
+        console.print(f"  API Key Valid:      {'✓' if verification_data.get('key_valid') else '✗'}")
+        console.print(f"  Model Authorized:   {'✓' if verification_data.get('model_authorized') else '✗'}")
+        console.print(f"  Diagnostic Probe:   {'✓' if verification_data.get('probe_passed') else '✗'}")
+        console.print(f"  [dim]Note: External client acceptance must be verified directly inside {target_app.title()}.[/dim]")
+
+
+# =============================================================================
+# Connections Management CLI
+# =============================================================================
+
+@connections_app.command("list")
+def connections_list(
+    plain: bool = typer.Option(False, "--plain", help="Output plain text without rich tables"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """List all registered application connections."""
+    plain = bool(_val(plain, False))
+    json_output = bool(_val(json_output, False))
+    mgr = ConnectionManager()
+    conns = mgr.list_connections()
+
+    if json_output:
+        typer.echo(json.dumps([c.model_dump() for c in conns], indent=2))
+        return
+
+    if plain:
+        for c in conns:
+            typer.echo(f"{c.connection_id}\t{c.name}\t{c.client_type}\t{c.model_alias}\t{c.status.value}\t{c.target_path or 'none'}")
+        return
+
+    table = Table(title="Connected Applications", show_lines=True)
+    table.add_column("Connection ID", style="cyan")
+    table.add_column("Name")
+    table.add_column("Client Type")
+    table.add_column("Model Alias")
+    table.add_column("Key ID", style="dim")
+    table.add_column("Status")
+    table.add_column("Config Path", style="dim")
+
+    for c in conns:
+        status_style = "green" if c.status.value == "active" else "red"
+        table.add_row(
+            c.connection_id,
+            c.name,
+            c.client_type,
+            c.model_alias,
+            c.key_id,
+            f"[{status_style}]{c.status.value}[/{status_style}]",
+            str(c.target_path or "N/A"),
+        )
+    console.print(table)
+
+
+@connections_app.command("test")
+def connections_test(
+    connection_id: str = typer.Argument(..., help="Connection ID to verify"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Run 5-stage diagnostic verification test on an application connection."""
+    json_output = bool(_val(json_output, False))
+    mgr = ConnectionManager()
+    try:
+        res = mgr.test_connection(connection_id)
+        if json_output:
+            typer.echo(json.dumps(res.model_dump(), indent=2))
+            return
+
+        console.print(f"\n[bold cyan]Diagnostic Verification: {connection_id}[/bold cyan]")
+        console.print(f"  1. Config Schema/Syntax:  {'[green]✓ Valid[/green]' if res.config_valid else '[red]✗ Failed[/red]'}")
+        console.print(f"  2. Gateway Reachable:     {'[green]✓ Reachable[/green]' if res.gateway_reachable else '[red]✗ Unreachable[/red]'}")
+        console.print(f"  3. API Key Active:        {'[green]✓ Active[/green]' if res.key_valid else '[red]✗ Inactive/Revoked[/red]'}")
+        console.print(f"  4. Model Authorized:      {'[green]✓ Authorized[/green]' if res.model_authorized else '[red]✗ Unauthorized[/red]'}")
+        console.print(f"  5. Diagnostic Probe:      {'[green]✓ Passed[/green]' if res.probe_passed else '[red]✗ Incomplete[/red]'}")
+        console.print(f"\n  [dim]Client Application Acceptance:[/dim] External editor verification required.")
+        for k, v in res.details.items():
+            console.print(f"    - [dim]{k}:[/dim] {v}")
+    except Exception as exc:
+        if json_output:
+            typer.echo(json.dumps({"error": str(exc), "success": False}, indent=2))
+            raise typer.Exit(code=1)
+        render_error_box("Test Failed", str(exc))
+        raise typer.Exit(code=1)
+
+
+@connections_app.command("disconnect")
+def connections_disconnect(
+    connection_id: str = typer.Argument(..., help="Connection ID to disconnect"),
+    revoke_key: bool = typer.Option(False, "--revoke-key", help="Also permanently revoke the associated API key"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Safely restore client configuration and disconnect application."""
+    revoke_key = bool(_val(revoke_key, False))
+    json_output = bool(_val(json_output, False))
+    mgr = ConnectionManager()
+    try:
+        res = mgr.disconnect_connection(connection_id, revoke_key=revoke_key)
+        if json_output:
+            typer.echo(json.dumps(res, indent=2))
+            return
+        render_message_box(
+            "Application Disconnected",
+            f"Connection '{connection_id}' has been disconnected.\nAction taken: {res['action_taken']}\nKey revoked: {res['key_revoked']}",
+        )
+    except Exception as exc:
+        if json_output:
+            typer.echo(json.dumps({"error": str(exc), "success": False}, indent=2))
+            raise typer.Exit(code=1)
+        render_error_box("Disconnect Failed", str(exc))
+        raise typer.Exit(code=1)
+
+
+# =============================================================================
+# Automatic Startup Service CLI
+# =============================================================================
+
+@startup_app.command("status")
+def startup_status(
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Check automatic login startup service status."""
+    json_output = bool(_val(json_output, False))
+    svc = StartupService()
+    status = svc.get_status()
+
+    if json_output:
+        typer.echo(json.dumps(status, indent=2))
+        return
+
+    console.print("\n[bold cyan]LocalPilot Automatic Startup Status[/bold cyan]")
+    console.print(f"  [bold]Platform:[/bold]     {status['platform']}")
+    console.print(f"  [bold]Installed:[/bold]    {'[green]Yes[/green]' if status['installed'] else '[yellow]No[/yellow]'}")
+    console.print(f"  [bold]Enabled:[/bold]      {'[green]Yes[/green]' if status['enabled'] else '[dim]No[/dim]'}")
+    console.print(f"  [bold]Active:[/bold]       {'[green]Yes[/green]' if status['active'] else '[dim]No[/dim]'}")
+    console.print(f"  [bold]Target Path:[/bold]  {status['path']}")
+    console.print(f"  [dim]{status['message']}[/dim]\n")
+
+
+@startup_app.command("preview")
+def startup_preview(
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Preview user-level init service configuration without writing to disk."""
+    json_output = bool(_val(json_output, False))
+    svc = StartupService()
+    prev = svc.preview()
+
+    if json_output:
+        typer.echo(json.dumps(prev, indent=2))
+        return
+
+    console.print(f"\n[bold cyan]Startup Service Definition Preview ({prev['platform']})[/bold cyan]")
+    console.print(f"[dim]Target file: {prev['target_path']}[/dim]\n")
+    console.print(prev["content"])
+
+
+@startup_app.command("enable")
+def startup_enable(
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Enable automatic gateway startup on user login."""
+    json_output = bool(_val(json_output, False))
+    svc = StartupService()
+    try:
+        res = svc.enable()
+        if json_output:
+            typer.echo(json.dumps(res, indent=2))
+            return
+        render_message_box(
+            "Startup Enabled",
+            f"User startup service enabled for {res['platform']}.\nUnit path: {res['path']}\nStatus: {res.get('system_output') or 'Success'}",
+        )
+    except Exception as exc:
+        if json_output:
+            typer.echo(json.dumps({"error": str(exc), "success": False}, indent=2))
+            raise typer.Exit(code=1)
+        render_error_box("Startup Enable Failed", str(exc))
+        raise typer.Exit(code=1)
+
+
+@startup_app.command("disable")
+def startup_disable(
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Disable and remove automatic gateway startup."""
+    json_output = bool(_val(json_output, False))
+    svc = StartupService()
+    res = svc.disable()
+    if json_output:
+        typer.echo(json.dumps(res, indent=2))
+        return
+    render_message_box("Startup Disabled", f"Automatic startup disabled. Removed {res['path']}.")
+
+
+# =============================================================================
+# Lifecycle Hooks CLI
+# =============================================================================
+
+@hooks_app.command("list")
+def hooks_list(
+    plain: bool = typer.Option(False, "--plain", help="Output plain text without rich tables"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """List registered lifecycle event hooks."""
+    plain = bool(_val(plain, False))
+    json_output = bool(_val(json_output, False))
+    svc = LifecycleHookService()
+    hooks = svc.list_hooks()
+
+    if json_output:
+        typer.echo(json.dumps([h.model_dump() for h in hooks], indent=2))
+        return
+
+    if plain:
+        for h in hooks:
+            typer.echo(f"{h.hook_id}\t{h.name}\t{h.event_type}\t{'enabled' if h.is_enabled else 'disabled'}\t{'tripped' if h.is_tripped else 'ok'}")
+        return
+
+    table = Table(title="Lifecycle Hooks", show_lines=True)
+    table.add_column("Hook ID", style="cyan")
+    table.add_column("Name")
+    table.add_column("Event Type")
+    table.add_column("Command", style="dim")
+    table.add_column("Enabled")
+    table.add_column("Approved")
+    table.add_column("Failures")
+    table.add_column("Circuit Breaker")
+
+    for h in hooks:
+        tripped_style = "[red]TRIPPED[/red]" if h.is_tripped else "[green]NORMAL[/green]"
+        table.add_row(
+            h.hook_id,
+            h.name,
+            h.event_type,
+            " ".join(h.command),
+            "[green]Yes[/green]" if h.is_enabled else "[dim]No[/dim]",
+            "[green]Yes[/green]" if h.approved_by_user else "[yellow]No[/yellow]",
+            str(h.consecutive_failures),
+            tripped_style,
+        )
+    console.print(table)
+
+
+@hooks_app.command("inspect")
+def hooks_inspect(
+    hook_id: str = typer.Argument(..., help="Hook ID to inspect"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Inspect hook configuration, circuit breaker state, and recent execution runs."""
+    json_output = bool(_val(json_output, False))
+    svc = LifecycleHookService()
+    hook = svc.get_hook(hook_id)
+    if not hook:
+        if json_output:
+            typer.echo(json.dumps({"error": f"Hook '{hook_id}' not found", "success": False}, indent=2))
+            raise typer.Exit(code=1)
+        render_error_box("Hook Not Found", f"No hook with ID '{hook_id}'.")
+        raise typer.Exit(code=1)
+
+    runs = svc.list_runs(hook_id=hook_id, limit=10)
+
+    if json_output:
+        typer.echo(
+            json.dumps(
+                {
+                    "hook": hook.model_dump(),
+                    "recent_runs": [r.model_dump() for r in runs],
+                },
+                indent=2,
+            )
+        )
+        return
+
+    console.print(f"\n[bold cyan]Hook Inspection: {hook.name} ({hook.hook_id})[/bold cyan]")
+    console.print(f"  [bold]Event Type:[/bold]      {hook.event_type}")
+    console.print(f"  [bold]Command:[/bold]         {' '.join(hook.command)}")
+    console.print(f"  [bold]Enabled:[/bold]         {'Yes' if hook.is_enabled else 'No'}")
+    console.print(f"  [bold]Approved:[/bold]        {'Yes' if hook.approved_by_user else 'No'}")
+    console.print(f"  [bold]Failures:[/bold]        {hook.consecutive_failures}")
+    console.print(f"  [bold]Circuit Breaker:[/bold] {'[red]TRIPPED[/red]' if hook.is_tripped else '[green]NORMAL[/green]'}")
+
+    console.print("\n[bold]Recent Invocations (last 10):[/bold]")
+    if not runs:
+        console.print("  [dim]No recorded runs yet.[/dim]")
+    else:
+        for r in runs:
+            status_color = "green" if r.status == "success" else "red"
+            console.print(f"  - [{status_color}]{r.status}[/{status_color}] at {r.triggered_at} ({r.duration_ms:.1f}ms): {r.output_summary}")
+
+
+@hooks_app.command("enable")
+def hooks_enable(
+    hook_id: str = typer.Argument(..., help="Hook ID to enable"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Enable a lifecycle hook (requires user confirmation/approval)."""
+    json_output = bool(_val(json_output, False))
+    svc = LifecycleHookService()
+    try:
+        hook = svc.enable_hook(hook_id, approved=True)
+        if json_output:
+            typer.echo(json.dumps(hook.model_dump(), indent=2))
+            return
+        render_message_box("Hook Enabled", f"Lifecycle hook '{hook.name}' ({hook_id}) is now enabled.")
+    except Exception as exc:
+        if json_output:
+            typer.echo(json.dumps({"error": str(exc), "success": False}, indent=2))
+            raise typer.Exit(code=1)
+        render_error_box("Enable Failed", str(exc))
+        raise typer.Exit(code=1)
+
+
+@hooks_app.command("disable")
+def hooks_disable(
+    hook_id: str = typer.Argument(..., help="Hook ID to disable"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Disable a lifecycle hook."""
+    json_output = bool(_val(json_output, False))
+    svc = LifecycleHookService()
+    try:
+        hook = svc.disable_hook(hook_id)
+        if json_output:
+            typer.echo(json.dumps(hook.model_dump(), indent=2))
+            return
+        render_message_box("Hook Disabled", f"Lifecycle hook '{hook.name}' ({hook_id}) disabled.")
+    except Exception as exc:
+        if json_output:
+            typer.echo(json.dumps({"error": str(exc), "success": False}, indent=2))
+            raise typer.Exit(code=1)
+        render_error_box("Disable Failed", str(exc))
+        raise typer.Exit(code=1)
+
+
+@hooks_app.command("test")
+def hooks_test(
+    hook_id: str = typer.Argument(..., help="Hook ID to test with simulated event"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Test hook execution with a synthetic event payload."""
+    json_output = bool(_val(json_output, False))
+    svc = LifecycleHookService()
+    hook = svc.get_hook(hook_id)
+    if not hook:
+        if json_output:
+            typer.echo(json.dumps({"error": f"Hook '{hook_id}' not found", "success": False}, indent=2))
+            raise typer.Exit(code=1)
+        render_error_box("Hook Not Found", f"No hook with ID '{hook_id}'.")
+        raise typer.Exit(code=1)
+
+    event = HookEvent(
+        event_type=hook.event_type if hook.event_type != "all" else "gateway.started",
+        data={"test": True, "source": "cli_test"},
+    )
+    res = svc.execute_hook(hook, event)
+
+    if json_output:
+        typer.echo(json.dumps(res.model_dump(), indent=2))
+        return
+
+    status_color = "green" if res.status == "success" else "red"
+    console.print(f"\n[bold cyan]Hook Test Result: {hook.name}[/bold cyan]")
+    console.print(f"  [bold]Status:[/bold]   [{status_color}]{res.status}[/{status_color}]")
+    console.print(f"  [bold]Exit Code:[/bold] {res.exit_code}")
+    console.print(f"  [bold]Duration:[/bold]  {res.duration_ms:.1f}ms")
+    console.print(f"  [bold]Output:[/bold]    {res.output_summary}\n")
+
+
+@hooks_app.command("reset-circuit")
+def hooks_reset_circuit(
+    hook_id: str = typer.Argument(..., help="Hook ID to reset circuit breaker"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Reset tripped circuit breaker for a hook."""
+    json_output = bool(_val(json_output, False))
+    svc = LifecycleHookService()
+    try:
+        hook = svc.reset_circuit_breaker(hook_id)
+        if json_output:
+            typer.echo(json.dumps(hook.model_dump(), indent=2))
+            return
+        render_message_box("Circuit Breaker Reset", f"Circuit breaker reset for hook '{hook.name}' ({hook_id}).")
+    except Exception as exc:
+        if json_output:
+            typer.echo(json.dumps({"error": str(exc), "success": False}, indent=2))
+            raise typer.Exit(code=1)
+        render_error_box("Reset Failed", str(exc))
+        raise typer.Exit(code=1)
+
+
+if __name__ == "__main__":
+    app()
+
+
 

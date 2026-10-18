@@ -289,18 +289,18 @@ If you use LocalPilot in your research, academic study, or open-source projects,
 ```bibtex
 @software{fakhruldeen_2026_localpilot,
   author       = {Mohamed (Fouad) Fakhruldeen},
-  title        = {fakhruldeen/LocalPilot: v0.1.8},
+  title        = {fakhruldeen/LocalPilot: v0.1.9},
   month        = oct,
   year         = 2026,
   publisher    = {Zenodo},
-  version      = {v0.1.8},
+  version      = {v0.1.9},
   doi          = {10.5281/zenodo.23424540},
   url          = {https://doi.org/10.5281/zenodo.23424540}
 }
 ```
 
 **Text / APA Citation:**
-> Mohamed (Fouad) Fakhruldeen. (2026). fakhruldeen/LocalPilot: v0.1.8 (Version v0.1.8) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23424540
+> Mohamed (Fouad) Fakhruldeen. (2026). fakhruldeen/LocalPilot: v0.1.9 (Version v0.1.9) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23424540
 
 ---
 

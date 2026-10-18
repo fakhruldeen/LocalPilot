@@ -150,7 +150,7 @@
                 <img src="../img/logo.png" alt="LocalPilot Logo" class="w-10 h-10 rounded-xl object-contain border border-white/10 group-hover:scale-105 transition-transform duration-300">
                 <span class="font-bold text-xl tracking-tight text-white flex items-center gap-2">
                     LocalPilot
-                    <span class="text-xs bg-brand/10 text-brand px-2 py-0.5 rounded-full border border-brand/20 font-mono font-medium">v0.1.8</span>
+                    <span class="text-xs bg-brand/10 text-brand px-2 py-0.5 rounded-full border border-brand/20 font-mono font-medium">v0.1.9</span>
                 </span>
             </a>
 
@@ -526,7 +526,7 @@
                             </tr>
                             <tr>
                                 <td class="p-4 font-mono font-bold text-brand" dir="ltr">localpilot discover</td>
-                                <td class="p-4">استعراض النماذج المتوافقة بنسبة 100% مع جهازك وتقييم أدائها.</td>
+                                <td class="p-4">استعراض النماذج المتوافقة مع مواصفات جهازك وميزانية الذاكرة وتقييم أدائها.</td>
                                 <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot discover -q "qwen"</td>
                             </tr>
                             <tr>
@@ -624,6 +624,21 @@
                                 <td class="p-4">إدارة مفاتيح API المحلية، وتتبع مقاييس استهلاك الرموز والأداء الحية (TPS، TTFT، الكمون)، وتوليد إعدادات الربط الموجهة للتطبيقات مثل OpenCode و Continue و Cursor.</td>
                                 <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot connect opencode --write</td>
                             </tr>
+                            <tr>
+                                <td class="p-4 font-mono font-bold text-brand" dir="ltr">localpilot connections</td>
+                                <td class="p-4">إدارة اتصالات أدوات التطوير وربطها بالنماذج، وإجراء فحص تشخيصي خماسي المراحل للاتصال، واستعادة الملفات بأمان عند قطع الاتصال دون المساس بتعديلات المستخدم.</td>
+                                <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot connections list</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-mono font-bold text-brand" dir="ltr">localpilot startup</td>
+                                <td class="p-4">إدارة بدء التشغيل التلقائي لخادم الاستدلال على مستوى المستخدم فقط (systemd user أو launchd) دون الحاجة إطلاقاً لصلاحيات الجذر أو المسؤول (Root/Sudo).</td>
+                                <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot startup enable</td>
+                            </tr>
+                            <tr>
+                                <td class="p-4 font-mono font-bold text-brand" dir="ltr">localpilot hooks</td>
+                                <td class="p-4">إدارة خطافات دورة الحياة المعزولة للأحداث (بدء الخادم، تحميل النماذج) مع عزل بيئة التشغيل، وقواطع الدوائر الآلية (Circuit Breakers) عند تكرار الفشل.</td>
+                                <td class="p-4 font-mono text-xs text-slate-400" dir="ltr">localpilot hooks list</td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
@@ -656,7 +671,7 @@
                     <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="hover:text-brand transition-colors underline font-mono text-slate-300">10.5281/zenodo.23424540</a>
                 </div>
                 <div class="text-center md:text-left leading-relaxed" dir="ltr">
-                    Mohamed (Fouad) Fakhruldeen. (2026). <em class="text-slate-300">fakhruldeen/LocalPilot: v0.1.8</em> (Version v0.1.8) [Computer software]. Zenodo. <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="text-brand hover:underline font-mono">https://doi.org/10.5281/zenodo.23424540</a>
+                    Mohamed (Fouad) Fakhruldeen. (2026). <em class="text-slate-300">fakhruldeen/LocalPilot: v0.1.9</em> (Version v0.1.9) [Computer software]. Zenodo. <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="text-brand hover:underline font-mono">https://doi.org/10.5281/zenodo.23424540</a>
                 </div>
             </div>
         </div>

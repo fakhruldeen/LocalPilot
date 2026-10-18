@@ -121,7 +121,8 @@ class ApiKeyRecord(BaseModel):
                 if datetime.now(timezone.utc) > exp_dt:
                     return False
             except Exception:
-                pass
+                # Malformed expiry must fail closed
+                return False
         candidate_hash = hashlib.sha256(candidate_secret.encode("utf-8")).hexdigest()
         return secrets.compare_digest(self.verifier, candidate_hash)
 
@@ -305,3 +306,107 @@ class MetricsDictionary:
             d["title"] = d["name"]
             return d
         return None
+
+
+class ConnectionStatus(str, Enum):
+    ACTIVE = "active"
+    DISCONNECTED = "disconnected"
+    FAILED = "failed"
+
+
+class ConnectionVerificationResult(BaseModel):
+    """Result of step-by-step connection diagnostic probes."""
+    config_valid: bool = False
+    gateway_reachable: bool = False
+    key_valid: bool = False
+    model_authorized: bool = False
+    probe_passed: bool = False
+    client_accepted: Optional[bool] = None
+    details: Dict[str, Any] = Field(default_factory=dict)
+    error_message: Optional[str] = None
+
+
+class ConnectionProfile(BaseModel):
+    """Persistent record of an application connection without raw credentials."""
+    connection_id: str = Field(default_factory=lambda: f"conn_{secrets.token_hex(6)}")
+    name: str
+    client_type: str
+    template_version: str = "1.0"
+    model_alias: str
+    gateway_url: str
+    key_id: str
+    target_path: Optional[str] = None
+    backup_path: Optional[str] = None
+    status: ConnectionStatus = ConnectionStatus.ACTIVE
+    verification: ConnectionVerificationResult = Field(default_factory=ConnectionVerificationResult)
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"))
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"))
+
+
+class HookEventType(str, Enum):
+    GATEWAY_STARTED = "gateway.started"
+    GATEWAY_STOPPED = "gateway.stopped"
+    MODEL_READY = "model.ready"
+    MODEL_UNLOADED = "model.unloaded"
+    SETUP_COMPLETED = "setup.completed"
+    SETUP_FAILED = "setup.failed"
+    VERSION_ACTIVATED = "version.activated"
+    RECOVERY_REQUIRED = "recovery.required"
+    CONNECTION_VERIFIED = "connection.verified"
+    ALL = "all"
+
+
+class HookEvent(BaseModel):
+    """Sanitized, privacy-safe lifecycle event payload."""
+    event_id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    event_type: str
+    timestamp: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"))
+    operation_id: Optional[str] = None
+    data: Dict[str, Any] = Field(default_factory=dict)
+
+    def __init__(self, **data: Any) -> None:
+        super().__init__(**data)
+        self.sanitize()
+
+    def sanitize(self) -> None:
+        """Enforces privacy-first boundaries: strips secrets, tokens, prompts, and completions."""
+        forbidden_keys = {
+            "key", "api_key", "secret", "token", "password", "authorization",
+            "prompt", "completion", "messages", "content", "bearer", "hashed_secret"
+        }
+        sanitized_data: Dict[str, Any] = {}
+        for k, v in self.data.items():
+            if k.lower() in forbidden_keys:
+                continue
+            if isinstance(v, str) and (v.startswith("sk-local-") or v.startswith("Bearer ")):
+                continue
+            sanitized_data[k] = v
+        self.data = sanitized_data
+
+
+class HookDefinition(BaseModel):
+    """Isolated lifecycle hook definition with safety and circuit breaker attributes."""
+    hook_id: str = Field(default_factory=lambda: f"hook_{secrets.token_hex(6)}")
+    name: str
+    event_type: str
+    action_type: str = "executable"  # "builtin" or "executable"
+    command: List[str] = Field(default_factory=list)
+    is_enabled: bool = False
+    approved_by_user: bool = False
+    consecutive_failures: int = 0
+    is_tripped: bool = False
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"))
+    updated_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"))
+
+
+class HookRunResult(BaseModel):
+    """Outcome of an isolated lifecycle hook invocation."""
+    run_id: str = Field(default_factory=lambda: f"hrun_{secrets.token_hex(6)}")
+    hook_id: str
+    event_type: str
+    triggered_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"))
+    status: str  # "success", "failed", "timeout", "circuit_broken", "skipped"
+    exit_code: Optional[int] = None
+    duration_ms: float = 0.0
+    output_summary: Optional[str] = None
+

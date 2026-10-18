@@ -384,6 +384,60 @@ class DatabaseManager:
                 )
                 applied.add(4)
 
+            if 5 not in applied:
+                # Migration v5: Guided application connection profiles and lifecycle hooks
+                conn.execute("""
+                CREATE TABLE IF NOT EXISTS connection_profiles (
+                    connection_id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    client_type TEXT NOT NULL,
+                    template_version TEXT NOT NULL,
+                    model_alias TEXT NOT NULL,
+                    gateway_url TEXT NOT NULL,
+                    key_id TEXT NOT NULL REFERENCES api_keys(key_id),
+                    target_path TEXT,
+                    backup_path TEXT,
+                    status TEXT NOT NULL,
+                    verification_json TEXT NOT NULL DEFAULT '{}',
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+                """)
+
+                conn.execute("""
+                CREATE TABLE IF NOT EXISTS lifecycle_hooks (
+                    hook_id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    event_type TEXT NOT NULL,
+                    action_type TEXT NOT NULL,
+                    command_json TEXT NOT NULL DEFAULT '[]',
+                    is_enabled INTEGER NOT NULL DEFAULT 0,
+                    approved_by_user INTEGER NOT NULL DEFAULT 0,
+                    consecutive_failures INTEGER NOT NULL DEFAULT 0,
+                    is_tripped INTEGER NOT NULL DEFAULT 0,
+                    created_at TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                )
+                """)
+
+                conn.execute("""
+                CREATE TABLE IF NOT EXISTS hook_runs (
+                    run_id TEXT PRIMARY KEY,
+                    hook_id TEXT NOT NULL REFERENCES lifecycle_hooks(hook_id),
+                    event_type TEXT NOT NULL,
+                    triggered_at TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    exit_code INTEGER,
+                    duration_ms REAL NOT NULL,
+                    output_summary TEXT
+                )
+                """)
+
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, applied_at, description) VALUES (5, datetime('now'), 'v5: connection profiles and lifecycle hooks')"
+                )
+                applied.add(5)
+
     def backfill_v4_from_installations(self, conn: sqlite3.Connection) -> None:
         """Non-destructive idempotent backfill promoting installations to versioned model management."""
         installations = conn.execute("SELECT * FROM installations").fetchall()

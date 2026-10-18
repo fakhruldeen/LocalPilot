@@ -80,7 +80,8 @@ class ApiKeyService:
                     app_name = pdata.get("app_name")
                     policy = ApiKeyPolicy(**pdata)
                 except Exception:
-                    pass
+                    # Malformed stored policy must fail closed
+                    policy = ApiKeyPolicy(allowed_aliases=[])
 
             is_revoked = bool(d.get("revoked_at"))
             result.append(
@@ -116,7 +117,7 @@ class ApiKeyService:
                 app_name = pdata.get("app_name")
                 policy = ApiKeyPolicy(**pdata)
             except Exception:
-                pass
+                policy = ApiKeyPolicy(allowed_aliases=[])
 
         is_revoked = bool(d.get("revoked_at"))
         return ApiKeyRecord(
@@ -155,7 +156,7 @@ class ApiKeyService:
                     app_name = pdata.get("app_name")
                     policy = ApiKeyPolicy(**pdata)
                 except Exception:
-                    pass
+                    policy = ApiKeyPolicy(allowed_aliases=[])
 
             rec = ApiKeyRecord(
                 key_id=d["key_id"],
@@ -188,16 +189,18 @@ class ApiKeyService:
         return True
 
     def rotate_key(self, key_id: str) -> Tuple[str, ApiKeyRecord]:
-        """Rotates the secret for an existing key, returning the new raw token and updated record."""
+        """Rotates the secret for an existing active key, returning the new raw token and updated record."""
         existing = self.get_key(key_id)
         if not existing:
             raise ValueError(f"API key '{key_id}' does not exist.")
+        if existing.status == ApiKeyStatus.REVOKED or existing.revoked_at:
+            raise ValueError(f"Cannot rotate revoked API key '{key_id}'. Issue a new key instead.")
 
         raw_token, new_rec = ApiKeyRecord.generate(name=existing.display_name)
         conn = self.db.get_connection()
         with conn:
             conn.execute(
-                "UPDATE api_keys SET prefix = ?, hashed_secret = ?, revoked_at = NULL WHERE key_id = ?",
+                "UPDATE api_keys SET prefix = ?, hashed_secret = ? WHERE key_id = ?",
                 (new_rec.secret_prefix, new_rec.verifier, key_id),
             )
         updated = self.get_key(key_id)

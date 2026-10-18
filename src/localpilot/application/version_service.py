@@ -4,6 +4,7 @@ from __future__ import annotations
 import json
 import logging
 import os
+import threading
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
@@ -27,6 +28,8 @@ class ModelVersionService:
 
     def __init__(self, db: Optional[DatabaseManager] = None) -> None:
         self.db = db or get_db()
+        self._active_leases: Dict[str, Dict[str, Any]] = {}
+        self._lease_lock = threading.Lock()
 
     # =========================================================================
     # Logical Models
@@ -290,6 +293,48 @@ class ModelVersionService:
         version.pinned_reason = pinned_reason
         version.pin_count = new_count
         return version
+
+    def acquire_execution_lease(self, version_id: str, owner: str = "request") -> str:
+        """Acquires an ephemeral in-flight execution lease on a model version.
+
+        This guarantees that concurrent requests prevent version or file deletion
+        without mutating or clearing persistent user retention pins.
+        """
+        version = self.get_version(version_id, include_deleted=False)
+        if not version:
+            raise ValueError(f"Version '{version_id}' does not exist or is deleted.")
+        lease_id = f"lease-{uuid.uuid4().hex}"
+        with self._lease_lock:
+            self._active_leases[lease_id] = {
+                "version_id": version_id,
+                "owner": owner,
+                "created_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+            }
+        return lease_id
+
+    def release_execution_lease(self, lease_id: str) -> None:
+        """Releases an in-flight execution lease."""
+        with self._lease_lock:
+            self._active_leases.pop(lease_id, None)
+
+    def is_version_in_use(self, version_id: str) -> bool:
+        """Checks if a version is currently in use by persistent pin or active execution leases."""
+        with self._lease_lock:
+            has_lease = any(item["version_id"] == version_id for item in self._active_leases.values())
+        if has_lease:
+            return True
+        ver = self.get_version(version_id, include_deleted=False)
+        return bool(ver and ver.is_pinned)
+
+    def list_active_leases(self) -> List[Dict[str, Any]]:
+        """Returns a snapshot of all active in-flight execution leases."""
+        with self._lease_lock:
+            return [{"lease_id": k, **v} for k, v in self._active_leases.items()]
+
+    def get_active_leases_count(self) -> int:
+        """Returns the number of current active in-flight execution leases."""
+        with self._lease_lock:
+            return len(self._active_leases)
 
     def compare_versions(self, version_a_id: str, version_b_id: str) -> Dict[str, Any]:
         """Compares two model versions side-by-side."""
@@ -616,14 +661,23 @@ class ModelVersionService:
         if version.is_deleted:
             return {"deleted_from_db": True, "file_deleted": False, "message": "Already marked deleted."}
 
-        # 1. Enforce Pin Protection
+        # 1. Enforce Execution Lease Check (in-flight requests)
+        with self._lease_lock:
+            active_leases_for_ver = [lid for lid, item in self._active_leases.items() if item["version_id"] == version_id]
+        if active_leases_for_ver and not force:
+            raise ValueError(
+                f"Version '{version_id}' is currently in active execution use ({len(active_leases_for_ver)} active lease(s)) "
+                f"and cannot be removed."
+            )
+
+        # 2. Enforce Pin Protection
         if version.is_pinned and not force:
             raise ValueError(
                 f"Version '{version_id}' is pinned ({version.pinned_reason or 'user protected'}) "
                 f"and cannot be removed without unpinning or using force."
             )
 
-        # 2. Enforce Active Alias Check
+        # 3. Enforce Active Alias Check
         conn = self.db.get_connection()
         aliases = conn.execute("SELECT alias_name FROM model_aliases WHERE target_version_id = ?", (version_id,)).fetchall()
         if aliases and not force:
@@ -669,6 +723,8 @@ class ModelVersionService:
             "shared_by_other_versions": other_sharers > 0,
             "reason": "Shared physical artifact preserved" if (other_sharers > 0) else "Removed successfully",
         }
+
+    remove_version = safe_remove_version
 
     # =========================================================================
     # Verification Records

@@ -4,7 +4,10 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import signal
+import subprocess
 import sys
+import time
 import uuid
 from typing import Any, Callable, Dict, List, Optional
 import psutil
@@ -31,6 +34,7 @@ from textual.widgets import (
     TabPane,
 )
 
+from localpilot.application.integration_service import IntegrationTemplateService
 from localpilot.application.jobs import JobManager
 from localpilot.application.runtime_service import RuntimeLifecycleService
 from localpilot.application.setup_workflow import ApprovalRecord, SetupPlan, SetupWorkflow
@@ -455,6 +459,311 @@ class ModelComparisonModal(ModalScreen[None]):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         if event.button.id == "close-comparison-btn":
             self.dismiss(None)
+
+
+class CreateKeyModal(ModalScreen[Optional[Dict[str, Any]]]):
+    """Modal to create a new local API connection for an external application."""
+
+    BINDINGS = [
+        ("escape", "dismiss_none", "Cancel"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="create-key-dialog"):
+            yield Label("[bold cyan]Connect an External Application[/bold cyan]", id="create-key-title")
+            yield Label("Generate a loopback API key to connect an external tool (e.g. OpenCode, Continue, Cursor):", id="create-key-desc")
+
+            yield Label("Application Identifier:", classes="field-label")
+            yield Input(placeholder="e.g. opencode, continue, cursor, custom", id="input-app-name", value="opencode")
+
+            yield Label("Connection Label / Purpose:", classes="field-label")
+            yield Input(placeholder="e.g. Coding Assistant, Workspace", id="input-display-name", value="Coding Assistant")
+
+            yield Label("Allowed Models / Aliases (comma-separated, blank for all):", classes="field-label")
+            yield Input(placeholder="e.g. coding, default", id="input-allowed-models", value="")
+
+            yield Label("Rate Limit (requests per minute, 0 for unlimited):", classes="field-label")
+            yield Input(placeholder="0", id="input-rate-limit", value="0")
+
+            with Horizontal(id="create-key-buttons"):
+                yield Button("Cancel (Esc)", variant="default", id="btn-cancel-key")
+                yield Button("Generate Key", variant="primary", id="btn-submit-key")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn-cancel-key":
+            self.dismiss(None)
+        elif event.button.id == "btn-submit-key":
+            app_name = self.query_one("#input-app-name", Input).value.strip() or "custom"
+            display_name = self.query_one("#input-display-name", Input).value.strip() or "External App"
+            raw_models = self.query_one("#input-allowed-models", Input).value.strip()
+            allowed_models = [m.strip() for m in raw_models.split(",") if m.strip()] if raw_models else None
+            rate_limit_str = self.query_one("#input-rate-limit", Input).value.strip()
+            rate_limit = int(rate_limit_str) if rate_limit_str.isdigit() and int(rate_limit_str) > 0 else None
+
+            self.dismiss({
+                "app_name": app_name,
+                "display_name": display_name,
+                "allowed_models": allowed_models,
+                "rate_limit_per_minute": rate_limit,
+            })
+
+    def action_dismiss_none(self) -> None:
+        self.dismiss(None)
+
+
+class KeyDisplayModal(ModalScreen[None]):
+    """Displays raw secret token once upon creation."""
+
+    BINDINGS = [
+        ("escape", "dismiss", "Close"),
+        ("enter", "dismiss", "Close"),
+    ]
+
+    def __init__(self, key_id: str, display_name: str, app_name: str, raw_secret: str) -> None:
+        super().__init__()
+        self.key_id = key_id
+        self.display_name = display_name
+        self.app_name = app_name
+        self.raw_secret = raw_secret
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="key-display-dialog"):
+            yield Label("[bold green]API Connection Created Successfully[/bold green]", id="key-display-title")
+            yield Label(
+                "[bold red]WARNING:[/bold red] Copy your secret key now. For your security, LocalPilot does not store the raw key in plaintext and it [bold red]will never be shown again[/bold red].",
+                id="key-display-warning",
+            )
+            with Container(id="key-box"):
+                yield Label(f"[bold cyan]{self.raw_secret}[/bold cyan]", id="key-secret-text")
+
+            yield Label(f"Application: [bold]{self.app_name}[/bold]  |  Name: [bold]{self.display_name}[/bold]")
+            yield Label("Endpoint: [cyan]http://127.0.0.1:8080/v1[/cyan]")
+
+            with Horizontal(id="key-display-buttons"):
+                yield Button("Connection Setup Guide", variant="default", id="btn-key-setup-guide")
+                yield Button("Done (Esc)", variant="primary", id="btn-key-done")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id in ("btn-key-done", "close"):
+            self.dismiss(None)
+        elif event.button.id == "btn-key-setup-guide":
+            self.dismiss(None)
+            self.app.push_screen(ConnectionSetupModal(self.raw_secret, self.app_name))
+
+
+class RotateKeyModal(ModalScreen[bool]):
+    """Confirms immediate key rotation and warns about breaking active clients."""
+
+    BINDINGS = [
+        ("escape", "dismiss_false", "Cancel"),
+    ]
+
+    def __init__(self, key_id: str, display_name: str, prefix: str) -> None:
+        super().__init__()
+        self.key_id = key_id
+        self.display_name = display_name
+        self.prefix = prefix
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="rotate-key-dialog"):
+            yield Label("[bold yellow]Rotate API Key[/bold yellow]", id="rotate-key-title")
+            yield Label(
+                f"Are you sure you want to rotate the key for '[bold]{self.display_name}[/bold]' ({self.prefix}...)?"
+                "\n\n[bold red]IMPORTANT:[/bold red] Rotating will immediately invalidate the current secret. "
+                "Any application currently using it will be unable to connect until updated with the new secret.",
+                id="rotate-key-message",
+            )
+            with Horizontal(id="rotate-key-buttons"):
+                yield Button("Cancel (Esc)", variant="default", id="btn-cancel-rotate")
+                yield Button("Rotate Immediately", variant="error", id="btn-confirm-rotate")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn-confirm-rotate":
+            self.dismiss(True)
+        else:
+            self.dismiss(False)
+
+    def action_dismiss_false(self) -> None:
+        self.dismiss(False)
+
+
+class ConnectionSetupModal(ModalScreen[None]):
+    """Interactive client integration modal showing copyable snippets for OpenCode, Continue, Cursor, Python/cURL."""
+
+    BINDINGS = [
+        ("escape", "dismiss", "Close"),
+        ("q", "dismiss", "Close"),
+    ]
+
+    def __init__(self, api_key: str = "sk-local-YOUR_KEY_HERE", default_client: str = "opencode") -> None:
+        super().__init__()
+        self.api_key = api_key
+        self.default_client = default_client
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="setup-guide-dialog"):
+            yield Label("[bold cyan]Application Connection Guide[/bold cyan]", id="setup-guide-title")
+            yield Label("Configure your developer tools to use LocalPilot's OpenAI-compatible inference API on loopback.")
+
+            with TabbedContent(initial="client-opencode"):
+                with TabPane("OpenCode", id="client-opencode"):
+                    with VerticalScroll():
+                        opencode_config = IntegrationTemplateService.get_opencode_template("http://127.0.0.1:8080/v1", self.api_key, "coding")
+                        yield Markdown(
+                            "### OpenCode Configuration\n\n"
+                            "Save to `~/.config/opencode/config.json` or paste into project settings:\n\n"
+                            "```json\n"
+                            + json.dumps(opencode_config, indent=2)
+                            + "\n```\n"
+                        )
+                with TabPane("Continue (VS Code)", id="client-continue"):
+                    with VerticalScroll():
+                        continue_config = IntegrationTemplateService.get_continue_template("http://127.0.0.1:8080/v1", self.api_key, "coding")
+                        yield Markdown(
+                            "### Continue.dev Configuration\n\n"
+                            "Add this entry to `models` in `~/.continue/config.json`:\n\n"
+                            "```json\n"
+                            + json.dumps(continue_config, indent=2)
+                            + "\n```\n"
+                        )
+                with TabPane("Cursor", id="client-cursor"):
+                    with VerticalScroll():
+                        cursor_info = IntegrationTemplateService.get_cursor_instructions("http://127.0.0.1:8080/v1", self.api_key, "coding")
+                        steps_md = "\n".join(f"{i+1}. {s}" for i, s in enumerate(cursor_info["steps"]))
+                        yield Markdown(
+                            "### Cursor Settings\n\n"
+                            + steps_md
+                            + "\n\n**Base URL:** `http://127.0.0.1:8080/v1`\n"
+                            + f"**API Key:** `{self.api_key}`\n"
+                            + "**Model:** `coding` or `default`\n"
+                        )
+                with TabPane("cURL / Python", id="client-curl"):
+                    with VerticalScroll():
+                        curl_cmd = (
+                            f"curl http://127.0.0.1:8080/v1/chat/completions \\\n"
+                            f"  -H 'Authorization: Bearer {self.api_key}' \\\n"
+                            f"  -H 'Content-Type: application/json' \\\n"
+                            f"  -d '{{\"model\": \"default\", \"messages\": [{{\"role\": \"user\", \"content\": \"Hello!\"}}]}}'\n"
+                        )
+                        py_code = (
+                            "from openai import OpenAI\n\n"
+                            f"client = OpenAI(base_url='http://127.0.0.1:8080/v1', api_key='{self.api_key}')\n"
+                            "response = client.chat.completions.create(\n"
+                            "    model='default',\n"
+                            "    messages=[{'role': 'user', 'content': 'Hello!'}]\n"
+                            ")\n"
+                            "print(response.choices[0].message.content)\n"
+                        )
+                        yield Markdown(
+                            "### cURL Command\n\n```bash\n"
+                            + curl_cmd
+                            + "```\n\n### Python (openai SDK)\n\n```python\n"
+                            + py_code
+                            + "```\n"
+                        )
+
+            with Horizontal(id="setup-guide-buttons"):
+                yield Button("Close (Esc)", variant="primary", id="btn-close-guide")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn-close-guide":
+            self.dismiss(None)
+
+
+class CompareVersionsModal(ModalScreen[None]):
+    """Side-by-side comparison between two model versions."""
+
+    BINDINGS = [
+        ("escape", "dismiss", "Close"),
+        ("q", "dismiss", "Close"),
+    ]
+
+    def __init__(self, version_a_id: str, version_b_id: str) -> None:
+        super().__init__()
+        self.va_id = version_a_id
+        self.vb_id = version_b_id
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="compare-versions-dialog"):
+            yield Label(f"[bold cyan]Compare Versions: {self.va_id} vs {self.vb_id}[/bold cyan]", id="compare-versions-title")
+            with VerticalScroll(id="compare-versions-scroll"):
+                table = DataTable(id="compare-versions-table")
+                table.cursor_type = "row"
+                yield table
+            with Horizontal(id="compare-versions-buttons"):
+                yield Button("Close (Esc)", variant="primary", id="btn-close-compare")
+
+    def on_mount(self) -> None:
+        service = ModelVersionService()
+        table = self.query_one("#compare-versions-table", DataTable)
+        try:
+            cmp_res = service.compare_versions(self.va_id, self.vb_id)
+            va = cmp_res["version_a"]
+            vb = cmp_res["version_b"]
+            table.add_columns("Attribute", f"Version A ({va['version_id']})", f"Version B ({vb['version_id']})")
+            table.add_row("Logical Model", va["logical_model_id"], vb["logical_model_id"])
+            table.add_row("Version Tag", va["version_label"], vb["version_label"])
+            table.add_row("Quantization", va["quantization"] or "n/a", vb["quantization"] or "n/a")
+            size_a = f"{va['artifact_size_bytes'] / (1024*1024):.1f} MB" if va.get("artifact_size_bytes") else "-"
+            size_b = f"{vb['artifact_size_bytes'] / (1024*1024):.1f} MB" if vb.get("artifact_size_bytes") else "-"
+            table.add_row("Size on Disk", size_a, size_b)
+            table.add_row("Context Length", str(va.get("context_length", "-")), str(vb.get("context_length", "-")))
+            table.add_row("Pinned?", "YES" if va.get("is_pinned") else "no", "YES" if vb.get("is_pinned") else "no")
+            table.add_row("Profiles", str(len(va.get("profiles", []))), str(len(vb.get("profiles", []))))
+        except Exception as e:
+            table.add_columns("Error", "Details")
+            table.add_row("Failed to compare", str(e))
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn-close-compare":
+            self.dismiss(None)
+
+
+class SwitchAliasModal(ModalScreen[Optional[Dict[str, str]]]):
+    """Modal to switch an alias (e.g. coding, default) to target a specific version."""
+
+    BINDINGS = [
+        ("escape", "dismiss_none", "Cancel"),
+    ]
+
+    def __init__(self, current_alias: str = "default", available_versions: Optional[List[str]] = None) -> None:
+        super().__init__()
+        self.current_alias = current_alias
+        self.available_versions = available_versions or []
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="switch-alias-dialog"):
+            yield Label("[bold cyan]Switch Model Alias[/bold cyan]", id="switch-alias-title")
+            yield Label("Point a stable alias name to a target version without modifying client applications:")
+
+            yield Label("Alias Name (e.g. default, coding, writing):", classes="field-label")
+            yield Input(id="input-alias-name", value=self.current_alias)
+
+            yield Label("Target Version ID:", classes="field-label")
+            init_v = self.available_versions[0] if self.available_versions else ""
+            yield Input(placeholder="e.g. llama-3.2-3b-q4", id="input-target-version", value=init_v)
+
+            yield Label("Reason (optional audit log note):", classes="field-label")
+            yield Input(placeholder="e.g. Upgrade to newer quantized build", id="input-switch-reason", value="Manual alias switch")
+
+            with Horizontal(id="switch-alias-buttons"):
+                yield Button("Cancel (Esc)", variant="default", id="btn-cancel-alias")
+                yield Button("Activate Alias", variant="primary", id="btn-submit-alias")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn-cancel-alias":
+            self.dismiss(None)
+        elif event.button.id == "btn-submit-alias":
+            alias = self.query_one("#input-alias-name", Input).value.strip()
+            version_id = self.query_one("#input-target-version", Input).value.strip()
+            reason = self.query_one("#input-switch-reason", Input).value.strip()
+            if alias and version_id:
+                self.dismiss({"alias_name": alias, "version_id": version_id, "reason": reason})
+            else:
+                self.dismiss(None)
+
+    def action_dismiss_none(self) -> None:
+        self.dismiss(None)
 
 
 class GuidedSetupModal(ModalScreen[Optional[str]]):
@@ -1067,15 +1376,66 @@ class LocalPilotTUI(App):
     }
 
     /* Modal dialog styling */
-    ConfirmModal, RemoveModelModal, ModelDetailsModal, GuidedSetupModal, HelpModal, PerformanceSettingsModal, InterruptedSetupModal, AppErrorModal, ModelComparisonModal {
+    ConfirmModal, RemoveModelModal, ModelDetailsModal, GuidedSetupModal, HelpModal, PerformanceSettingsModal, InterruptedSetupModal, AppErrorModal, ModelComparisonModal, CreateKeyModal, KeyDisplayModal, RotateKeyModal, ConnectionSetupModal, CompareVersionsModal, SwitchAliasModal {
         align: center middle;
     }
-    #confirm-dialog, #remove-dialog, #perf-dialog, #interrupted-dialog, #app-error-dialog {
+    #confirm-dialog, #remove-dialog, #perf-dialog, #interrupted-dialog, #app-error-dialog, #create-key-dialog, #key-display-dialog, #rotate-key-dialog, #compare-versions-dialog, #switch-alias-dialog {
         padding: 1 2;
-        width: 74;
+        width: 76;
         height: auto;
         border: solid #00e5ff;
         background: #1e1e1e;
+    }
+    #setup-guide-dialog {
+        padding: 1 2;
+        width: 90%;
+        height: 85%;
+        border: solid #00e5ff;
+        background: #1e1e1e;
+    }
+    #key-box {
+        border: round #00e5ff;
+        background: #111111;
+        padding: 1 2;
+        margin: 1 0;
+    }
+    #home-live-bar {
+        height: 3;
+        align: left middle;
+        margin-bottom: 1;
+        background: #181818;
+        padding: 0 1;
+        border: solid #333333;
+    }
+    #home-live-bar Label {
+        margin-right: 2;
+    }
+    #home-badges-bar {
+        height: auto;
+        margin-bottom: 1;
+    }
+    #usage-filter-bar {
+        height: 3;
+        align: left middle;
+        margin-bottom: 1;
+    }
+    #usage-filter-bar Button {
+        margin-right: 1;
+    }
+    #usage-cards-row {
+        height: auto;
+        margin-bottom: 1;
+    }
+    .metric-card {
+        border: solid #333333;
+        padding: 1;
+        margin-right: 1;
+        height: auto;
+        background: #181818;
+    }
+    .metric-value {
+        text-style: bold;
+        color: #00e5ff;
     }
     #app-error-dialog {
         border: solid #ff5252;
@@ -1253,6 +1613,7 @@ class LocalPilotTUI(App):
         ("f1", "show_help", "Help & Guide"),
         ("?", "show_help", "Help"),
         ("h", "show_help", "Guide"),
+        ("p", "toggle_pause_live", "Pause / Resume"),
         ("1", "switch_to_home", "Home"),
         ("2", "switch_to_discover", "Discover"),
         ("3", "switch_to_installed", "Installed"),
@@ -1260,6 +1621,8 @@ class LocalPilotTUI(App):
         ("5", "switch_to_storage", "Storage"),
         ("6", "switch_to_activity", "Activity"),
         ("7", "switch_to_gateway", "Gateway & API"),
+        ("8", "switch_to_usage", "Usage & Metrics"),
+        ("9", "switch_to_jobs", "Jobs & Recovery"),
     ]
 
     def __init__(self, start_wizard: bool = False) -> None:
@@ -1279,6 +1642,9 @@ class LocalPilotTUI(App):
         self._search_seq: int = 0
         self._start_wizard_on_mount = start_wizard
         self._interrupted_job: Optional[Dict[str, Any]] = None
+        self._live_paused: bool = False
+        self._selected_time_window: str = "24h"
+        self._last_refresh_timestamp: float = time.time()
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -1286,6 +1652,27 @@ class LocalPilotTUI(App):
             with TabPane("Home", id="home-tab"):
                 with VerticalScroll():
                     yield Static(HOME_ASCII_BANNER, id="ascii-banner")
+
+                    # Live status & telemetry bar
+                    with Horizontal(id="home-live-bar"):
+                        yield Label("[bold green]● Gateway: Ready[/bold green]", id="home-gateway-status")
+                        yield Label("Updated: just now", id="home-freshness-pill", classes="freshness-pill")
+                        yield Button("Pause (P)", variant="default", id="btn-pause-live", tooltip="Pause or resume live telemetry updates (P)")
+
+                    # Badges summary row
+                    with Horizontal(id="home-badges-bar"):
+                        with Vertical(classes="panel metric-card", id="panel-badge-models"):
+                            yield Label("[bold]Active Models[/bold]")
+                            yield Label("0 running", id="home-badge-models", classes="metric-value")
+                        with Vertical(classes="panel metric-card", id="panel-badge-leases"):
+                            yield Label("[bold]In-Flight Requests[/bold]")
+                            yield Label("0 active", id="home-badge-leases", classes="metric-value")
+                        with Vertical(classes="panel metric-card", id="panel-badge-requests"):
+                            yield Label("[bold]Requests (24h)[/bold]")
+                            yield Label("0 total", id="home-badge-requests", classes="metric-value")
+                        with Vertical(classes="panel metric-card", id="panel-badge-tokens"):
+                            yield Label("[bold]Token Accounting[/bold]")
+                            yield Label("Complete", id="home-badge-tokens", classes="metric-value")
 
                     # Interrupted onboarding recovery banner
                     with Container(id="interrupted-card", classes="hidden"):
@@ -1341,6 +1728,9 @@ class LocalPilotTUI(App):
                     yield DataTable(id="installed-table")
                     with Horizontal(classes="table-actions-bar"):
                         yield Button("Chat with Model (Enter / C)", variant="primary", id="btn-installed-chat", tooltip="Open chat session with selected model (Enter or C)")
+                        yield Button("Pin / Unpin (P)", variant="default", id="btn-installed-pin", tooltip="Pin model to protect it from automatic removal")
+                        yield Button("Compare Versions", variant="default", id="btn-installed-compare", tooltip="Compare two model versions side-by-side")
+                        yield Button("Set Alias", variant="default", id="btn-installed-alias", tooltip="Map an alias (e.g. default, coding) to this model")
                         yield Button("View Details (V)", variant="default", id="btn-installed-details", tooltip="View technical metadata and file paths (V)")
                         yield Button("Remove Model (Delete)", variant="error", id="btn-installed-remove", tooltip="Delete model and reclaim disk space (Delete)")
 
@@ -1363,14 +1753,71 @@ class LocalPilotTUI(App):
 
             with TabPane("API & Gateway", id="gateway-tab"):
                 with VerticalScroll():
-                    yield Label("[bold cyan]Local Inference Gateway & Operational Monitoring[/bold cyan]")
-                    yield Label("", id="gateway-status-label")
-                    yield Label("\n[bold]Active Aliases & Routes[/bold]")
-                    yield DataTable(id="gateway-alias-table")
-                    yield Label("\n[bold]API Usage & Performance Summary[/bold]")
-                    yield DataTable(id="gateway-metrics-table")
+                    yield Label("[bold cyan]Local Inference Gateway & Developer Connections[/bold cyan]")
+                    with Horizontal():
+                        yield Label("", id="gateway-status-label")
+                        yield Button("Start Gateway", variant="primary", id="btn-toggle-gateway", tooltip="Start or stop local OpenAI-compatible inference gateway")
+
+                    yield Label("\n[bold]Registered API Keys & Connected Developer Applications[/bold]")
+                    yield DataTable(id="gateway-keys-table")
                     with Horizontal(classes="table-actions-bar"):
-                        yield Button("Refresh Metrics (R)", variant="default", id="btn-gateway-refresh", tooltip="Refresh API statistics and active keys")
+                        yield Button("New Connection", variant="primary", id="btn-create-key", tooltip="Create loopback API key for an application")
+                        yield Button("Rotate Key", variant="default", id="btn-rotate-key", tooltip="Generate new secret key and invalidate current")
+                        yield Button("Revoke Key", variant="error", id="btn-revoke-key", tooltip="Revoke API key immediately")
+                        yield Button("Setup Guide", variant="default", id="btn-connection-setup", tooltip="View connection instructions and config snippets")
+                        yield Button("Refresh (R)", variant="default", id="btn-gateway-refresh", tooltip="Refresh API statistics and active keys")
+
+                    yield Label("\n[bold]Active Aliases & Gateway Routes[/bold]")
+                    yield DataTable(id="gateway-alias-table")
+                    with Horizontal(classes="table-actions-bar"):
+                        yield Button("Switch Alias Target", variant="default", id="btn-switch-alias", tooltip="Map alias to a target version")
+
+                    # Preserved for backwards compatibility with existing assertions
+                    yield DataTable(id="gateway-metrics-table", classes="hidden")
+
+            with TabPane("Usage & Metrics", id="usage-tab"):
+                with VerticalScroll():
+                    yield Label("[bold cyan]Inference Usage & Latency Dashboards[/bold cyan]")
+                    with Horizontal(id="usage-filter-bar"):
+                        yield Label("Time Window: ")
+                        yield Button("1 Hour", variant="default", id="btn-usage-1h")
+                        yield Button("24 Hours", variant="primary", id="btn-usage-24h")
+                        yield Button("7 Days", variant="default", id="btn-usage-7d")
+                        yield Button("All Time", variant="default", id="btn-usage-all")
+                        yield Label("  Freshness: Updated just now", id="usage-freshness-label")
+
+                    with Horizontal(id="usage-cards-row"):
+                        with Vertical(classes="panel metric-card"):
+                            yield Label("[bold]Requests[/bold]")
+                            yield Label("0 total", id="usage-card-requests", classes="metric-value")
+                        with Vertical(classes="panel metric-card"):
+                            yield Label("[bold]Token Accounting[/bold]")
+                            yield Label("0 tokens", id="usage-card-tokens", classes="metric-value")
+                            yield Label("[dim]Status: Complete[/dim]", id="usage-card-token-status")
+                        with Vertical(classes="panel metric-card"):
+                            yield Label("[bold]Latency (Avg / p50 / p95)[/bold]")
+                            yield Label("0 / 0 / 0 ms", id="usage-card-latency", classes="metric-value")
+                        with Vertical(classes="panel metric-card"):
+                            yield Label("[bold]Throughput (TTFT / TPS)[/bold]")
+                            yield Label("0 ms / 0 tps", id="usage-card-tps", classes="metric-value")
+
+                    yield Label("\n[bold]Usage by Model[/bold]")
+                    yield DataTable(id="usage-models-table")
+
+                    yield Label("\n[bold]Usage by Application & API Key[/bold]")
+                    yield DataTable(id="usage-keys-table")
+
+                    yield Label("\n[bold]Recent Requests Log[/bold]")
+                    yield DataTable(id="usage-requests-table")
+
+            with TabPane("Jobs & Recovery", id="jobs-tab"):
+                with Vertical():
+                    yield Label("[bold cyan]Background Setup & Download Jobs[/bold cyan]")
+                    yield DataTable(id="jobs-table")
+                    with Horizontal(classes="table-actions-bar"):
+                        yield Button("Resume Selected Job", variant="primary", id="btn-jobs-resume", tooltip="Resume an interrupted download or setup job")
+                        yield Button("Clean Up Partial Files", variant="default", id="btn-jobs-cleanup", tooltip="Delete temporary files for interrupted jobs")
+                        yield Button("Refresh Jobs", variant="default", id="btn-jobs-refresh", tooltip="Refresh jobs list")
 
         with Container(id="context-help-container"):
             yield Label("• Use Tab / Arrow keys to navigate. Press '?' or F1 for documentation manual.", id="context-help-text")
@@ -1382,9 +1829,12 @@ class LocalPilotTUI(App):
         self._setup_running_table()
         self._setup_activity_table()
         self._setup_gateway_tab()
+        self._setup_usage_tab()
+        self._setup_jobs_tab()
         self._refresh_storage()
         self._load_health_background()
         self._check_for_interrupted_work()
+        self.set_interval(3.0, self._on_live_refresh_tick)
 
         if self._start_wizard_on_mount:
             self.action_start_guided_setup()
@@ -1701,8 +2151,117 @@ class LocalPilotTUI(App):
         self.query_one("#main-tabs", TabbedContent).active = "gateway-tab"
         self._refresh_gateway_tab()
 
+    def action_switch_to_usage(self) -> None:
+        self.query_one("#main-tabs", TabbedContent).active = "usage-tab"
+        self._refresh_usage_tab()
+
+    def action_switch_to_jobs(self) -> None:
+        self.query_one("#main-tabs", TabbedContent).active = "jobs-tab"
+        self._refresh_jobs_tab()
+
+    def action_toggle_pause_live(self) -> None:
+        if isinstance(self.focused, (Input,)):
+            return
+        self._live_paused = not self._live_paused
+        status = "paused" if self._live_paused else "resumed"
+        self.notify(f"Live telemetry updates {status}.", title="Live Updates")
+        self._update_freshness_pill()
+
+    def _update_freshness_pill(self) -> None:
+        try:
+            pill = self.query_one("#home-freshness-pill", Label)
+            btn_pause = self.query_one("#btn-pause-live", Button)
+            if self._live_paused:
+                pill.update("[bold yellow]PAUSED[/bold yellow]")
+                btn_pause.label = "Resume (P)"
+                btn_pause.variant = "success"
+            else:
+                diff = int(time.time() - self._last_refresh_timestamp)
+                txt = "just now" if diff < 3 else f"{diff}s ago"
+                pill.update(f"Updated: {txt}")
+                btn_pause.label = "Pause (P)"
+                btn_pause.variant = "default"
+        except Exception:
+            pass
+
+    def _on_live_refresh_tick(self) -> None:
+        if self._live_paused:
+            self._update_freshness_pill()
+            return
+        self._last_refresh_timestamp = time.time()
+        self._run_live_refresh_worker()
+
+    @work(exclusive=True, thread=True)
+    def _run_live_refresh_worker(self) -> None:
+        try:
+            active = self.runtime_svc.reconcile_running_instances()
+            leases_count = self.version_service.get_active_leases_count()
+            running_gw = GatewayServer.get_running_state()
+            summary = self.accounting_service.get_usage_summary(time_window=self._selected_time_window)
+            self.call_from_thread(self._update_live_ui, active, leases_count, running_gw, summary)
+        except Exception:
+            pass
+
+    def _update_live_ui(self, active: List[Dict[str, Any]], leases_count: int, running_gw: Optional[Dict[str, Any]], summary: Dict[str, Any]) -> None:
+        try:
+            gw_label = self.query_one("#home-gateway-status", Label)
+            if running_gw:
+                gw_label.update(f"[bold green]● Gateway: Running on :{running_gw['port']}[/bold green]")
+            else:
+                gw_label.update("[yellow]○ Gateway: Stopped[/yellow]")
+
+            self.query_one("#home-badge-models", Label).update(f"{len(active)} running")
+            self.query_one("#home-badge-leases", Label).update(f"{leases_count} active")
+            self.query_one("#home-badge-requests", Label).update(f"{summary.get('total_requests', 0)} total")
+
+            t_status = summary.get("token_reporting_status", "complete")
+            if t_status == "unreported":
+                self.query_one("#home-badge-tokens", Label).update("[yellow]Unreported[/yellow]")
+            elif t_status == "partial":
+                self.query_one("#home-badge-tokens", Label).update("[yellow]Partial[/yellow]")
+            else:
+                self.query_one("#home-badge-tokens", Label).update("[green]Complete[/green]")
+
+            btn_gw = self.query_one("#btn-toggle-gateway", Button)
+            if running_gw:
+                btn_gw.label = "Stop Gateway"
+                btn_gw.variant = "error"
+            else:
+                btn_gw.label = "Start Gateway"
+                btn_gw.variant = "primary"
+
+            self._update_freshness_pill()
+        except Exception:
+            pass
+
+    def _toggle_gateway(self) -> None:
+        running = GatewayServer.get_running_state()
+        if running:
+            try:
+                pid = running["pid"]
+                os.kill(pid, signal.SIGTERM)
+                time.sleep(0.3)
+                GatewayServer.clear_state()
+                self.notify("LocalPilot Gateway stopped.", title="Gateway")
+            except Exception as e:
+                self.notify(f"Failed to stop gateway: {e}", title="Error", severity="error")
+        else:
+            try:
+                cmd = [sys.executable, "-m", "localpilot.cli.main", "gateway", "start", "--port", "8080"]
+                subprocess.Popen(cmd, start_new_session=True)
+                time.sleep(0.3)
+                self.notify("LocalPilot Gateway started on port 8080.", title="Gateway Started")
+            except Exception as e:
+                self.notify(f"Failed to start gateway: {e}", title="Error", severity="error")
+        self._refresh_gateway_tab()
+
     def _setup_gateway_tab(self) -> None:
         try:
+            keys_table = self.query_one("#gateway-keys-table", DataTable)
+            keys_table.cursor_type = "row"
+            keys_table.clear(columns=True)
+            keys_table.add_columns("Name", "Key Prefix", "Application", "Status", "Allowed Models", "Requests", "Created At")
+
             alias_table = self.query_one("#gateway-alias-table", DataTable)
             alias_table.cursor_type = "row"
             alias_table.clear(columns=True)
@@ -1722,21 +2281,49 @@ class LocalPilotTUI(App):
             # 1. Gateway Status
             running = GatewayServer.get_running_state()
             status_label = self.query_one("#gateway-status-label", Label)
+            btn_gw = self.query_one("#btn-toggle-gateway", Button)
             if running:
                 status_label.update(
                     f"[bold green]● RUNNING[/bold green] on [cyan]http://{running['host']}:{running['port']}/v1[/cyan] (PID: {running['pid']})"
                 )
+                btn_gw.label = "Stop Gateway"
+                btn_gw.variant = "error"
             else:
                 status_label.update(
-                    "[yellow]○ STOPPED[/yellow] • Start using '[bold cyan]localpilot gateway start[/bold cyan]' to expose OpenAI-compatible inference on loopback."
+                    "[yellow]○ STOPPED[/yellow] • Start using '[bold cyan]Start Gateway[/bold cyan]' to expose OpenAI-compatible inference on loopback."
                 )
+                btn_gw.label = "Start Gateway"
+                btn_gw.variant = "primary"
 
-            # 2. Aliases Table
+            # 2. API Keys Table
+            keys_table = self.query_one("#gateway-keys-table", DataTable)
+            keys_table.clear()
+            keys = self.key_service.list_keys()
+            if not keys:
+                keys_table.add_row("No API keys created yet", "-", "Click 'New Connection' to generate", "-", "-", "-", "-", key="empty_keys")
+            else:
+                per_key = {pk["key_id"]: pk["total_requests"] for pk in self.accounting_service.get_per_key_breakdown(time_window="all")}
+                for k in keys:
+                    status_badge = "[green]ACTIVE[/green]" if k.is_active else "[red]REVOKED[/red]"
+                    models_str = ", ".join(k.policy.allowed_models) if k.policy and k.policy.allowed_models else "all (*)"
+                    reqs = str(per_key.get(k.key_id, 0))
+                    keys_table.add_row(
+                        k.display_name,
+                        k.secret_prefix,
+                        k.app_name,
+                        status_badge,
+                        models_str,
+                        reqs,
+                        k.created_at[:10] if k.created_at else "-",
+                        key=k.key_id,
+                    )
+
+            # 3. Aliases Table
             alias_table = self.query_one("#gateway-alias-table", DataTable)
             alias_table.clear()
             aliases = self.version_service.list_aliases()
             if not aliases:
-                alias_table.add_row("No aliases registered", "-", "-", "-", "-")
+                alias_table.add_row("No aliases registered", "-", "-", "-", "-", key="empty_aliases")
             else:
                 for a in aliases:
                     alias_table.add_row(
@@ -1745,13 +2332,13 @@ class LocalPilotTUI(App):
                         a.logical_model_id or "-",
                         "System" if a.is_system_alias else "Custom",
                         a.updated_at[:19].replace("T", " ") if a.updated_at else "-",
+                        key=a.alias_name,
                     )
 
-            # 3. Metrics Table
+            # 4. Metrics Table
             metrics_table = self.query_one("#gateway-metrics-table", DataTable)
             metrics_table.clear()
-            summary = self.accounting_service.get_usage_summary()
-
+            summary = self.accounting_service.get_usage_summary(time_window=self._selected_time_window)
             metrics_table.add_row("Total Requests", str(summary["total_requests"]))
             metrics_table.add_row("Successful Requests", str(summary["successful_requests"]))
             metrics_table.add_row("Error Requests", str(summary["error_requests"]))
@@ -1763,6 +2350,314 @@ class LocalPilotTUI(App):
             metrics_table.add_row("Tokens Per Second (TPS)", f"{summary['tokens_per_second']:.1f}")
         except Exception:
             pass
+
+    def _setup_usage_tab(self) -> None:
+        try:
+            m_table = self.query_one("#usage-models-table", DataTable)
+            m_table.cursor_type = "row"
+            m_table.clear(columns=True)
+            m_table.add_columns("Model ID", "Requests", "Tokens", "Avg Latency (ms)")
+
+            k_table = self.query_one("#usage-keys-table", DataTable)
+            k_table.cursor_type = "row"
+            k_table.clear(columns=True)
+            k_table.add_columns("Application", "Key Prefix", "Requests", "Tokens", "Last Used")
+
+            r_table = self.query_one("#usage-requests-table", DataTable)
+            r_table.cursor_type = "row"
+            r_table.clear(columns=True)
+            r_table.add_columns("Timestamp", "Application", "Model", "Status", "Latency", "Tokens")
+
+            self._refresh_usage_tab()
+        except Exception:
+            pass
+
+    def _set_time_window(self, window: str) -> None:
+        self._selected_time_window = window
+        for w in ("1h", "24h", "7d", "all"):
+            try:
+                btn = self.query_one(f"#btn-usage-{w}", Button)
+                btn.variant = "primary" if w == window else "default"
+            except Exception:
+                pass
+        self._refresh_usage_tab()
+
+    def _refresh_usage_tab(self) -> None:
+        try:
+            summary = self.accounting_service.get_usage_summary(time_window=self._selected_time_window)
+
+            req_text = f"{summary['total_requests']} total ({summary['successful_requests']} ok, {summary['error_requests']} err)"
+            self.query_one("#usage-card-requests", Label).update(req_text)
+
+            tok_text = f"{summary['total_tokens']:,} tokens (P: {summary['total_prompt_tokens']:,} / C: {summary['total_completion_tokens']:,})"
+            self.query_one("#usage-card-tokens", Label).update(tok_text)
+
+            t_status = summary.get("token_reporting_status", "complete")
+            unreported_cnt = summary.get("unreported_token_requests", 0)
+            if t_status == "unreported":
+                self.query_one("#usage-card-token-status", Label).update("[yellow]Status: Unreported by inference engine[/yellow]")
+            elif t_status == "partial":
+                self.query_one("#usage-card-token-status", Label).update(f"[yellow]Status: Partial ({unreported_cnt} requests unreported)[/yellow]")
+            else:
+                self.query_one("#usage-card-token-status", Label).update("[green]Status: Complete (all requests reported)[/green]")
+
+            lat_text = f"{summary['avg_latency_ms']:.1f} / {summary['p50_latency_ms']:.1f} / {summary['p95_latency_ms']:.1f} ms"
+            self.query_one("#usage-card-latency", Label).update(lat_text)
+
+            tps_text = f"{summary['avg_first_token_latency_ms']:.1f} ms / {summary['tokens_per_second']:.1f} tps"
+            self.query_one("#usage-card-tps", Label).update(tps_text)
+
+            m_table = self.query_one("#usage-models-table", DataTable)
+            m_table.clear()
+            models_data = self.accounting_service.get_per_model_breakdown(time_window=self._selected_time_window)
+            if not models_data:
+                m_table.add_row("No model usage recorded", "-", "-", "-", key="empty_m")
+            else:
+                for md in models_data:
+                    m_table.add_row(
+                        md["logical_model_id"] or md["model_version_id"],
+                        str(md["total_requests"]),
+                        f"{md['total_tokens']:,}",
+                        f"{md['avg_latency_ms']:.1f}",
+                        key=md["model_version_id"],
+                    )
+
+            k_table = self.query_one("#usage-keys-table", DataTable)
+            k_table.clear()
+            keys_data = self.accounting_service.get_per_key_breakdown(time_window=self._selected_time_window)
+            if not keys_data:
+                k_table.add_row("No application usage recorded", "-", "-", "-", "-", key="empty_k")
+            else:
+                for kd in keys_data:
+                    last_seen = kd["last_used_at"][:19].replace("T", " ") if kd.get("last_used_at") else "-"
+                    k_table.add_row(
+                        kd["app_name"] or kd["display_name"],
+                        kd["secret_prefix"],
+                        str(kd["total_requests"]),
+                        f"{kd['total_tokens']:,}",
+                        last_seen,
+                        key=kd["key_id"],
+                    )
+
+            r_table = self.query_one("#usage-requests-table", DataTable)
+            r_table.clear()
+            reqs = self.accounting_service.list_recent_requests(limit=25, time_window=self._selected_time_window)
+            if not reqs:
+                r_table.add_row("No recent requests", "-", "-", "-", "-", "-", key="empty_req")
+            else:
+                for rq in reqs:
+                    st_str = f"[green]{rq.status_code}[/green]" if rq.status_code == 200 else f"[red]{rq.status_code}[/red]"
+                    t_str = f"{rq.total_tokens:,}" if rq.tokens_reported else "[dim]unreported[/dim]"
+                    r_table.add_row(
+                        rq.created_at[:19].replace("T", " "),
+                        rq.app_name or "-",
+                        rq.logical_model_id or "-",
+                        st_str,
+                        f"{rq.total_latency_ms:.1f} ms",
+                        t_str,
+                        key=rq.request_id,
+                    )
+        except Exception:
+            pass
+
+    def _setup_jobs_tab(self) -> None:
+        try:
+            table = self.query_one("#jobs-table", DataTable)
+            table.cursor_type = "row"
+            table.clear(columns=True)
+            table.add_columns("Job ID", "Operation", "Target Model", "Stage", "Status", "Started At")
+            self._refresh_jobs_tab()
+        except Exception:
+            pass
+
+    def _refresh_jobs_tab(self) -> None:
+        try:
+            table = self.query_one("#jobs-table", DataTable)
+            table.clear()
+            interrupted = self.job_mgr.get_interrupted_jobs()
+            if not interrupted:
+                table.add_row("No background or interrupted jobs", "-", "-", "-", "Clean", "-", key="empty_jobs")
+            else:
+                for j in interrupted:
+                    plan = json.loads(j.get("approved_plan_json") or "{}")
+                    target = plan.get("model_id") or j.get("target_id", "-")
+                    stage = j.get("stage", "downloading").replace("_", " ").title()
+                    started = j.get("created_at", "-")[:19].replace("T", " ")
+                    table.add_row(
+                        j.get("job_id", "-")[:12],
+                        j.get("operation", "setup").title(),
+                        target,
+                        stage,
+                        "[bold yellow]Interrupted[/bold yellow]",
+                        started,
+                        key=j.get("job_id", ""),
+                    )
+        except Exception:
+            pass
+
+    def action_create_key(self) -> None:
+        def _on_create(data: Optional[Dict[str, Any]]) -> None:
+            if not data:
+                return
+            try:
+                rec, secret = self.key_service.create_key(
+                    display_name=data["display_name"],
+                    app_name=data["app_name"],
+                    allowed_models=data["allowed_models"],
+                    rate_limit_per_minute=data["rate_limit_per_minute"],
+                )
+                self._refresh_gateway_tab()
+                self.push_screen(KeyDisplayModal(rec.key_id, rec.display_name, rec.app_name, secret))
+            except Exception as exc:
+                self.notify(f"Failed to create key: {exc}", title="Error", severity="error")
+
+        self.push_screen(CreateKeyModal(), _on_create)
+
+    def action_rotate_key(self) -> None:
+        table = self.query_one("#gateway-keys-table", DataTable)
+        if table.row_count == 0 or table.cursor_row < 0:
+            self.notify("Please select an API key to rotate.", title="Rotate Key")
+            return
+        row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
+        key_id = str(row_key.value) if row_key else ""
+        if not key_id or key_id == "empty_keys":
+            self.notify("No key selected.", title="Rotate Key")
+            return
+
+        k = self.key_service.get_key(key_id)
+        if not k:
+            self.notify("Selected key not found.", title="Rotate Key")
+            return
+
+        def _on_rotate_confirm(confirmed: bool) -> None:
+            if not confirmed:
+                return
+            try:
+                rec, new_secret = self.key_service.rotate_key(key_id)
+                self._refresh_gateway_tab()
+                self.push_screen(KeyDisplayModal(rec.key_id, rec.display_name, rec.app_name, new_secret))
+            except Exception as exc:
+                self.notify(f"Failed to rotate key: {exc}", title="Error", severity="error")
+
+        self.push_screen(RotateKeyModal(k.key_id, k.display_name, k.secret_prefix), _on_rotate_confirm)
+
+    def action_revoke_key(self) -> None:
+        table = self.query_one("#gateway-keys-table", DataTable)
+        if table.row_count == 0 or table.cursor_row < 0:
+            self.notify("Please select an API key to revoke.", title="Revoke Key")
+            return
+        row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
+        key_id = str(row_key.value) if row_key else ""
+        if not key_id or key_id == "empty_keys":
+            return
+
+        k = self.key_service.get_key(key_id)
+        if not k:
+            return
+
+        def _on_revoke_confirm(confirmed: bool) -> None:
+            if not confirmed:
+                return
+            try:
+                self.key_service.revoke_key(key_id)
+                self.notify(f"Key '{k.display_name}' ({k.secret_prefix}...) revoked.", title="Key Revoked")
+                self._refresh_gateway_tab()
+            except Exception as exc:
+                self.notify(f"Failed to revoke key: {exc}", title="Error", severity="error")
+
+        msg = (
+            f"Revoke API connection for '{k.display_name}' ({k.secret_prefix}...)?\n\n"
+            "• Applications using this key will immediately receive 401 Unauthorized.\n"
+            "• Historical usage records will be preserved for accounting."
+        )
+        self.push_screen(ConfirmModal("Revoke API Key", msg, confirm_label="Revoke Key", cancel_label="Cancel"), _on_revoke_confirm)
+
+    def action_connection_setup(self) -> None:
+        table = self.query_one("#gateway-keys-table", DataTable)
+        app_name = "opencode"
+        if table.row_count > 0 and table.cursor_row >= 0:
+            row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
+            key_id = str(row_key.value) if row_key else ""
+            if key_id and key_id != "empty_keys":
+                k = self.key_service.get_key(key_id)
+                if k:
+                    app_name = k.app_name
+        self.push_screen(ConnectionSetupModal(api_key="sk-local-YOUR_KEY_HERE", default_client=app_name))
+
+    def action_switch_alias(self) -> None:
+        versions = self.version_service.list_versions()
+        v_ids = [v.version_id for v in versions]
+
+        def _on_switch(data: Optional[Dict[str, str]]) -> None:
+            if not data:
+                return
+            try:
+                self.version_service.activate_alias(data["alias_name"], data["version_id"], reason=data["reason"])
+                self.notify(f"Alias '{data['alias_name']}' is now pointing to '{data['version_id']}'.", title="Alias Updated")
+                self._refresh_gateway_tab()
+            except Exception as exc:
+                self.notify(f"Failed to switch alias: {exc}", title="Error", severity="error")
+
+        self.push_screen(SwitchAliasModal(available_versions=v_ids), _on_switch)
+
+    def action_pin_unpin_installed(self) -> None:
+        table = self.query_one("#installed-table", DataTable)
+        if table.row_count == 0 or table.cursor_row < 0:
+            return
+        row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
+        inst_id = str(row_key.value) if row_key else ""
+        if not inst_id or inst_id == "empty_installed":
+            return
+
+        conn = get_db().get_connection()
+        row = conn.execute("SELECT * FROM installations WHERE installation_id = ?", (inst_id,)).fetchone()
+        if not row:
+            return
+        v_id = row["model_id"]
+        v = self.version_service.get_version(v_id)
+        if not v:
+            v = self.version_service.get_version(inst_id)
+
+        target_id = v.version_id if v else v_id
+        try:
+            if v and v.is_pinned:
+                self.version_service.unpin_version(target_id)
+                self.notify(f"Version '{target_id}' unpinned.", title="Unpinned")
+            else:
+                self.version_service.pin_version(target_id, reason="User pinned in TUI")
+                self.notify(f"Version '{target_id}' pinned and protected.", title="Pinned")
+            self._refresh_installed_table()
+        except Exception as exc:
+            self.notify(f"Pin operation failed: {exc}", title="Error", severity="error")
+
+    def action_compare_installed(self) -> None:
+        versions = self.version_service.list_versions()
+        if len(versions) < 2:
+            self.notify("At least 2 installed model versions are required to compare.", title="Compare Versions")
+            return
+        self.push_screen(CompareVersionsModal(versions[0].version_id, versions[1].version_id))
+
+    def _resume_selected_job(self) -> None:
+        table = self.query_one("#jobs-table", DataTable)
+        if table.row_count == 0 or table.cursor_row < 0:
+            return
+        row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
+        job_id = str(row_key.value) if row_key else ""
+        if not job_id or job_id == "empty_jobs":
+            return
+        self.action_start_guided_setup()
+
+    def _cleanup_selected_job(self) -> None:
+        table = self.query_one("#jobs-table", DataTable)
+        if table.row_count == 0 or table.cursor_row < 0:
+            return
+        row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
+        job_id = str(row_key.value) if row_key else ""
+        if not job_id or job_id == "empty_jobs":
+            return
+        self.job_mgr.cleanup_interrupted_job(job_id)
+        self.notify("Interrupted job cleaned up.", title="Cleaned Up")
+        self._refresh_jobs_tab()
 
     def action_start_guided_setup(self) -> None:
         def _on_guided_finish(model_name: Optional[str]) -> None:
@@ -1815,6 +2710,12 @@ class LocalPilotTUI(App):
             self.action_select_action()
         elif btn_id == "btn-installed-chat":
             self.action_chat_selected()
+        elif btn_id == "btn-installed-pin":
+            self.action_pin_unpin_installed()
+        elif btn_id == "btn-installed-compare":
+            self.action_compare_installed()
+        elif btn_id == "btn-installed-alias":
+            self.action_switch_alias()
         elif btn_id == "btn-installed-details":
             self.action_details_selected()
         elif btn_id == "btn-installed-remove":
@@ -1825,8 +2726,36 @@ class LocalPilotTUI(App):
             self.action_details_selected()
         elif btn_id == "btn-running-stop":
             self.action_stop_action()
+        elif btn_id == "btn-pause-live":
+            self.action_toggle_pause_live()
+        elif btn_id == "btn-toggle-gateway":
+            self._toggle_gateway()
+        elif btn_id == "btn-create-key":
+            self.action_create_key()
+        elif btn_id == "btn-rotate-key":
+            self.action_rotate_key()
+        elif btn_id == "btn-revoke-key":
+            self.action_revoke_key()
+        elif btn_id == "btn-connection-setup":
+            self.action_connection_setup()
+        elif btn_id == "btn-switch-alias":
+            self.action_switch_alias()
         elif btn_id == "btn-gateway-refresh":
             self._refresh_gateway_tab()
+        elif btn_id == "btn-usage-1h":
+            self._set_time_window("1h")
+        elif btn_id == "btn-usage-24h":
+            self._set_time_window("24h")
+        elif btn_id == "btn-usage-7d":
+            self._set_time_window("7d")
+        elif btn_id == "btn-usage-all":
+            self._set_time_window("all")
+        elif btn_id == "btn-jobs-resume":
+            self._resume_selected_job()
+        elif btn_id == "btn-jobs-cleanup":
+            self._cleanup_selected_job()
+        elif btn_id == "btn-jobs-refresh":
+            self._refresh_jobs_tab()
 
     def _handle_interrupted_decision(self, decision: str) -> None:
         if decision == "resume":

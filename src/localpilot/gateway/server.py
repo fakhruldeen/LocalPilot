@@ -30,6 +30,7 @@ from localpilot.domain.api_contract import (
     StreamChoice,
     UsageInfo,
 )
+from localpilot import __version__ as GATEWAY_VERSION
 from localpilot.storage.db import DatabaseManager, get_db, get_default_data_dir
 
 logger = logging.getLogger(__name__)
@@ -41,7 +42,7 @@ def get_openapi_spec() -> Dict[str, Any]:
         "openapi": "3.1.0",
         "info": {
             "title": "LocalPilot Inference Gateway API",
-            "version": "0.1.8",
+            "version": GATEWAY_VERSION,
             "description": "Authenticated, loopback-only OpenAI-compatible inference gateway for local models.",
             "license": {"name": "GPL-3.0-only"},
         },
@@ -160,13 +161,28 @@ class GatewayRequestHandler(BaseHTTPRequestHandler):
         """Suppresses default stderr server logging."""
         pass
 
+    def _apply_cors_headers(self) -> None:
+        """Applies restricted CORS headers, permitting loopback origins only."""
+        origin = self.headers.get("Origin")
+        if not origin:
+            return
+        from urllib.parse import urlparse
+        try:
+            parsed = urlparse(origin)
+            hostname = parsed.hostname or ""
+            if hostname in ("127.0.0.1", "localhost", "::1"):
+                self.send_header("Access-Control-Allow-Origin", origin)
+                self.send_header("Vary", "Origin")
+        except Exception:
+            pass
+
     def _send_json(self, status_code: int, data: Dict[str, Any]) -> None:
         """Sends JSON response with Content-Type application/json."""
         payload = json.dumps(data).encode("utf-8")
         self.send_response(status_code)
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(payload)))
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self._apply_cors_headers()
         self.send_header("Access-Control-Allow-Headers", "Authorization, Content-Type")
         self.end_headers()
         self.wfile.write(payload)
@@ -194,7 +210,7 @@ class GatewayRequestHandler(BaseHTTPRequestHandler):
     def do_OPTIONS(self) -> None:
         """Handles CORS pre-flight requests."""
         self.send_response(204)
-        self.send_header("Access-Control-Allow-Origin", "*")
+        self._apply_cors_headers()
         self.send_header("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Authorization, Content-Type")
         self.end_headers()
@@ -209,7 +225,7 @@ class GatewayRequestHandler(BaseHTTPRequestHandler):
             self._send_json(200, {
                 "status": "ok",
                 "service": "localpilot-gateway",
-                "version": "0.1.8",
+                "version": GATEWAY_VERSION,
                 "loopback_only": True,
             })
             return
@@ -218,27 +234,46 @@ class GatewayRequestHandler(BaseHTTPRequestHandler):
             self._send_json(200, {
                 "status": "alive",
                 "service": "localpilot-gateway",
-                "version": "0.1.8",
+                "version": GATEWAY_VERSION,
                 "loopback_only": True,
             })
             return
 
         if path == "/v1/health/ready":
             aliases = self.server.version_service.list_aliases()
-            if aliases:
+            if not aliases:
+                self._send_json(503, {
+                    "status": "not_ready",
+                    "service": "localpilot-gateway",
+                    "version": GATEWAY_VERSION,
+                    "reason": "No models or aliases registered yet",
+                    "ready": False,
+                })
+                return
+
+            ready_models = 0
+            for a in aliases:
+                ver = self.server.version_service.get_version(a.version_id, include_deleted=False)
+                if not ver:
+                    continue
+                if ver.installed_path and not os.path.exists(ver.installed_path):
+                    continue
+                ready_models += 1
+
+            if ready_models > 0:
                 self._send_json(200, {
                     "status": "ready",
                     "service": "localpilot-gateway",
-                    "version": "0.1.8",
-                    "available_models": len(aliases),
+                    "version": GATEWAY_VERSION,
+                    "available_models": ready_models,
                     "ready": True,
                 })
             else:
                 self._send_json(503, {
                     "status": "not_ready",
                     "service": "localpilot-gateway",
-                    "version": "0.1.8",
-                    "reason": "No models or aliases registered yet",
+                    "version": GATEWAY_VERSION,
+                    "reason": "No model files found on disk for active aliases",
                     "ready": False,
                 })
             return
@@ -277,6 +312,11 @@ class GatewayRequestHandler(BaseHTTPRequestHandler):
                 return
 
             model_id = path[len("/v1/models/"):]
+            allowed = key_record.policy.allowed_aliases if key_record.policy else ["*"]
+            if "*" not in allowed and model_id not in allowed:
+                self._send_error(404, f"Model '{model_id}' does not exist or access is forbidden.", code="model_not_found")
+                return
+
             alias = self.server.version_service.get_alias(model_id)
             if not alias:
                 self._send_error(404, f"Model '{model_id}' does not exist.", code="model_not_found")
@@ -307,46 +347,95 @@ class GatewayRequestHandler(BaseHTTPRequestHandler):
         if not key_record:
             return
 
-        # 2. Parse JSON Request
+        # 2. Check Content-Length (10MB limit)
+        cl_header = self.headers.get("Content-Length")
+        if cl_header:
+            try:
+                content_length = int(cl_header)
+                if content_length > 10 * 1024 * 1024:
+                    self._send_error(413, "Payload exceeds maximum allowed size of 10MB.", error_type="invalid_request_error", code="payload_too_large")
+                    return
+            except ValueError:
+                self._send_error(400, "Invalid Content-Length header.", code="bad_request")
+                return
+        else:
+            content_length = 0
+
+        # 3. Parse JSON Request
         try:
-            content_length = int(self.headers.get("Content-Length", 0))
             body = self.rfile.read(content_length).decode("utf-8")
             payload = json.loads(body)
-            request = ChatCompletionRequest.model_validate(payload)
         except Exception as exc:
             self._send_error(400, f"Malformed request body: {exc}", code="bad_request")
             return
 
-        # 3. Check Policy Permissions
-        allowed_aliases = key_record.policy.allowed_aliases if key_record.policy else ["*"]
+        # 4. Reject Unsupported Capabilities (Tools & Function Calling)
+        if payload.get("tools") or payload.get("tool_choice") or payload.get("functions") or payload.get("function_call"):
+            self._send_error(
+                400,
+                "Tool use and function calling are not supported by this model runtime.",
+                error_type="invalid_request_error",
+                code="tools_unsupported",
+            )
+            return
+
+        try:
+            request = ChatCompletionRequest.model_validate(payload)
+        except Exception as exc:
+            self._send_error(400, f"Invalid chat completion request structure: {exc}", code="bad_request")
+            return
+
+        # 5. Check API Key Policy Permissions
+        policy = key_record.policy
+        if policy:
+            allowed_caps = policy.allowed_capabilities or ["chat", "streaming"]
+            if "chat" not in allowed_caps:
+                self._send_error(403, "API key policy does not allow 'chat' capability.", error_type="permission_error", code="capability_forbidden")
+                return
+            if request.stream and "streaming" not in allowed_caps:
+                self._send_error(403, "API key policy does not allow 'streaming' capability.", error_type="permission_error", code="capability_forbidden")
+                return
+            if policy.max_tokens_per_request is not None and policy.max_tokens_per_request > 0:
+                requested_max = payload.get("max_tokens") or payload.get("max_completion_tokens")
+                if requested_max and int(requested_max) > policy.max_tokens_per_request:
+                    self._send_error(
+                        400,
+                        f"Requested max_tokens ({requested_max}) exceeds key limit ({policy.max_tokens_per_request}).",
+                        error_type="invalid_request_error",
+                        code="token_limit_exceeded",
+                    )
+                    return
+
+        allowed_aliases = policy.allowed_aliases if policy else ["*"]
         if "*" not in allowed_aliases and request.model not in allowed_aliases:
             self._send_error(403, f"API key policy forbids access to model '{request.model}'.", code="model_forbidden")
             return
 
-        # 4. Resolve Model Target
+        # 6. Resolve Model Target
         target_version = self.server.version_service.resolve_alias(request.model)
         if not target_version:
             self._send_error(404, f"Model or alias '{request.model}' is not installed or available.", code="model_not_found")
             return
 
-        # 5. In-flight Pin Protection
-        pinned_version = None
+        # 7. Acquire In-flight Execution Lease
+        lease_id = None
         try:
-            pinned_version = self.server.version_service.pin_version(
-                target_version.version_id, reason="In-flight inference request"
+            lease_id = self.server.version_service.acquire_execution_lease(
+                target_version.version_id, owner="request"
             )
-        except Exception:
-            pass
+        except Exception as lease_err:
+            logger.warning(f"Could not acquire execution lease: {lease_err}")
 
         start_time = time.monotonic()
-        prompt_tokens = sum(len(m.content.split()) for m in request.messages if m.content) * 2  # Local fallback estimation
+        prompt_tokens = 0
         completion_tokens = 0
         status_code = 200
         error_code = None
         first_token_latency_ms: Optional[float] = None
+        headers_sent = False
 
         try:
-            # 6. Locate or Start Model Runtime Instance
+            # 8. Locate or Start Model Runtime Instance
             runtime_info = self._get_or_start_runtime(target_version)
             endpoint_url = runtime_info["endpoint_url"]
             runtime_name = runtime_info.get("runtime_name", "llamacpp")
@@ -354,7 +443,7 @@ class GatewayRequestHandler(BaseHTTPRequestHandler):
 
             messages_dict = [{"role": m.role, "content": m.content or ""} for m in request.messages]
 
-            # 7. Execute Inference
+            # 9. Execute Inference
             if not request.stream:
                 # Non-Streaming Request
                 assistant_text = asyncio.run(
@@ -365,7 +454,6 @@ class GatewayRequestHandler(BaseHTTPRequestHandler):
                         messages=messages_dict,
                     )
                 )
-                completion_tokens = len(assistant_text.split()) * 2
                 total_tokens = prompt_tokens + completion_tokens
 
                 resp = ChatCompletionResponse(
@@ -384,14 +472,16 @@ class GatewayRequestHandler(BaseHTTPRequestHandler):
                     ),
                 )
                 self._send_json(200, resp.model_dump())
+                headers_sent = True
             else:
                 # Streaming SSE Request
                 self.send_response(200)
                 self.send_header("Content-Type", "text/event-stream; charset=utf-8")
                 self.send_header("Cache-Control", "no-cache")
                 self.send_header("Connection", "keep-alive")
-                self.send_header("Access-Control-Allow-Origin", "*")
+                self._apply_cors_headers()
                 self.end_headers()
+                headers_sent = True
 
                 chat_id = f"chatcmpl-{uuid.uuid4().hex[:12]}"
 
@@ -408,7 +498,6 @@ class GatewayRequestHandler(BaseHTTPRequestHandler):
                             first_token_latency_ms = round((time.monotonic() - start_time) * 1000.0, 2)
                             first_token = False
 
-                        completion_tokens += 1
                         chunk = ChatCompletionChunk(
                             id=chat_id,
                             model=request.model,
@@ -452,20 +541,34 @@ class GatewayRequestHandler(BaseHTTPRequestHandler):
             status_code = 500
             error_code = "inference_failed"
             logger.exception("Inference error in GatewayServer")
-            if not self.wfile.closed:
+            if not headers_sent:
                 try:
                     self._send_error(500, f"Inference execution failed: {exc}", code=error_code)
                 except Exception:
                     pass
-        finally:
-            # 8. Unpin In-Flight Target
-            if pinned_version:
+            else:
                 try:
-                    self.server.version_service.unpin_version(target_version.version_id)
+                    err_chunk = {
+                        "error": {
+                            "message": f"Inference execution failed: {exc}",
+                            "type": "server_error",
+                            "code": error_code,
+                        }
+                    }
+                    self.wfile.write(f"data: {json.dumps(err_chunk)}\n\n".encode("utf-8"))
+                    self.wfile.write(b"data: [DONE]\n\n")
+                    self.wfile.flush()
+                except Exception:
+                    pass
+        finally:
+            # 10. Release In-Flight Execution Lease
+            if lease_id:
+                try:
+                    self.server.version_service.release_execution_lease(lease_id)
                 except Exception:
                     pass
 
-            # 9. Record Usage Accounting
+            # 11. Record Usage Accounting
             latency_ms = round((time.monotonic() - start_time) * 1000.0, 2)
             try:
                 self.server.accounting_service.record_request(
@@ -541,10 +644,11 @@ class GatewayServer(ThreadingHTTPServer):
 
     def write_state(self) -> None:
         """Writes current gateway server process state to data directory."""
+        actual_port = self.server_address[1] if hasattr(self, "server_address") and self.server_address else self.target_port
         state = {
             "pid": os.getpid(),
             "host": self.target_host,
-            "port": self.target_port,
+            "port": actual_port,
             "started_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         }
         try:

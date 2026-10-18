@@ -391,5 +391,21 @@ def get_contextual_guidance(control_id: str) -> str:
         "chat-user-input": "Type your message or question and press Enter to send to the model.",
         "auth-token-input": "Enter your read-only Hugging Face access key (starts with 'hf_'). Stored securely on your device.",
         "token-input": "Enter your read-only Hugging Face access key (starts with 'hf_'). Stored securely on your device.",
+
+        # Phase 5 API & Monitoring controls
+        "btn-pause-live": "Pause or resume real-time background telemetry updates (P).",
+        "btn-toggle-gateway": "Start or stop the local OpenAI-compatible inference gateway on loopback.",
+        "gateway-keys-table": "List of registered loopback API keys and connected applications.",
+        "btn-create-key": "Create a new loopback API key for external tools like OpenCode, Continue, or Cursor.",
+        "btn-rotate-key": "Generate a new secret key for this connection. Current key will be immediately invalidated.",
+        "btn-revoke-key": "Revoke an API key immediately, denying future requests from that application.",
+        "btn-connection-setup": "View ready-to-copy connection guides and snippets for your developer tools.",
+        "btn-switch-alias": "Point a model alias (e.g. coding, default) to a target version without reconfiguring apps.",
+        "usage-models-table": "Breakdown of inference requests, tokens, and latency by model.",
+        "usage-keys-table": "Breakdown of inference requests and token consumption by application key.",
+        "usage-requests-table": "Recent API request audit log with status codes and latency.",
+        "jobs-table": "Track background downloads, model setups, and recovery operations.",
+        "btn-jobs-resume": "Resume an interrupted model setup or download job from where it stopped.",
+        "btn-jobs-cleanup": "Safely clean up temporary download files for interrupted jobs.",
     }
     return mapping.get(cid, "LocalPilot: Use arrow keys or Tab to navigate. Press '?' or 'F1' for full guide.")

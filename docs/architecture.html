@@ -157,7 +157,7 @@
                 <img src="img/logo.png" alt="LocalPilot Logo" class="w-10 h-10 rounded-xl object-contain border border-white/10 group-hover:scale-105 transition-transform duration-300">
                 <span class="font-bold text-xl tracking-tight text-white flex items-center gap-2">
                     LocalPilot
-                    <span class="text-xs bg-brand/10 text-brand px-2 py-0.5 rounded-full border border-brand/20 font-mono font-medium">v0.1.8</span>
+                    <span class="text-xs bg-brand/10 text-brand px-2 py-0.5 rounded-full border border-brand/20 font-mono font-medium">v0.1.9</span>
                 </span>
             </a>
 
@@ -810,6 +810,54 @@
                         <div>$ localpilot connect opencode --write</div>
                     </div>
                 </div>
+
+                <!-- Command 16: Connected Applications & Disconnect -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <code class="text-brand font-bold text-sm font-mono">localpilot connections list | test | disconnect</code>
+                        <span class="text-[11px] text-slate-400 font-mono">Application Connections</span>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Lists configured developer tool connections (OpenCode, Continue, Cursor), executes 5-stage diagnostic connectivity tests, and cleanly restores client configurations upon disconnect without destroying user modifications.
+                    </p>
+                    <div class="bg-dark-950 p-3 rounded-xl font-mono text-xs text-slate-300 border border-white/5 space-y-1">
+                        <div>$ localpilot connections list</div>
+                        <div>$ localpilot connections test conn_12345678</div>
+                        <div>$ localpilot connections disconnect conn_12345678 --revoke-key</div>
+                    </div>
+                </div>
+
+                <!-- Command 17: User-Level Startup Service -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <code class="text-brand font-bold text-sm font-mono">localpilot startup status | preview | enable | disable</code>
+                        <span class="text-[11px] text-slate-400 font-mono">Automatic Gateway Startup</span>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Manages unprivileged user-level background services on login (Linux systemd user services or macOS launchd LaunchAgents). Includes dry-run preview and never requires administrator/root privileges.
+                    </p>
+                    <div class="bg-dark-950 p-3 rounded-xl font-mono text-xs text-slate-300 border border-white/5 space-y-1">
+                        <div>$ localpilot startup preview</div>
+                        <div>$ localpilot startup enable</div>
+                        <div>$ localpilot startup status</div>
+                    </div>
+                </div>
+
+                <!-- Command 18: Isolated Lifecycle Event Hooks -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <code class="text-brand font-bold text-sm font-mono">localpilot hooks list | inspect | enable | disable | test | reset-circuit</code>
+                        <span class="text-[11px] text-slate-400 font-mono">Lifecycle Event Hooks</span>
+                    </div>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Dispatches sanitized lifecycle events (gateway startup, model loading, updates). Custom executable hooks execute under strict process isolation (argument array only, stripped environment, no shell, 5s timeout) with automated circuit breakers after 3 consecutive failures.
+                    </p>
+                    <div class="bg-dark-950 p-3 rounded-xl font-mono text-xs text-slate-300 border border-white/5 space-y-1">
+                        <div>$ localpilot hooks list</div>
+                        <div>$ localpilot hooks inspect hook_1234</div>
+                        <div>$ localpilot hooks test hook_1234</div>
+                    </div>
+                </div>
             </div>
         </article>
 
@@ -920,7 +968,7 @@
                     <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="hover:text-brand transition-colors underline font-mono text-slate-300">10.5281/zenodo.23424540</a>
                 </div>
                 <div class="text-center md:text-right leading-relaxed">
-                    Mohamed (Fouad) Fakhruldeen. (2026). <em class="text-slate-300">fakhruldeen/LocalPilot: v0.1.8</em> (Version v0.1.8) [Computer software]. Zenodo. <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="text-brand hover:underline font-mono">https://doi.org/10.5281/zenodo.23424540</a>
+                    Mohamed (Fouad) Fakhruldeen. (2026). <em class="text-slate-300">fakhruldeen/LocalPilot: v0.1.9</em> (Version v0.1.9) [Computer software]. Zenodo. <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="text-brand hover:underline font-mono">https://doi.org/10.5281/zenodo.23424540</a>
                 </div>
             </div>
         </div>

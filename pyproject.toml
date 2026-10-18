@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "localpilot"
-version = "0.1.8"
+version = "0.1.9"
 description = "Local AI, Made Simple. Discover, install, run, chat with, and manage 100% private, offline LLMs on your computer with automatic hardware detection and a friendly TUI/CLI."
 readme = "README.md"
 requires-python = ">=3.11"
