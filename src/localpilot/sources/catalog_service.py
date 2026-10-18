@@ -41,39 +41,37 @@ class CatalogService:
         from datetime import datetime, timezone
         now_iso = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         conn = self.db.get_connection()
-        count = conn.execute("SELECT COUNT(*) as cnt FROM catalog_models").fetchone()["cnt"]
+        seeds = get_seed_candidates()
         with conn:
-            if count == 0:
-                seeds = get_seed_candidates()
-                for s in seeds:
-                    conn.execute(
-                        """
-                        INSERT OR REPLACE INTO catalog_models (
-                            candidate_id, model_id, source, revision, payload_json,
-                            verified_release_at, repo_created_at, repo_modified_at,
-                            artifact_published_at, metadata_fetched_at
-                        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                        """,
-                        (
-                            s.candidate_id,
-                            s.model_id,
-                            s.source,
-                            s.revision,
-                            s.model_dump_json(),
-                            s.verified_release_at,
-                            s.repo_created_at,
-                            s.repo_modified_at,
-                            s.artifact_published_at,
-                            s.metadata_fetched_at,
-                        ),
-                    )
+            for s in seeds:
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO catalog_models (
+                        candidate_id, model_id, source, revision, payload_json,
+                        verified_release_at, repo_created_at, repo_modified_at,
+                        artifact_published_at, metadata_fetched_at
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        s.candidate_id,
+                        s.model_id,
+                        s.source,
+                        s.revision,
+                        s.model_dump_json(),
+                        s.verified_release_at,
+                        s.repo_created_at,
+                        s.repo_modified_at,
+                        s.artifact_published_at,
+                        s.metadata_fetched_at,
+                    ),
+                )
             # Ensure catalog_sources has seed entry
             conn.execute(
                 """
                 INSERT OR IGNORE INTO catalog_sources (source_id, name, last_refreshed_at, status, details_json)
                 VALUES ('seed', 'Bundled Seed Catalog', ?, 'healthy', ?)
                 """,
-                (now_iso, json.dumps({"description": "Built-in curated model candidates"})),
+                (now_iso, json.dumps({"description": "Built-in curated model candidates", "count": len(seeds)})),
             )
             conn.execute(
                 """
@@ -130,9 +128,28 @@ class CatalogService:
 
             elif src == "huggingface":
                 try:
-                    candidates = await self.hf_adapter.search(limit=25)
+                    search_queries = [
+                        "gguf",
+                        "gemma 2 gguf",
+                        "deepseek r1 gguf",
+                        "qwen2.5 gguf",
+                        "moonlight gguf",
+                        "glm-4 gguf",
+                    ]
+                    all_candidates: List[NormalizedCandidate] = []
+                    seen_cids = set()
+                    for sq in search_queries:
+                        try:
+                            batch = await self.hf_adapter.search(query=sq, limit=15)
+                            for c in batch:
+                                if c.candidate_id not in seen_cids:
+                                    seen_cids.add(c.candidate_id)
+                                    all_candidates.append(c)
+                        except Exception:
+                            continue
+
                     with conn:
-                        for c in candidates:
+                        for c in all_candidates:
                             conn.execute(
                                 """
                                 INSERT OR REPLACE INTO catalog_models (
@@ -156,9 +173,9 @@ class CatalogService:
                             )
                         conn.execute(
                             "UPDATE catalog_sources SET last_refreshed_at = ?, status = 'healthy', details_json = ? WHERE source_id = 'huggingface'",
-                            (now_iso, json.dumps({"count": len(candidates)})),
+                            (now_iso, json.dumps({"count": len(all_candidates)})),
                         )
-                    results["huggingface"] = {"status": "healthy", "count": len(candidates)}
+                    results["huggingface"] = {"status": "healthy", "count": len(all_candidates)}
                 except Exception as e:
                     with conn:
                         conn.execute(
@@ -256,12 +273,65 @@ class CatalogService:
         for c in all_candidates:
             if task and task not in c.tasks:
                 continue
-            if q and (q not in c.name.lower() and q not in c.model_id.lower() and q not in c.family.lower()):
-                continue
+            if q:
+                pub = (c.provenance or {}).get("publisher", "").lower()
+                langs = [l.lower() for l in c.languages]
+                match = (
+                    q in c.name.lower()
+                    or q in c.model_id.lower()
+                    or q in c.family.lower()
+                    or q in pub
+                    or (q in ("chinese", "zh") and "zh" in langs)
+                )
+                if not match:
+                    continue
             filtered.append(c)
 
-        scored_items: List[Tuple[NormalizedCandidate, ScoreResult, CompatibilityCheckResult, Optional[ExecutionPlan], List[ExecutionPlan]]] = []
         conn = self.db.get_connection()
+        if q and len(filtered) == 0:
+            try:
+                import asyncio
+                loop = None
+                try:
+                    loop = asyncio.get_running_loop()
+                except RuntimeError:
+                    pass
+                if not (loop and loop.is_running()):
+                    async def _quick_fetch():
+                        return await self.hf_adapter.search(query=q, limit=5)
+                    online_cands = asyncio.run(asyncio.wait_for(_quick_fetch(), timeout=2.5))
+                    if online_cands:
+                        with conn:
+                            for oc in online_cands:
+                                conn.execute(
+                                    """
+                                    INSERT OR REPLACE INTO catalog_models (
+                                        candidate_id, model_id, source, revision, payload_json,
+                                        verified_release_at, repo_created_at, repo_modified_at,
+                                        artifact_published_at, metadata_fetched_at
+                                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                                    """,
+                                    (
+                                        oc.candidate_id,
+                                        oc.model_id,
+                                        oc.source,
+                                        oc.revision,
+                                        oc.model_dump_json(),
+                                        oc.verified_release_at,
+                                        oc.repo_created_at,
+                                        oc.repo_modified_at,
+                                        oc.artifact_published_at,
+                                        oc.metadata_fetched_at,
+                                    ),
+                                )
+                        for oc in online_cands:
+                            if task and task not in oc.tasks:
+                                continue
+                            filtered.append(oc)
+            except Exception:
+                pass
+
+        scored_items: List[Tuple[NormalizedCandidate, ScoreResult, CompatibilityCheckResult, Optional[ExecutionPlan], List[ExecutionPlan]]] = []
 
         for c in filtered:
             comp = self.compatibility_policy.evaluate(c, hw)

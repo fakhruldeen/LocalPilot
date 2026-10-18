@@ -1729,7 +1729,7 @@ class LocalPilotTUI(App):
             with TabPane("Find a Model", id="discover-tab"):
                 with Vertical():
                     with Horizontal():
-                        yield Input(placeholder="Search models (e.g. coding, llama, 3b)...", id="search-input", tooltip="Filter models by task or name (Type to search)")
+                        yield Input(placeholder="Search models (e.g. gemma, deepseek, qwen, kimi, coding)...", id="search-input", tooltip="Filter models by name, family, language, or publisher (Type to search)")
                     yield DataTable(id="discover-table")
                     with Vertical(id="explanation-box"):
                         yield Label("[bold]Why this model?[/bold]")

@@ -144,12 +144,14 @@ def _do_discover(
     task: Optional[str] = None,
     query: str = "",
     refresh: bool = False,
+    all_models: bool = False,
     plain: bool = False,
     json_output: bool = False,
 ) -> None:
     task_val = _val(task, None)
     query_val = str(_val(query, ""))
     refresh_val = bool(_val(refresh, False))
+    all_val = bool(_val(all_models, False))
     plain_val = bool(_val(plain, False))
     json_val = bool(_val(json_output, False))
 
@@ -171,10 +173,12 @@ def _do_discover(
                 console.print(f"[yellow]⚠ Notice: Catalog refresh encountered an issue: {ex}. Using existing cached models.[/yellow]\n")
 
     task_cat = TaskCategory(task_val.lower()) if task_val and isinstance(task_val, str) else None
-    results = cat_svc.discover(task=task_cat, query=query_val)
+    results = cat_svc.discover(task=task_cat, query=query_val, only_compatible=not all_val)
 
     if not results and not json_val:
-        console.print("[bold yellow]No models in the catalog fit within your computer's safe memory budget (RAM limit exceeded).[/bold yellow]")
+        console.print("[bold yellow]No models in the catalog match your query and fit within your computer's safe memory budget.[/bold yellow]")
+        if not all_val:
+            console.print("[dim]Tip: Use 'localpilot discover --all' to see all catalog models including those requiring more RAM.[/dim]")
         return
 
     if json_val:
@@ -185,10 +189,12 @@ def _do_discover(
         for r in results:
             cand = r.candidate
             sz_mb = cand.total_bytes / (1024 * 1024)
-            print(f"{cand.name} | Source: {cand.source} | Size: {sz_mb:.0f}MB | Score: {r.score.total_score} | ID: {cand.candidate_id}")
+            compat_str = "Compatible" if r.compatibility.is_compatible else "Exceeds RAM"
+            print(f"{cand.name} | Source: {cand.source} | Size: {sz_mb:.0f}MB | Score: {r.score.total_score} | Fit: {compat_str} | ID: {cand.candidate_id}")
         return
 
-    table = Table(title="Compatible Models for Your Computer", border_style="cyan")
+    title = "All Catalog Models" if all_val else "Compatible Models for Your Computer"
+    table = Table(title=title, border_style="cyan")
     table.add_column("Score", style="bold green", justify="right")
     table.add_column("Model Name", style="bold")
     table.add_column("Source")
@@ -200,8 +206,9 @@ def _do_discover(
     for r in results:
         cand = r.candidate
         sz_mb = cand.total_bytes / (1024 * 1024)
+        score_styled = f"{r.score.total_score:.0f}" if r.compatibility.is_compatible else f"[dim yellow]{r.score.total_score:.0f}[/dim yellow]"
         table.add_row(
-            f"{r.score.total_score:.0f}",
+            score_styled,
             cand.name,
             cand.source.title(),
             f"{sz_mb:.0f} MB",
@@ -651,6 +658,7 @@ def discover_models(
     task: Optional[str] = typer.Option(None, "--task", help="Filter by task category: chat, coding"),
     query: str = typer.Option("", "--query", "-q", help="Search text matching name, family, or tags"),
     refresh: bool = typer.Option(False, "--refresh", "-r", help="Fetch latest models from active sources (Hugging Face Hub, Ollama)"),
+    all_models: bool = typer.Option(False, "--all", "-a", help="Show all catalog models, including those requiring more RAM than currently available"),
     plain: bool = typer.Option(False, "--plain", help="Print plain tabular text without rich styling"),
     json_output: bool = typer.Option(False, "--json", help="Output machine-readable JSON candidate models"),
 ) -> None:
@@ -662,11 +670,13 @@ def discover_models(
     Examples:
       localpilot discover
       localpilot discover --refresh
+      localpilot discover --all
       localpilot discover --task coding -r
       localpilot discover -q "qwen"
+      localpilot discover -q "deepseek" --all
       localpilot discover --plain
     """
-    _do_discover(task=task, query=query, refresh=refresh, plain=plain, json_output=json_output)
+    _do_discover(task=task, query=query, refresh=refresh, all_models=all_models, plain=plain, json_output=json_output)
 
 
 @app.command("installed")
