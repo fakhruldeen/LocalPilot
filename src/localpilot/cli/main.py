@@ -143,15 +143,33 @@ def _do_doctor(plain: bool = False, json_output: bool = False) -> None:
 def _do_discover(
     task: Optional[str] = None,
     query: str = "",
+    refresh: bool = False,
     plain: bool = False,
     json_output: bool = False,
 ) -> None:
     task_val = _val(task, None)
     query_val = str(_val(query, ""))
+    refresh_val = bool(_val(refresh, False))
     plain_val = bool(_val(plain, False))
     json_val = bool(_val(json_output, False))
 
     cat_svc = CatalogService()
+    if refresh_val:
+        if not plain_val and not json_val:
+            console.print("[bold cyan]🔄 Contacting model registries (Hugging Face Hub, Ollama Library)...[/bold cyan]")
+        try:
+            refresh_res = cat_svc.refresh_catalog()
+            if not plain_val and not json_val:
+                src_details = refresh_res.get("sources", {})
+                hf_info = src_details.get("huggingface", {})
+                ollama_info = src_details.get("ollama_library", {})
+                hf_cnt = hf_info.get("count", 0)
+                ollama_cnt = ollama_info.get("count", 0)
+                console.print(f"[green]✓ Catalog refreshed successfully.[/green] (Hugging Face: {hf_cnt} models, Ollama: {ollama_cnt} models)\n")
+        except Exception as ex:
+            if not plain_val and not json_val:
+                console.print(f"[yellow]⚠ Notice: Catalog refresh encountered an issue: {ex}. Using existing cached models.[/yellow]\n")
+
     task_cat = TaskCategory(task_val.lower()) if task_val and isinstance(task_val, str) else None
     results = cat_svc.discover(task=task_cat, query=query_val)
 
@@ -632,6 +650,7 @@ def run_doctor(
 def discover_models(
     task: Optional[str] = typer.Option(None, "--task", help="Filter by task category: chat, coding"),
     query: str = typer.Option("", "--query", "-q", help="Search text matching name, family, or tags"),
+    refresh: bool = typer.Option(False, "--refresh", "-r", help="Fetch latest models from active sources (Hugging Face Hub, Ollama)"),
     plain: bool = typer.Option(False, "--plain", help="Print plain tabular text without rich styling"),
     json_output: bool = typer.Option(False, "--json", help="Output machine-readable JSON candidate models"),
 ) -> None:
@@ -642,11 +661,12 @@ def discover_models(
 
     Examples:
       localpilot discover
-      localpilot discover --task coding
+      localpilot discover --refresh
+      localpilot discover --task coding -r
       localpilot discover -q "qwen"
       localpilot discover --plain
     """
-    _do_discover(task=task, query=query, plain=plain, json_output=json_output)
+    _do_discover(task=task, query=query, refresh=refresh, plain=plain, json_output=json_output)
 
 
 @app.command("installed")
