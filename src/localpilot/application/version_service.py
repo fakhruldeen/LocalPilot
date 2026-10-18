@@ -529,7 +529,35 @@ class ModelVersionService:
         """Atomically points an alias to a target version and profile, recording history."""
         target_version = self.get_version(version_id, include_deleted=False)
         if not target_version:
-            raise ValueError(f"Target version '{version_id}' does not exist or is deleted.")
+            conn = self.db.get_connection()
+            # Try by installation_id or logical_model_id
+            row = conn.execute(
+                "SELECT version_id FROM model_versions WHERE (installation_id = ? OR logical_model_id = ?) AND is_deleted = 0 ORDER BY created_at DESC LIMIT 1",
+                (version_id, version_id),
+            ).fetchone()
+            if row:
+                target_version = self.get_version(row["version_id"], include_deleted=False)
+                if target_version:
+                    version_id = target_version.version_id
+
+            if not target_version:
+                try:
+                    from localpilot.sources.catalog_service import CatalogService
+                    cand = CatalogService().get_candidate(version_id)
+                    if cand:
+                        row = conn.execute(
+                            "SELECT version_id FROM model_versions WHERE (logical_model_id = ? OR installation_id = ?) AND is_deleted = 0 ORDER BY created_at DESC LIMIT 1",
+                            (cand.model_id, cand.candidate_id),
+                        ).fetchone()
+                        if row:
+                            target_version = self.get_version(row["version_id"], include_deleted=False)
+                            if target_version:
+                                version_id = target_version.version_id
+                except Exception:
+                    pass
+
+        if not target_version:
+            raise ValueError(f"Target version or installed model '{version_id}' does not exist or is deleted.")
 
         now = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
         conn = self.db.get_connection()

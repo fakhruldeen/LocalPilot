@@ -184,6 +184,13 @@ class DatabaseManager:
                 description TEXT NOT NULL
             )
             """)
+            conn.execute("""
+            CREATE TABLE IF NOT EXISTS model_favorites (
+                model_ref TEXT PRIMARY KEY,
+                created_at TEXT NOT NULL,
+                notes TEXT
+            )
+            """)
         self._run_migrations(conn)
 
     def _run_migrations(self, conn: sqlite3.Connection) -> None:
@@ -527,6 +534,36 @@ class DatabaseManager:
                     "VALUES (?, 'default', NULL, ?, ?, 'Initial migration default alias')",
                     (f"hist-default-{ver_id}", ver_id, now_str)
                 )
+
+    def add_favorite(self, model_ref: str, notes: Optional[str] = None) -> None:
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).isoformat()
+        conn = self.get_connection()
+        with conn:
+            conn.execute(
+                "INSERT OR REPLACE INTO model_favorites (model_ref, created_at, notes) VALUES (?, ?, ?)",
+                (model_ref, now, notes),
+            )
+
+    def remove_favorite(self, model_ref: str) -> None:
+        conn = self.get_connection()
+        with conn:
+            conn.execute("DELETE FROM model_favorites WHERE model_ref = ?", (model_ref,))
+
+    def list_favorites(self) -> List[str]:
+        conn = self.get_connection()
+        rows = conn.execute("SELECT model_ref FROM model_favorites ORDER BY created_at DESC").fetchall()
+        return [r["model_ref"] for r in rows]
+
+    def list_favorites_detailed(self) -> List[Dict[str, Any]]:
+        conn = self.get_connection()
+        rows = conn.execute("SELECT model_ref, created_at, notes FROM model_favorites ORDER BY created_at DESC").fetchall()
+        return [dict(r) for r in rows]
+
+    def is_favorite(self, model_ref: str) -> bool:
+        conn = self.get_connection()
+        row = conn.execute("SELECT 1 FROM model_favorites WHERE model_ref = ?", (model_ref,)).fetchone()
+        return row is not None
 
 
 # Global shared instance

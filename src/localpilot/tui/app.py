@@ -739,9 +739,9 @@ class SwitchAliasModal(ModalScreen[Optional[Dict[str, str]]]):
             yield Label("Alias Name (e.g. default, coding, writing):", classes="field-label")
             yield Input(id="input-alias-name", value=self.current_alias)
 
-            yield Label("Target Version ID:", classes="field-label")
+            yield Label("Target Model, Version ID, or Alias:", classes="field-label")
             init_v = self.available_versions[0] if self.available_versions else ""
-            yield Input(placeholder="e.g. llama-3.2-3b-q4", id="input-target-version", value=init_v)
+            yield Input(placeholder="e.g. gemma2:2b, qwen2.5-coder:1.5b, or version ID", id="input-target-version", value=init_v)
 
             yield Label("Reason (optional audit log note):", classes="field-label")
             yield Input(placeholder="e.g. Upgrade to newer quantized build", id="input-switch-reason", value="Manual alias switch")
@@ -1623,6 +1623,7 @@ class LocalPilotTUI(App):
         ("x", "stop_action", "Stop"),
         ("delete", "remove_action", "Remove"),
         ("u", "refresh_catalog_action", "Update List"),
+        ("f", "toggle_favorite_action", "Favorite"),
         ("f1", "show_help", "Help & Guide"),
         ("?", "show_help", "Help"),
         ("h", "show_help", "Guide"),
@@ -1738,6 +1739,7 @@ class LocalPilotTUI(App):
                         yield Label("", id="setup-progress-text")
                     with Horizontal(classes="table-actions-bar"):
                         yield Button("Set Up Selected Model (Enter)", variant="primary", id="btn-discover-setup", tooltip="Review and set up highlighted model (Enter)")
+                        yield Button("Favorite (F)", variant="default", id="btn-discover-favorite", tooltip="Add or remove highlighted model from favorites (F)")
                         yield Button("Update List (U)", variant="default", id="btn-discover-refresh", tooltip="Download and update models list from Hugging Face & Ollama (U)")
 
             with TabPane("Installed Models", id="installed-tab"):
@@ -1745,6 +1747,7 @@ class LocalPilotTUI(App):
                     yield DataTable(id="installed-table")
                     with Horizontal(classes="table-actions-bar"):
                         yield Button("Chat with Model (Enter / C)", variant="primary", id="btn-installed-chat", tooltip="Open chat session with selected model (Enter or C)")
+                        yield Button("Favorite (F)", variant="default", id="btn-installed-favorite", tooltip="Toggle favorite status for this model (F)")
                         yield Button("Pin / Unpin (P)", variant="default", id="btn-installed-pin", tooltip="Pin model to protect it from automatic removal")
                         yield Button("Compare Versions", variant="default", id="btn-installed-compare", tooltip="Compare two model versions side-by-side")
                         yield Button("Set Alias", variant="default", id="btn-installed-alias", tooltip="Map an alias (e.g. default, coding) to this model")
@@ -1893,7 +1896,7 @@ class LocalPilotTUI(App):
     def _setup_discover_table(self) -> None:
         table = self.query_one("#discover-table", DataTable)
         table.cursor_type = "row"
-        table.add_columns("Score", "Model Name", "Source", "Size", "Context (tokens)", "Fit Status")
+        table.add_columns("Score", "Model Name", "Short Alias", "Source", "Size", "Context (tokens)", "Fit Status")
         try:
             initial_results = self.cat_svc.discover(query="")
             self._update_discover_table(initial_results, self._search_seq)
@@ -1961,6 +1964,7 @@ class LocalPilotTUI(App):
             table.add_row(
                 "-",
                 "No compatible models in memory budget",
+                "-",
                 "Catalog",
                 "0 MB",
                 "0",
@@ -1971,9 +1975,12 @@ class LocalPilotTUI(App):
         for r in results:
             cand = r.candidate
             sz_mb = cand.total_bytes / (1024 * 1024)
+            name_display = f"★ {cand.name}" if r.is_favorite else cand.name
+            alias_display = cand.short_alias or cand.display_alias
             table.add_row(
                 f"{r.score.total_score:.0f}",
-                cand.name,
+                name_display,
+                alias_display,
                 cand.source.title(),
                 f"{sz_mb:.0f} MB",
                 str(cand.usable_context),
@@ -2001,10 +2008,12 @@ class LocalPilotTUI(App):
             context_info = f" • Context: {item.candidate.usable_context:,} tokens"
             sz_mb = item.candidate.total_bytes / (1024 * 1024)
             compat_info = f" • Fit: {item.compatibility.friendly_explanation}"
+            fav_prefix = "★ [bold yellow]Favorited[/bold yellow] • " if item.is_favorite else ""
+            alias_str = item.candidate.short_alias or item.candidate.display_alias
             expl_label.update(
-                f"[bold cyan]{item.candidate.name}[/bold cyan] ({item.candidate.source.title()} • {sz_mb:.0f} MB • Score: [bold green]{item.score.total_score:.0f}/100[/bold green]){compat_info}\n"
+                f"{fav_prefix}[bold cyan]{item.candidate.name}[/bold cyan] [bold yellow](Alias: {alias_str})[/bold yellow] ({item.candidate.source.title()} • {sz_mb:.0f} MB • Score: [bold green]{item.score.total_score:.0f}/100[/bold green]){compat_info}\n"
                 f"{item.score.explanation}{plan_info}\n"
-                f"[dim]Recommendation confidence: {item.candidate.confidence.value}{context_info} • Press Enter to Setup[/dim]"
+                f"[dim]Recommendation confidence: {item.candidate.confidence.value}{context_info} • Press Enter to Setup • Press F to Favorite[/dim]"
             )
 
     def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
@@ -2119,7 +2128,9 @@ class LocalPilotTUI(App):
                 except Exception:
                     pass
 
-                table.add_row(name, purpose, status, sz_str, key=r["installation_id"])
+                is_fav = self.cat_svc.is_favorite(r["model_id"]) or self.cat_svc.is_favorite(r["name"]) or self.cat_svc.is_favorite(r["installation_id"])
+                name_disp = f"★ {name}" if is_fav else name
+                table.add_row(name_disp, purpose, status, sz_str, key=r["installation_id"])
 
     def _setup_running_table(self) -> None:
         table = self.query_one("#running-table", DataTable)
@@ -2719,6 +2730,44 @@ class LocalPilotTUI(App):
             return
         self.push_screen(CompareVersionsModal(versions[0].version_id, versions[1].version_id))
 
+    def action_toggle_favorite_action(self) -> None:
+        """Toggle favorite status for the highlighted model in Find a Model or Installed Models tab."""
+        current_tab = self.query_one("#main-tabs", TabbedContent).active
+        if current_tab == "discover-tab":
+            table = self.query_one("#discover-table", DataTable)
+            if not self._ranked_candidates or table.row_count == 0 or table.cursor_row < 0:
+                return
+            row_idx = table.cursor_row
+            if 0 <= row_idx < len(self._ranked_candidates):
+                item = self._ranked_candidates[row_idx]
+                cand = item.candidate
+                ref = cand.short_alias or cand.candidate_id
+                is_fav = self.cat_svc.toggle_favorite(ref)
+                item.is_favorite = is_fav
+                msg = f"★ Added '{cand.name}' to favorites." if is_fav else f"Removed '{cand.name}' from favorites."
+                self.notify(msg, title="Favorites")
+                self._update_discover_table(self._ranked_candidates, self._search_seq)
+                self._update_explanation(row_idx)
+        elif current_tab == "installed-tab":
+            table = self.query_one("#installed-table", DataTable)
+            if table.row_count == 0 or table.cursor_row < 0:
+                return
+            try:
+                row_key, _ = table.coordinate_to_cell_key(table.cursor_coordinate)
+                inst_id = str(row_key.value) if row_key else ""
+                if not inst_id or inst_id == "empty_installed":
+                    return
+                conn = get_db().get_connection()
+                row = conn.execute("SELECT * FROM installations WHERE installation_id = ?", (inst_id,)).fetchone()
+                if row:
+                    ref = row["model_id"]
+                    is_fav = self.cat_svc.toggle_favorite(ref)
+                    msg = f"★ Added '{row['name']}' to favorites." if is_fav else f"Removed '{row['name']}' from favorites."
+                    self.notify(msg, title="Favorites")
+                    self._refresh_installed_table()
+            except Exception:
+                pass
+
     def _resume_selected_job(self) -> None:
         table = self.query_one("#jobs-table", DataTable)
         if table.row_count == 0 or table.cursor_row < 0:
@@ -2790,10 +2839,14 @@ class LocalPilotTUI(App):
             self.action_show_help()
         elif btn_id == "btn-discover-setup":
             self.action_select_action()
+        elif btn_id == "btn-discover-favorite":
+            self.action_toggle_favorite_action()
         elif btn_id == "btn-discover-refresh":
             self.action_refresh_catalog_action()
         elif btn_id == "btn-installed-chat":
             self.action_chat_selected()
+        elif btn_id == "btn-installed-favorite":
+            self.action_toggle_favorite_action()
         elif btn_id == "btn-installed-pin":
             self.action_pin_unpin_installed()
         elif btn_id == "btn-installed-compare":

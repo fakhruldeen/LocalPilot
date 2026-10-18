@@ -23,6 +23,7 @@ class RankedCandidate(BaseModel):
     compatibility: CompatibilityCheckResult
     recommended_plan: Optional[ExecutionPlan] = None
     alternative_plans: List[ExecutionPlan] = Field(default_factory=list)
+    is_favorite: bool = False
 
 
 class CatalogService:
@@ -93,6 +94,39 @@ class CatalogService:
             "SELECT last_refreshed_at FROM catalog_sources WHERE source_id = 'huggingface'"
         ).fetchone()
         if not row or row["last_refreshed_at"] is None:
+            return True
+        return False
+
+    def add_favorite(self, model_ref: str, notes: Optional[str] = None) -> None:
+        self.db.add_favorite(model_ref, notes)
+
+    def remove_favorite(self, model_ref: str) -> None:
+        self.db.remove_favorite(model_ref)
+
+    def toggle_favorite(self, model_ref: str) -> bool:
+        if self.is_favorite(model_ref):
+            self.remove_favorite(model_ref)
+            return False
+        else:
+            self.add_favorite(model_ref)
+            return True
+
+    def list_favorites(self) -> List[str]:
+        return self.db.list_favorites()
+
+    def list_favorites_detailed(self) -> List[Dict[str, Any]]:
+        return self.db.list_favorites_detailed()
+
+    def is_favorite(self, candidate_or_ref: Any) -> bool:
+        if isinstance(candidate_or_ref, str):
+            return self.db.is_favorite(candidate_or_ref)
+        if hasattr(candidate_or_ref, "candidate_id") and self.db.is_favorite(candidate_or_ref.candidate_id):
+            return True
+        if hasattr(candidate_or_ref, "short_alias") and candidate_or_ref.short_alias and self.db.is_favorite(candidate_or_ref.short_alias):
+            return True
+        if hasattr(candidate_or_ref, "display_alias") and self.db.is_favorite(candidate_or_ref.display_alias):
+            return True
+        if hasattr(candidate_or_ref, "model_id") and self.db.is_favorite(candidate_or_ref.model_id):
             return True
         return False
 
@@ -251,17 +285,54 @@ class CatalogService:
                 pass
         return candidates
 
-    def get_candidate(self, candidate_id: str) -> Optional[NormalizedCandidate]:
+    def get_candidate(self, candidate_or_alias: str) -> Optional[NormalizedCandidate]:
         conn = self.db.get_connection()
+        # 1. Direct candidate_id lookup
         row = conn.execute(
             "SELECT payload_json FROM catalog_models WHERE candidate_id = ?",
-            (candidate_id,),
+            (candidate_or_alias,),
         ).fetchone()
         if row:
             try:
                 return NormalizedCandidate.model_validate_json(row["payload_json"])
             except Exception:
                 pass
+
+        # 2. Check all cached candidates for short_alias or loose match
+        candidates = self.get_cached_candidates()
+        target = candidate_or_alias.lower().strip()
+
+        # Check exact short_alias match
+        for c in candidates:
+            if c.short_alias and c.short_alias.lower() == target:
+                return c
+
+        # Check user-defined model_aliases in DB
+        alias_row = conn.execute(
+            "SELECT target_version_id, logical_model_id FROM model_aliases WHERE alias_name = ?",
+            (target,),
+        ).fetchone()
+        if alias_row:
+            target_id = alias_row["target_version_id"] or alias_row["logical_model_id"]
+            for c in candidates:
+                if c.candidate_id == target_id or (c.short_alias and c.short_alias.lower() == target_id.lower()):
+                    return c
+
+        # Check display_alias or equivalence group
+        for c in candidates:
+            if c.display_alias.lower() == target:
+                return c
+            if c.equivalence_group and c.equivalence_group.lower() == target:
+                return c
+
+        # Loose match: candidate name, model_id, or candidate_id
+        for c in candidates:
+            if target == c.name.lower() or target == c.model_id.lower():
+                return c
+        for c in candidates:
+            if target in (c.short_alias or "").lower() or target in c.candidate_id.lower():
+                return c
+
         return None
 
     def discover(
@@ -270,6 +341,7 @@ class CatalogService:
         task: Optional[TaskCategory] = None,
         query: str = "",
         only_compatible: bool = True,
+        only_favorites: bool = False,
     ) -> List[RankedCandidate]:
         report = self.inspector.inspect()
         hw = hardware or report.hardware
@@ -283,13 +355,19 @@ class CatalogService:
         for c in all_candidates:
             if task and task not in c.tasks:
                 continue
+            if only_favorites and not self.is_favorite(c):
+                continue
             if q:
                 pub = (c.provenance or {}).get("publisher", "").lower()
                 langs = [l.lower() for l in c.languages]
+                alias = (c.short_alias or "").lower()
+                disp_alias = c.display_alias.lower()
                 match = (
                     q in c.name.lower()
                     or q in c.model_id.lower()
                     or q in c.family.lower()
+                    or q in alias
+                    or q in disp_alias
                     or q in pub
                     or (q in ("chinese", "zh") and "zh" in langs)
                 )
@@ -435,6 +513,7 @@ class CatalogService:
                     compatibility=comp,
                     recommended_plan=rec,
                     alternative_plans=alts,
+                    is_favorite=self.is_favorite(c),
                 )
             )
 

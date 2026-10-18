@@ -59,6 +59,7 @@ class NormalizedCandidate(BaseModel):
     candidate_id: str
     model_id: str
     name: str
+    short_alias: Optional[str] = None
     source: str                          # "huggingface", "ollama", "local"
     revision: Optional[str] = None
     artifact_id: str
@@ -130,6 +131,18 @@ class NormalizedCandidate(BaseModel):
             return num
         except ValueError:
             return 7.0
+
+    @property
+    def display_alias(self) -> str:
+        """User-friendly short alias for concise CLI commands and display."""
+        if self.short_alias:
+            return self.short_alias
+        base = self.model_id.split("/")[-1].lower().replace("-gguf", "").replace(".gguf", "")
+        # Pick quantization suffix if present
+        for q in ["q4_k_m", "q4_0", "q5_k_m", "q8_0", "f16"]:
+            if self.artifact_id and q in self.artifact_id.lower():
+                return f"{base}:{q}"
+        return base
 
 
 class StopStatus(str, Enum):

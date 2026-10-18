@@ -121,10 +121,18 @@ class HuggingFaceSourceAdapter(BaseSourceAdapter):
                         # Approximate size if sibling size is not provided
                         total_bytes = 2 * 1024 * 1024 * 1024  # fallback 2GB
                         rev = item.get("sha") or "main"
+                        clean_base = model_id.split("/")[-1].lower().replace("-gguf", "").replace(".gguf", "")
+                        quant_part = "q4"
+                        for q in ["q4_k_m", "q4_0", "q5_k_m", "q8_0", "f16"]:
+                            if q in selected_file.lower():
+                                quant_part = q
+                                break
+                        dyn_alias = f"{clean_base}:{quant_part}"
                         candidate = NormalizedCandidate(
                             candidate_id=f"hf-{model_id.replace('/', '-')}-{selected_file}",
                             model_id=model_id,
                             name=f"{model_id.split('/')[-1]} ({selected_file})",
+                            short_alias=dyn_alias,
                             source="huggingface",
                             revision=rev,
                             artifact_id=selected_file,

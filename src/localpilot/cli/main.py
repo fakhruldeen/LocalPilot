@@ -85,6 +85,10 @@ app.add_typer(startup_app, name="startup")
 hooks_app = typer.Typer(help="Manage isolated lifecycle event hooks and circuit breakers.")
 app.add_typer(hooks_app, name="hooks")
 
+favorite_app = typer.Typer(help="Manage favorite models for quick discovery and access.")
+app.add_typer(favorite_app, name="favorite")
+app.add_typer(favorite_app, name="fav")
+
 
 
 def _val(arg: Any, default: Any = None) -> Any:
@@ -145,6 +149,7 @@ def _do_discover(
     query: str = "",
     refresh: bool = False,
     all_models: bool = False,
+    favorites: bool = False,
     plain: bool = False,
     json_output: bool = False,
 ) -> None:
@@ -152,6 +157,7 @@ def _do_discover(
     query_val = str(_val(query, ""))
     refresh_val = bool(_val(refresh, False))
     all_val = bool(_val(all_models, False))
+    fav_val = bool(_val(favorites, False))
     plain_val = bool(_val(plain, False))
     json_val = bool(_val(json_output, False))
 
@@ -174,12 +180,15 @@ def _do_discover(
                 console.print(f"[yellow]⚠ Notice: Catalog refresh encountered an issue: {ex}. Using existing cached models.[/yellow]\n")
 
     task_cat = TaskCategory(task_val.lower()) if task_val and isinstance(task_val, str) else None
-    results = cat_svc.discover(task=task_cat, query=query_val, only_compatible=not all_val)
+    results = cat_svc.discover(task=task_cat, query=query_val, only_compatible=not all_val, only_favorites=fav_val)
 
     if not results and not json_val:
-        console.print("[bold yellow]No models in the catalog match your query and fit within your computer's safe memory budget.[/bold yellow]")
-        if not all_val:
-            console.print("[dim]Tip: Use 'localpilot discover --all' to see all catalog models including those requiring more RAM.[/dim]")
+        if fav_val:
+            console.print("[bold yellow]No favorite models found. Add one with: localpilot favorite add <alias>[/bold yellow]")
+        else:
+            console.print("[bold yellow]No models in the catalog match your query and fit within your computer's safe memory budget.[/bold yellow]")
+            if not all_val:
+                console.print("[dim]Tip: Use 'localpilot discover --all' to see all catalog models including those requiring more RAM.[/dim]")
         return
 
     if json_val:
@@ -191,13 +200,16 @@ def _do_discover(
             cand = r.candidate
             sz_mb = cand.total_bytes / (1024 * 1024)
             compat_str = "Compatible" if r.compatibility.is_compatible else "Exceeds RAM"
-            print(f"{cand.name} | Source: {cand.source} | Size: {sz_mb:.0f}MB | Score: {r.score.total_score} | Fit: {compat_str} | ID: {cand.candidate_id}")
+            fav_str = " ★" if r.is_favorite else ""
+            alias_str = cand.short_alias or cand.display_alias
+            print(f"{cand.name}{fav_str} | Alias: {alias_str} | Source: {cand.source} | Size: {sz_mb:.0f}MB | Score: {r.score.total_score} | Fit: {compat_str} | ID: {cand.candidate_id}")
         return
 
-    title = "All Catalog Models" if all_val else "Compatible Models for Your Computer"
+    title = "Favorite Models" if fav_val else ("All Catalog Models" if all_val else "Compatible Models for Your Computer")
     table = Table(title=title, border_style="cyan")
     table.add_column("Score", style="bold green", justify="right")
     table.add_column("Model Name", style="bold")
+    table.add_column("Short Alias", style="bold cyan")
     table.add_column("Source")
     table.add_column("Size", justify="right")
     table.add_column("Context", justify="right")
@@ -208,9 +220,12 @@ def _do_discover(
         cand = r.candidate
         sz_mb = cand.total_bytes / (1024 * 1024)
         score_styled = f"{r.score.total_score:.0f}" if r.compatibility.is_compatible else f"[dim yellow]{r.score.total_score:.0f}[/dim yellow]"
+        name_styled = f"[yellow]★[/yellow] {cand.name}" if r.is_favorite else cand.name
+        alias_str = cand.short_alias or cand.display_alias
         table.add_row(
             score_styled,
-            cand.name,
+            name_styled,
+            alias_str,
             cand.source.title(),
             f"{sz_mb:.0f} MB",
             str(cand.usable_context),
@@ -219,7 +234,8 @@ def _do_discover(
         )
 
     console.print(table)
-    console.print("\nTo set up a model, run: [cyan]localpilot setup <candidate-id>[/cyan]")
+    console.print("\nTo set up a model, run: [cyan]localpilot setup <alias>[/cyan] (e.g. [cyan]localpilot setup gemma2:2b[/cyan])")
+    console.print("To manage favorites: [cyan]localpilot favorite add <alias>[/cyan] or press [bold]F[/bold] in TUI\n")
 
 
 def _do_installed(plain: bool = False, json_output: bool = False) -> None:
@@ -436,7 +452,49 @@ def _do_chat(target: str) -> None:
             break
 
 
+def _resolve_installation_id(id_or_alias: str) -> str:
+    db = get_db()
+    conn = db.get_connection()
+    # 1. Exact installation_id
+    row = conn.execute("SELECT installation_id FROM installations WHERE installation_id = ?", (id_or_alias,)).fetchone()
+    if row:
+        return row["installation_id"]
+
+    target = id_or_alias.lower().strip()
+    # 2. Case-insensitive installation_id, name, or model_id
+    rows = conn.execute("SELECT installation_id, model_id, name FROM installations").fetchall()
+    for r in rows:
+        if r["installation_id"].lower() == target or r["name"].lower() == target or r["model_id"].lower() == target:
+            return r["installation_id"]
+
+    # 3. Via model_aliases
+    alias_row = conn.execute("SELECT target_version_id, logical_model_id FROM model_aliases WHERE alias_name = ?", (target,)).fetchone()
+    if alias_row:
+        tgt_ver = alias_row["target_version_id"]
+        if tgt_ver:
+            ver_row = conn.execute("SELECT installation_id FROM model_versions WHERE version_id = ?", (tgt_ver,)).fetchone()
+            if ver_row and ver_row["installation_id"]:
+                return ver_row["installation_id"]
+        if alias_row["logical_model_id"]:
+            row = conn.execute("SELECT installation_id FROM installations WHERE model_id = ?", (alias_row["logical_model_id"],)).fetchone()
+            if row:
+                return row["installation_id"]
+
+    # 4. Via catalog candidate
+    try:
+        cand = CatalogService().get_candidate(id_or_alias)
+        if cand:
+            for r in rows:
+                if r["model_id"].lower() == cand.model_id.lower() or r["name"].lower() == cand.name.lower():
+                    return r["installation_id"]
+    except Exception:
+        pass
+
+    return id_or_alias
+
+
 def _do_update(installation_id: str, yes: bool = False) -> None:
+    installation_id = _resolve_installation_id(installation_id)
     workflow = UpdateWorkflow()
 
     try:
@@ -635,6 +693,7 @@ def discover_models(
     query: str = typer.Option("", "--query", "-q", help="Search text matching name, family, or tags"),
     refresh: bool = typer.Option(False, "--refresh", "-r", help="Fetch latest models from active sources (Hugging Face Hub, Ollama)"),
     all_models: bool = typer.Option(False, "--all", "-a", help="Show all catalog models, including those requiring more RAM than currently available"),
+    favorites: bool = typer.Option(False, "--favorites", "-f", help="Show only favorited models"),
     plain: bool = typer.Option(False, "--plain", help="Print plain tabular text without rich styling"),
     json_output: bool = typer.Option(False, "--json", help="Output machine-readable JSON candidate models"),
 ) -> None:
@@ -645,6 +704,7 @@ def discover_models(
 
     Examples:
       localpilot discover
+      localpilot discover --favorites
       localpilot discover --refresh
       localpilot discover --all
       localpilot discover --task coding -r
@@ -652,7 +712,7 @@ def discover_models(
       localpilot discover -q "deepseek" --all
       localpilot discover --plain
     """
-    _do_discover(task=task, query=query, refresh=refresh, all_models=all_models, plain=plain, json_output=json_output)
+    _do_discover(task=task, query=query, refresh=refresh, all_models=all_models, favorites=favorites, plain=plain, json_output=json_output)
 
 
 @app.command("installed")
@@ -801,7 +861,7 @@ def chat_model(
 
 @app.command("update")
 def update_model(
-    installation_id: str = typer.Argument(..., help="Installation ID to check/update"),
+    installation_id: str = typer.Argument(..., help="Installation ID, model alias, or name to check/update (e.g. 'gemma2:2b', 'qwen2.5-coder:1.5b')"),
     yes: bool = typer.Option(False, "-y", "--yes", help="Skip confirmation prompt and apply updates immediately"),
 ) -> None:
     """Check for model updates or upstream weight refreshes.
@@ -810,7 +870,8 @@ def update_model(
     Technical: Queries HuggingFace or Ollama registry for updated manifests/hashes; reports honest status (up-to-date, update-available, or service-managed).
 
     Examples:
-      localpilot update inst_qwen25_coder
+      localpilot update gemma2:2b
+      localpilot update qwen2.5-coder:1.5b
       localpilot update inst_qwen25_coder -y
     """
     _do_update(installation_id, yes=yes)
@@ -908,7 +969,7 @@ def view_logs(
 
 @app.command("setup")
 def setup_model(
-    candidate_id: Optional[str] = typer.Argument(None, help="Candidate ID to install (from 'localpilot discover')"),
+    candidate_id: Optional[str] = typer.Argument(None, help="Candidate ID or alias to install (e.g. 'gemma2:2b', 'qwen2.5-coder:1.5b', 'llama3.2:3b')"),
     scope: str = typer.Option("isolated", "--scope", help="Installation scope: isolated, user, system"),
     yes: bool = typer.Option(False, "-y", "--yes", help="Accept execution plan without confirmation prompt"),
 ) -> None:
@@ -919,7 +980,8 @@ def setup_model(
 
     Examples:
       localpilot setup
-      localpilot setup cand_qwen25_coder
+      localpilot setup gemma2:2b
+      localpilot setup qwen2.5-coder:1.5b --yes
       localpilot setup cand_llama32_3b --yes
     """
     cat_svc = CatalogService()
@@ -1441,7 +1503,7 @@ def alias_list(
 @alias_app.command("set")
 def alias_set(
     alias_name: str = typer.Argument(..., help="Alias name (e.g. 'writing', 'coding', 'default')"),
-    version_id: str = typer.Argument(..., help="Target model version ID to map"),
+    version_id: str = typer.Argument(..., help="Target model version ID, candidate alias, or installed model name"),
     reason: str = typer.Option("Manual activation", "--reason", "-r", help="Reason for activation"),
 ) -> None:
     """Point or switch an alias to a target model version atomically."""
@@ -1455,6 +1517,16 @@ def alias_set(
     except Exception as exc:
         render_error_box("Alias Update Failed", str(exc))
         raise typer.Exit(code=1)
+
+
+@alias_app.command("add")
+def alias_add(
+    alias_name: str = typer.Argument(..., help="Alias name (e.g. 'writing', 'coding', 'default', 'myfastmodel')"),
+    target: str = typer.Argument(..., help="Target model version ID, candidate alias, or installed model name"),
+    reason: str = typer.Option("Manual activation", "--reason", "-r", help="Reason for activation"),
+) -> None:
+    """Add or point a friendly alias to a target model (alias for 'alias set')."""
+    alias_set(alias_name=alias_name, version_id=target, reason=reason)
 
 
 @alias_app.command("rollback")
@@ -2446,6 +2518,86 @@ def hooks_reset_circuit(
             raise typer.Exit(code=1)
         render_error_box("Reset Failed", str(exc))
         raise typer.Exit(code=1)
+
+
+@favorite_app.command("list")
+def favorite_list(
+    plain: bool = typer.Option(False, "--plain", help="Print plain text without styling"),
+    json_output: bool = typer.Option(False, "--json", help="Output machine-readable JSON favorites list"),
+) -> None:
+    """List all favorited models."""
+    plain = bool(_val(plain, False))
+    json_output = bool(_val(json_output, False))
+    cat_svc = CatalogService()
+    favs = cat_svc.list_favorites_detailed()
+    if json_output:
+        typer.echo(json.dumps(favs, indent=2))
+        return
+
+    if not favs:
+        if plain:
+            print("No favorite models yet.")
+        else:
+            console.print("[dim]No favorite models yet. Star a model with [cyan]localpilot favorite add <alias>[/cyan] or press [bold]F[/bold] in TUI.[/dim]")
+        return
+
+    if plain:
+        for f in favs:
+            print(f"{f['model_ref']}\t{f['created_at']}\t{f['notes'] or ''}")
+        return
+
+    table = Table(title="Favorite Models", border_style="yellow")
+    table.add_column("★", style="bold yellow")
+    table.add_column("Model Reference / Alias", style="bold cyan")
+    table.add_column("Added At", style="dim")
+    table.add_column("Notes", style="dim")
+
+    for f in favs:
+        table.add_row("★", f["model_ref"], str(f["created_at"])[:19], f["notes"] or "-")
+
+    console.print(table)
+
+
+@favorite_app.command("add")
+def favorite_add(
+    model_ref: str = typer.Argument(..., help="Model alias, candidate ID, or name to add to favorites"),
+    notes: Optional[str] = typer.Option(None, "--notes", "-n", help="Optional user notes"),
+) -> None:
+    """Add a model to favorites."""
+    cat_svc = CatalogService()
+    cand = cat_svc.get_candidate(model_ref)
+    ref = cand.short_alias if cand and cand.short_alias else (cand.candidate_id if cand else model_ref)
+    cat_svc.add_favorite(ref, notes=notes)
+    render_message_box("Favorite Added", f"★ Added '[bold green]{ref}[/bold green]' to your favorites.")
+
+
+@favorite_app.command("remove")
+def favorite_remove(
+    model_ref: str = typer.Argument(..., help="Model alias, candidate ID, or name to remove from favorites"),
+) -> None:
+    """Remove a model from favorites."""
+    cat_svc = CatalogService()
+    cand = cat_svc.get_candidate(model_ref)
+    ref = cand.short_alias if cand and cand.short_alias else (cand.candidate_id if cand else model_ref)
+    cat_svc.remove_favorite(ref)
+    if ref != model_ref:
+        cat_svc.remove_favorite(model_ref)
+    render_message_box("Favorite Removed", f"Removed '[yellow]{model_ref}[/yellow]' from your favorites.")
+
+
+@favorite_app.command("toggle")
+def favorite_toggle(
+    model_ref: str = typer.Argument(..., help="Model alias or candidate ID to toggle favorite status"),
+) -> None:
+    """Toggle favorite status for a model."""
+    cat_svc = CatalogService()
+    cand = cat_svc.get_candidate(model_ref)
+    ref = cand.short_alias if cand and cand.short_alias else (cand.candidate_id if cand else model_ref)
+    is_fav = cat_svc.toggle_favorite(ref)
+    if is_fav:
+        render_message_box("Favorite Added", f"★ Added '[bold green]{ref}[/bold green]' to your favorites.")
+    else:
+        render_message_box("Favorite Removed", f"Removed '[yellow]{ref}[/yellow]' from your favorites.")
 
 
 if __name__ == "__main__":
