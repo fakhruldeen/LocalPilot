@@ -152,6 +152,15 @@ async def test_tui_model_discovery_selection_shows_explanation() -> None:
         # Must not be the unselected placeholder
         text = str(expl.render())
         assert len(text) > 0
+        assert "Select a model above to see why" not in text
+        assert "Score" in text
+
+        # Move to second row and verify it updates dynamically
+        table.move_cursor(row=1)
+        await pilot.pause()
+        text_row1 = str(expl.render())
+        assert len(text_row1) > 0
+        assert "Select a model above to see why" not in text_row1
 
         # Check progress text label is present
         prog = tui.query_one("#setup-progress-text")

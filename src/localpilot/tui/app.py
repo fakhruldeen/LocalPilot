@@ -1367,9 +1367,21 @@ class LocalPilotTUI(App):
     }
     #explanation-box {
         border: solid #555555;
-        padding: 1;
-        height: 5;
+        padding: 0 1;
+        min-height: 5;
+        height: auto;
+        max-height: 8;
         margin-top: 1;
+    }
+    #home-shortcuts-bar {
+        height: 1;
+        margin: 1 0;
+        align: center middle;
+    }
+    #home-shortcuts-label {
+        color: #888888;
+        text-align: center;
+        width: 100%;
     }
     .hidden {
         display: none;
@@ -1655,9 +1667,9 @@ class LocalPilotTUI(App):
 
                     # Live status & telemetry bar
                     with Horizontal(id="home-live-bar"):
-                        yield Label("[bold green]● Gateway: Ready[/bold green]", id="home-gateway-status")
-                        yield Label("Updated: just now", id="home-freshness-pill", classes="freshness-pill")
-                        yield Button("Pause (P)", variant="default", id="btn-pause-live", tooltip="Pause or resume live telemetry updates (P)")
+                        yield Label("[dim]○ Local API Gateway: Inactive (Optional)[/dim]", id="home-gateway-status")
+                        yield Label("Live Dashboard: Active", id="home-freshness-pill", classes="freshness-pill")
+                        yield Button("Pause (P)", variant="default", id="btn-pause-live", tooltip="Pause or resume live dashboard telemetry updates (P)")
 
                     # Badges summary row
                     with Horizontal(id="home-badges-bar"):
@@ -1692,6 +1704,9 @@ class LocalPilotTUI(App):
                     with Horizontal(id="home-primary-actions"):
                         yield Button("Help me get started", variant="primary", id="btn-get-started", tooltip="Start 4-step guided wizard to find and run an AI model (Enter)")
                         yield Button("Continue with AI", variant="primary", id="btn-continue-chat", classes="hidden", tooltip="Open chat session with your most recent model")
+
+                    with Horizontal(id="home-shortcuts-bar"):
+                        yield Label("⌨  [bold cyan]Enter[/bold cyan] Get Started  •  [bold cyan]Tab[/bold cyan] Navigate  •  [bold cyan]2[/bold cyan] Find a Model  •  [bold cyan]7[/bold cyan] API Gateway  •  [bold cyan]F1[/bold cyan] Help  •  [bold cyan]q[/bold cyan] Exit", id="home-shortcuts-label")
 
                     with Horizontal(id="home-secondary-actions"):
                         yield Button("Browse models", variant="default", id="btn-home-discover", tooltip="Explore all models tested to fit this computer")
@@ -1928,23 +1943,44 @@ class LocalPilotTUI(App):
                 r.compatibility.friendly_explanation,
                 key=cand.candidate_id,
             )
+        if results:
+            self._update_explanation(0)
+
+    def _update_explanation(self, row_idx: int) -> None:
+        if not hasattr(self, "_ranked_candidates") or not self._ranked_candidates:
+            return
+        if 0 <= row_idx < len(self._ranked_candidates):
+            item = self._ranked_candidates[row_idx]
+            try:
+                expl_label = self.query_one("#explanation-text", Label)
+            except Exception:
+                return
+            plan_info = ""
+            if item.recommended_plan:
+                rec = item.recommended_plan
+                plan_info = f" • Recommended: {rec.inference_backend.value} ({rec.deployment_method.value})"
+                if item.alternative_plans:
+                    plan_info += f" • {len(item.alternative_plans)} other option(s) supported"
+            context_info = f" • Context: {item.candidate.usable_context:,} tokens"
+            sz_mb = item.candidate.total_bytes / (1024 * 1024)
+            compat_info = f" • Fit: {item.compatibility.friendly_explanation}"
+            expl_label.update(
+                f"[bold cyan]{item.candidate.name}[/bold cyan] ({item.candidate.source.title()} • {sz_mb:.0f} MB • Score: [bold green]{item.score.total_score:.0f}/100[/bold green]){compat_info}\n"
+                f"{item.score.explanation}{plan_info}\n"
+                f"[dim]Recommendation confidence: {item.candidate.confidence.value}{context_info} • Press Enter to Setup[/dim]"
+            )
+
+    def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
+        if event.data_table.id == "discover-table":
+            self._update_explanation(event.cursor_row)
+
+    def on_data_table_cell_highlighted(self, event: DataTable.CellHighlighted) -> None:
+        if event.data_table.id == "discover-table":
+            self._update_explanation(event.coordinate.row)
 
     def on_data_table_row_selected(self, event: DataTable.RowSelected) -> None:
         if event.data_table.id == "discover-table":
-            row_idx = event.cursor_row
-            if 0 <= row_idx < len(self._ranked_candidates):
-                item = self._ranked_candidates[row_idx]
-                expl_label = self.query_one("#explanation-text", Label)
-                plan_info = ""
-                if item.recommended_plan:
-                    rec = item.recommended_plan
-                    plan_info = f" | Recommended: {rec.inference_backend.value} ({rec.deployment_method.value})"
-                    if item.alternative_plans:
-                        plan_info += f" | {len(item.alternative_plans)} other option(s) supported"
-                context_info = f" • Context: {item.candidate.usable_context:,} tokens"
-                expl_label.update(
-                    f"{item.score.explanation}{plan_info}\n[dim]Recommendation confidence: {item.candidate.confidence.value}{context_info} • Press Enter to Setup[/dim]"
-                )
+            self._update_explanation(event.cursor_row)
 
     def on_input_changed(self, event: Input.Changed) -> None:
         if event.input.id == "search-input":
@@ -2206,9 +2242,18 @@ class LocalPilotTUI(App):
         try:
             gw_label = self.query_one("#home-gateway-status", Label)
             if running_gw:
-                gw_label.update(f"[bold green]● Gateway: Running on :{running_gw['port']}[/bold green]")
+                gw_label.update(f"[bold green]● Local API Gateway: Running on :{running_gw['port']}[/bold green]")
             else:
-                gw_label.update("[yellow]○ Gateway: Stopped[/yellow]")
+                gw_label.update("[dim]○ Local API Gateway: Inactive (Optional)[/dim]")
+
+            try:
+                freshness_pill = self.query_one("#home-freshness-pill", Label)
+                if self._live_paused:
+                    freshness_pill.update("[yellow]Live Dashboard: Paused[/yellow]")
+                else:
+                    freshness_pill.update("[green]Live Dashboard: Active[/green]")
+            except Exception:
+                pass
 
             self.query_one("#home-badge-models", Label).update(f"{len(active)} running")
             self.query_one("#home-badge-leases", Label).update(f"{leases_count} active")
