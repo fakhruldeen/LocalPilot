@@ -37,6 +37,11 @@ Running local AI shouldn't require configuring build flags, figuring out CUDA or
 
 ## ✨ Key Features
 
+- **🖥️ Live Hardware Specs Dashboard (v0.2.5)**: Dedicated specs card on the home screen showing operating system, CPU architecture, physical and logical cores, instruction sets (AVX2, FMA, SSE4.2), live RAM usage, safe model budget, GPU accelerators, and free storage.
+- **🎯 Default Safe Hardware Filtering (v0.2.5)**: "Find a Model" defaults strictly to models fitting your computer's safe RAM budget, with one-click `RAM: Fits Budget` / `RAM: All Models` toggle.
+- **📊 Dynamic Catalog Sorting & Official Priority (v0.2.5)**: Sort models on the fly by Score (with official lab priority on ties), Model Name, Context length, and Model Size.
+- **🚀 High-End Frontier Models & Expanded Registries (v0.2.5)**: Added large open-weights models (up to 70B, 72B, 123B) including Llama 3.3 70B, Qwen 2.5 72B, DeepSeek R1 70B, and Mistral Large 123B, alongside Alibaba ModelScope Hub and LM Studio Community Hub.
+- **📜 Scrollable Model Explanations (v0.2.5)**: Multi-line wrapped rationale and execution plans for selected models with keyboard shortcut hints.
 - **🏆 Official Research Lab Prioritization (v0.2.0)**: Verified models directly from Google DeepMind (Gemma 2), Meta (Llama 3.x), Alibaba Qwen (Qwen 2.5 & Qwen Coder), DeepSeek AI (R1 Distill), Mistral AI, Microsoft (Phi-3.5 / Phi-4), THUDM (GLM-4), and Moonshot AI (Moonlight) are pinned first at the top of discovery.
 - **⚡ Short & Intuitive Model Aliases (v0.2.0)**: Clean, human-friendly aliases like `gemma2:2b`, `deepseek-r1:1.5b`, `llama3.2:3b`, and `qwen2.5-coder:1.5b` make installing and chatting instant and painless.
 - **⭐ Model Favorites Management (v0.2.0)**: Star your go-to models (`localpilot favorite add <alias>`, press <kbd>F</kbd> in TUI), view favorites in a dedicated dashboard, and filter catalogs with `--favorites`.
@@ -312,18 +317,18 @@ If you use LocalPilot in your research, academic study, or open-source projects,
 ```bibtex
 @software{fakhruldeen_2026_localpilot,
   author       = {Mohamed (Fouad) Fakhruldeen},
-  title        = {fakhruldeen/LocalPilot: v0.2.0},
+  title        = {fakhruldeen/LocalPilot: v0.2.5},
   month        = oct,
   year         = 2026,
   publisher    = {Zenodo},
-  version      = {v0.2.0},
+  version      = {v0.2.5},
   doi          = {10.5281/zenodo.23424540},
   url          = {https://doi.org/10.5281/zenodo.23424540}
 }
 ```
 
 **Text / APA Citation:**
-> Mohamed (Fouad) Fakhruldeen. (2026). fakhruldeen/LocalPilot: v0.2.0 (Version v0.2.0) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23424540
+> Mohamed (Fouad) Fakhruldeen. (2026). fakhruldeen/LocalPilot: v0.2.5 (Version v0.2.5) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23424540
 
 ---
 
