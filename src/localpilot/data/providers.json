@@ -1,0 +1,878 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.1.0",
+  "database": "providers",
+  "name": "LocalPilot Initial Providers Database",
+  "description": "Authoritative registry of foundational AI research laboratories, institutes, and organizations creating open model weights.",
+  "updated_at": "2026-10-19T20:58:54.763391Z",
+  "homepage": "https://fakhruldeen.github.io/LocalPilot/",
+  "license": "GPL-3.0-only",
+  "total_count": 55,
+  "providers": [
+    {
+      "provider_id": "google",
+      "name": "Google",
+      "legal_name": "Google LLC / Google DeepMind",
+      "website": "https://ai.google.dev/gemma",
+      "huggingface_org": "google",
+      "description": "Developer of the lightweight, state-of-the-art Gemma 2 and Gemma 3 open model family inspired by Gemini research.",
+      "flagship_families": [
+        "Gemma 2",
+        "Gemma",
+        "CodeGemma",
+        "RecurrentGemma"
+      ],
+      "license_type": "Gemma Terms of Use",
+      "requires_community_agreement": true,
+      "country": "United States"
+    },
+    {
+      "provider_id": "meta",
+      "name": "Meta",
+      "legal_name": "Meta Platforms, Inc.",
+      "website": "https://llama.meta.com",
+      "huggingface_org": "meta-llama",
+      "description": "Pioneers of the industry-defining Llama series of foundational open weights across dense and multimodal architectures.",
+      "flagship_families": [
+        "Llama 3.3",
+        "Llama 3.2",
+        "Llama 3.1",
+        "Code Llama"
+      ],
+      "license_type": "Llama 3.2 Community License",
+      "requires_community_agreement": true,
+      "country": "United States"
+    },
+    {
+      "provider_id": "deepseek",
+      "name": "DeepSeek",
+      "legal_name": "Hangzhou DeepSeek Artificial Intelligence Co., Ltd.",
+      "website": "https://www.deepseek.com",
+      "huggingface_org": "deepseek-ai",
+      "description": "Creators of breakthrough open-weight reasoning and coding models including DeepSeek-R1 and DeepSeek-V3 with native Mixture-of-Experts (MoE).",
+      "flagship_families": [
+        "DeepSeek-R1",
+        "DeepSeek-V3",
+        "DeepSeek-Coder-V2",
+        "DeepSeek-Math"
+      ],
+      "license_type": "MIT",
+      "requires_community_agreement": false,
+      "country": "China"
+    },
+    {
+      "provider_id": "mistral",
+      "name": "Mistral AI",
+      "legal_name": "Mistral AI SAS",
+      "website": "https://mistral.ai",
+      "huggingface_org": "mistralai",
+      "description": "European AI laboratory creating highly efficient open models including Mistral 7B, Mixtral MoE, Ministral, Codestral, and Pixtral.",
+      "flagship_families": [
+        "Ministral 8B",
+        "Mistral NeMo",
+        "Codestral",
+        "Pixtral",
+        "Mixtral 8x7B"
+      ],
+      "license_type": "Apache 2.0 / Mistral Research License",
+      "requires_community_agreement": false,
+      "country": "France"
+    },
+    {
+      "provider_id": "microsoft",
+      "name": "Microsoft",
+      "legal_name": "Microsoft Corporation",
+      "website": "https://azure.microsoft.com/en-us/solutions/ai",
+      "huggingface_org": "microsoft",
+      "description": "Pioneers of High-Quality Small Language Models (SLMs) with the Phi-3.5 and Phi-4 families trained on curated textbook-grade synthetic data.",
+      "flagship_families": [
+        "Phi-4",
+        "Phi-3.5",
+        "Phi-3 Mini",
+        "Phi-3 Vision"
+      ],
+      "license_type": "MIT",
+      "requires_community_agreement": false,
+      "country": "United States"
+    },
+    {
+      "provider_id": "qwen",
+      "name": "Qwen Team",
+      "legal_name": "Alibaba Cloud / Alibaba Group",
+      "website": "https://qwenlm.github.io",
+      "huggingface_org": "Qwen",
+      "description": "Comprehensive multilingual open model family excelling in coding, math, long-context comprehension, and multimodal vision.",
+      "flagship_families": [
+        "Qwen2.5",
+        "Qwen2.5-Coder",
+        "Qwen2.5-Math",
+        "Qwen2-VL",
+        "QwQ"
+      ],
+      "license_type": "Apache 2.0 / Qwen License",
+      "requires_community_agreement": false,
+      "country": "China"
+    },
+    {
+      "provider_id": "nvidia",
+      "name": "NVIDIA",
+      "legal_name": "NVIDIA Corporation",
+      "website": "https://build.nvidia.com",
+      "huggingface_org": "nvidia",
+      "description": "High-performance enterprise open models optimized for hardware acceleration and reasoning, including Nemotron and Megatron.",
+      "flagship_families": [
+        "Nemotron-3.5",
+        "Nemotron-4",
+        "Llama-3.1-Nemotron"
+      ],
+      "license_type": "NVIDIA Open Model License",
+      "requires_community_agreement": false,
+      "country": "United States"
+    },
+    {
+      "provider_id": "cohere",
+      "name": "Cohere",
+      "legal_name": "Cohere Inc.",
+      "website": "https://cohere.com",
+      "huggingface_org": "CohereForAI",
+      "description": "Enterprise-grade models built specifically for multilingual Retrieval-Augmented Generation (RAG) and tool usage.",
+      "flagship_families": [
+        "Command R+",
+        "Command R",
+        "Aya 23"
+      ],
+      "license_type": "CC BY-NC 4.0 / Cohere Open Weights",
+      "requires_community_agreement": false,
+      "country": "Canada"
+    },
+    {
+      "provider_id": "allenai",
+      "name": "AllenAI",
+      "legal_name": "Allen Institute for Artificial Intelligence",
+      "website": "https://allenai.org",
+      "huggingface_org": "allenai",
+      "description": "Completely transparent and scientific open research models providing full data, code, weights, and evaluation artifacts.",
+      "flagship_families": [
+        "OLMo 2",
+        "OLMoE",
+        "Tulu 3"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "United States"
+    },
+    {
+      "provider_id": "01-ai",
+      "name": "01.AI",
+      "legal_name": "01.AI Co., Ltd.",
+      "website": "https://01.ai",
+      "huggingface_org": "01-ai",
+      "description": "Bilingual Chinese/English foundational models optimized for strong mathematical reasoning and long-context documents.",
+      "flagship_families": [
+        "Yi-1.5",
+        "Yi-Coder",
+        "Yi-VL"
+      ],
+      "license_type": "Apache 2.0 / Yi License",
+      "requires_community_agreement": false,
+      "country": "China"
+    },
+    {
+      "provider_id": "snowflake",
+      "name": "Snowflake",
+      "legal_name": "Snowflake Inc.",
+      "website": "https://www.snowflake.com",
+      "huggingface_org": "Snowflake",
+      "description": "Enterprise Mixture-of-Experts open models engineered for SQL generation, enterprise data querying, and tool execution.",
+      "flagship_families": [
+        "Arctic",
+        "Arctic-Instruct"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "United States"
+    },
+    {
+      "provider_id": "stability-ai",
+      "name": "Stability AI",
+      "legal_name": "Stability AI Ltd.",
+      "website": "https://stability.ai",
+      "huggingface_org": "stabilityai",
+      "description": "Creators of lightweight open models focused on conversational efficiency, code synthesis, and multimodal diffusion.",
+      "flagship_families": [
+        "StableLM 2",
+        "Stable Code"
+      ],
+      "license_type": "Stability Community License / Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "United Kingdom"
+    },
+    {
+      "provider_id": "upstage",
+      "name": "Upstage",
+      "legal_name": "Upstage AI",
+      "website": "https://www.upstage.ai",
+      "huggingface_org": "upstage",
+      "description": "Pioneers of Depth-Up-Scaling (DUS) producing highly capable models that outperform base weights on instruction benchmarks.",
+      "flagship_families": [
+        "Solar 10.7B",
+        "Solar Pro"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "South Korea"
+    },
+    {
+      "provider_id": "bigcode",
+      "name": "BigCode",
+      "legal_name": "BigCode Project (ServiceNow & Hugging Face)",
+      "website": "https://www.bigcode-project.org",
+      "huggingface_org": "bigcode",
+      "description": "Open scientific collaboration developing state-of-the-art code generation models with full data attribution and transparent opt-out.",
+      "flagship_families": [
+        "StarCoder 2",
+        "StarCoder"
+      ],
+      "license_type": "BigCode OpenRAIL-M v1",
+      "requires_community_agreement": false,
+      "country": "International"
+    },
+    {
+      "provider_id": "liquid-ai",
+      "name": "Liquid AI",
+      "legal_name": "Liquid AI, Inc.",
+      "website": "https://www.liquid.ai",
+      "huggingface_org": "LiquidAI",
+      "description": "Pioneers of Liquid Foundation Models (LFMs) using continuous-time dynamic architectures with constant memory scaling during generation.",
+      "flagship_families": [
+        "LFM2.5",
+        "LFM-3B",
+        "LFM-7B"
+      ],
+      "license_type": "Liquid Community License",
+      "requires_community_agreement": false,
+      "country": "United States"
+    },
+    {
+      "provider_id": "openbmb",
+      "name": "OpenBMB",
+      "legal_name": "OpenBMB / Tsinghua University",
+      "website": "https://www.openbmb.org",
+      "huggingface_org": "openbmb",
+      "description": "Developers of ultra-efficient edge language and multimodal models that match larger systems on phone and laptop hardware.",
+      "flagship_families": [
+        "MiniCPM",
+        "MiniCPM-V",
+        "MiniCPM-3"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "China"
+    },
+    {
+      "provider_id": "zhipu-ai",
+      "name": "Zhipu AI",
+      "legal_name": "Beijing Zhipu Huazhang Technology Co., Ltd. / THUDM",
+      "website": "https://zhipuai.cn",
+      "huggingface_org": "THUDM",
+      "description": "Developers of the GLM (General Language Model) bilingual series with unified pre-training objectives for Chinese and English.",
+      "flagship_families": [
+        "GLM-4",
+        "GLM-4V",
+        "ChatGLM3",
+        "CodeGeeX4"
+      ],
+      "license_type": "Apache 2.0 / GLM License",
+      "requires_community_agreement": false,
+      "country": "China"
+    },
+    {
+      "provider_id": "moonshot-ai",
+      "name": "Moonshot AI",
+      "legal_name": "Moonshot AI (Kimi)",
+      "website": "https://kimi.moonshot.cn",
+      "huggingface_org": "moonshotai",
+      "description": "Long-context language model researchers creating 200k+ token context models for complex document understanding.",
+      "flagship_families": [
+        "Moonlight",
+        "Kimi"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "China"
+    },
+    {
+      "provider_id": "kimi",
+      "name": "Kimi",
+      "legal_name": "Moonshot AI (Kimi)",
+      "website": "https://kimi.moonshot.cn",
+      "huggingface_org": "moonshotai",
+      "description": "Leading long-context language model team developing the Kimi conversational assistant and Moonlight MoE models.",
+      "flagship_families": [
+        "Kimi",
+        "Moonlight",
+        "Kimi-Chat"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "China"
+    },
+    {
+      "provider_id": "groq",
+      "name": "Groq",
+      "legal_name": "Groq, Inc.",
+      "website": "https://groq.com",
+      "huggingface_org": "groq",
+      "description": "Ultra-fast inference platform and LPU developers distributing speed-tuned open models and quantization recipes.",
+      "flagship_families": [
+        "Llama-Groq",
+        "Mixtral-Groq",
+        "Whisper-Groq"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "United States"
+    },
+    {
+      "provider_id": "glm",
+      "name": "GLM",
+      "legal_name": "Zhipu AI / Tsinghua University (THUDM)",
+      "website": "https://zhipuai.cn",
+      "huggingface_org": "THUDM",
+      "description": "General Language Model (GLM) series and CogVLM vision models created by Zhipu AI and Tsinghua University KEG lab.",
+      "flagship_families": [
+        "GLM-4",
+        "GLM-4V",
+        "ChatGLM",
+        "CogVLM"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "China"
+    },
+    {
+      "provider_id": "klm",
+      "name": "KLM",
+      "legal_name": "KT Corporation / Korean Language Model Consortium",
+      "website": "https://corp.kt.com",
+      "huggingface_org": "kt-ai",
+      "description": "Korean Language Model (KLM) research consortium and East Asian multilingual LLM foundation models.",
+      "flagship_families": [
+        "Mi:dm",
+        "KLM",
+        "K-LLM"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "South Korea"
+    },
+    {
+      "provider_id": "openai",
+      "name": "OpenAI",
+      "legal_name": "OpenAI, LLC",
+      "website": "https://openai.com",
+      "huggingface_org": "openai",
+      "description": "Pioneers of generative AI whose Whisper model series powers offline, private speech recognition in LocalPilot.",
+      "flagship_families": [
+        "Whisper Large v3",
+        "Whisper Medium",
+        "Whisper Small"
+      ],
+      "license_type": "MIT",
+      "requires_community_agreement": false,
+      "country": "United States"
+    },
+    {
+      "provider_id": "gpt-oss",
+      "name": "GPT-OSS",
+      "legal_name": "Open-Source GPT Foundation / Community OSS",
+      "website": "https://github.com/openai",
+      "huggingface_org": "openai",
+      "description": "Open-weights GPT architectures and community open-source foundation models.",
+      "flagship_families": [
+        "GPT-OSS 20B",
+        "GPT-OSS 7B",
+        "Whisper Large v3 Turbo"
+      ],
+      "license_type": "Apache 2.0 / MIT",
+      "requires_community_agreement": false,
+      "country": "United States"
+    },
+    {
+      "provider_id": "turintech",
+      "name": "TurinTech AI",
+      "legal_name": "TurinTech AI Ltd.",
+      "website": "https://turintech.ai",
+      "huggingface_org": "turintech",
+      "description": "Code optimization and code intelligence specialists fine-tuning efficient developer models.",
+      "flagship_families": [
+        "Artemis",
+        "Gemma-Artemis"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "United Kingdom"
+    },
+    {
+      "provider_id": "jetbrains",
+      "name": "JetBrains",
+      "legal_name": "JetBrains s.r.o.",
+      "website": "https://www.jetbrains.com",
+      "huggingface_org": "JetBrains",
+      "description": "Makers of IntelliJ, PyCharm, and developer tools, producing specialized coding and reasoning assistant models.",
+      "flagship_families": [
+        "Mellum",
+        "Mellum-Thinking"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "Czech Republic"
+    },
+    {
+      "provider_id": "apple",
+      "name": "Apple",
+      "legal_name": "Apple Inc.",
+      "website": "https://machinelearning.apple.com",
+      "huggingface_org": "apple",
+      "description": "Research team behind ultra-efficient on-device architectures like OpenELM, Ferret multimodal, and FastViT.",
+      "flagship_families": [
+        "OpenELM",
+        "Ferret",
+        "FastViT"
+      ],
+      "license_type": "Apple Sample Code / Community",
+      "requires_community_agreement": false,
+      "country": "United States"
+    },
+    {
+      "provider_id": "ibm",
+      "name": "IBM",
+      "legal_name": "International Business Machines Corp.",
+      "website": "https://www.ibm.com/granite",
+      "huggingface_org": "ibm-granite",
+      "description": "Enterprise-ready open foundational models engineered for enterprise workflows, code generation, and safety.",
+      "flagship_families": [
+        "Granite 3.0",
+        "Granite-Code",
+        "Granite-Guardian"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "United States"
+    },
+    {
+      "provider_id": "tii",
+      "name": "TII",
+      "legal_name": "Technology Innovation Institute (Abu Dhabi)",
+      "website": "https://falconllm.tii.ae",
+      "huggingface_org": "tiiuae",
+      "description": "Creators of the Falcon family of high-performance open models, including Falcon 2, Falcon Mamba, and Falcon 180B.",
+      "flagship_families": [
+        "Falcon 2",
+        "Falcon Mamba",
+        "Falcon 40B"
+      ],
+      "license_type": "TII Falcon License 2.0 / Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "United Arab Emirates"
+    },
+    {
+      "provider_id": "baichuan-ai",
+      "name": "Baichuan AI",
+      "legal_name": "Baichuan Intelligent Technology",
+      "website": "https://www.baichuan-ai.com",
+      "huggingface_org": "baichuan-inc",
+      "description": "Leading foundational model company in China with specialized knowledge in biomedical and Chinese-English cross-lingual processing.",
+      "flagship_families": [
+        "Baichuan 2",
+        "Baichuan-Omni"
+      ],
+      "license_type": "Baichuan Community License",
+      "requires_community_agreement": false,
+      "country": "China"
+    },
+    {
+      "provider_id": "baai",
+      "name": "BAAI",
+      "legal_name": "Beijing Academy of Artificial Intelligence",
+      "website": "https://www.baai.ac.cn",
+      "huggingface_org": "BAAI",
+      "description": "Prestigious research institute behind the Aquila model series and the world-standard BGE text embeddings.",
+      "flagship_families": [
+        "Aquila 2",
+        "BGE Embeddings",
+        "BGE-M3"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "China"
+    },
+    {
+      "provider_id": "shanghai-ai-lab",
+      "name": "Shanghai AI Lab",
+      "legal_name": "Shanghai Artificial Intelligence Laboratory",
+      "website": "https://internlm.intern-ai.org.cn",
+      "huggingface_org": "internlm",
+      "description": "Research developers of InternLM2.5 and InternVL2.5 state-of-the-art open vision-language and reasoning models.",
+      "flagship_families": [
+        "InternLM 2.5",
+        "InternVL 2.5",
+        "Mindverse"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "China"
+    },
+    {
+      "provider_id": "rwkv-foundation",
+      "name": "RWKV Foundation",
+      "legal_name": "RWKV Open Source Foundation (Bo Peng)",
+      "website": "https://www.rwkv.com",
+      "huggingface_org": "RWKV",
+      "description": "Pioneers of Linear Attention RNNs combining the parallel training of Transformers with the constant-memory linear-time inference of RNNs.",
+      "flagship_families": [
+        "RWKV-6 Finch",
+        "RWKV-5 World"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "International"
+    },
+    {
+      "provider_id": "huggingface",
+      "name": "Hugging Face",
+      "legal_name": "Hugging Face, Inc.",
+      "website": "https://huggingface.co",
+      "huggingface_org": "HuggingFaceTB",
+      "description": "Creators of the ultra-compact SmolLM2 family, Zephyr alignment models, and the core open AI ecosystem.",
+      "flagship_families": [
+        "SmolLM2",
+        "SmolLM",
+        "Zephyr"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "United States"
+    },
+    {
+      "provider_id": "eleutherai",
+      "name": "EleutherAI",
+      "legal_name": "EleutherAI Foundation",
+      "website": "https://www.eleuther.ai",
+      "huggingface_org": "EleutherAI",
+      "description": "Grassroots non-profit research collective providing open foundational research, Pythia training suite, and lm-evaluation-harness.",
+      "flagship_families": [
+        "Pythia",
+        "GPT-NeoX",
+        "GPT-J"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "International"
+    },
+    {
+      "provider_id": "together-ai",
+      "name": "Together AI",
+      "legal_name": "Together Computer, Inc.",
+      "website": "https://www.together.ai",
+      "huggingface_org": "togethercomputer",
+      "description": "Creators of the RedPajama open pretraining dataset and high-throughput StripedHyena hybrid models.",
+      "flagship_families": [
+        "RedPajama",
+        "StripedHyena"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "United States"
+    },
+    {
+      "provider_id": "databricks",
+      "name": "Databricks",
+      "legal_name": "Databricks, Inc. / MosaicML",
+      "website": "https://www.databricks.com",
+      "huggingface_org": "databricks",
+      "description": "Developers of DBRX, an open, general-purpose Mixture-of-Experts model rivaling top proprietary systems.",
+      "flagship_families": [
+        "DBRX",
+        "MPT-7B",
+        "MPT-30B"
+      ],
+      "license_type": "Databricks Open Model License",
+      "requires_community_agreement": false,
+      "country": "United States"
+    },
+    {
+      "provider_id": "ai21-labs",
+      "name": "AI21 Labs",
+      "legal_name": "AI21 Labs Ltd.",
+      "website": "https://www.ai21.com",
+      "huggingface_org": "ai21labs",
+      "description": "Pioneers of SSM-Transformer hybrid models with the Jamba 1.5 family combining Mamba structured state spaces with attention.",
+      "flagship_families": [
+        "Jamba 1.5 Mini",
+        "Jamba 1.5 Large"
+      ],
+      "license_type": "AI21 Open Model License / Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "Israel"
+    },
+    {
+      "provider_id": "kyutai",
+      "name": "Kyutai",
+      "legal_name": "Kyutai Non-Profit AI Research Lab",
+      "website": "https://kyutai.org",
+      "huggingface_org": "kyutai",
+      "description": "French research lab creating Moshi, the groundbreaking real-time, end-to-end voice-to-voice conversational AI.",
+      "flagship_families": [
+        "Moshi",
+        "Mimi Audio Codec"
+      ],
+      "license_type": "Apache 2.0 / CC BY 4.0",
+      "requires_community_agreement": false,
+      "country": "France"
+    },
+    {
+      "provider_id": "salesforce",
+      "name": "Salesforce",
+      "legal_name": "Salesforce, Inc.",
+      "website": "https://www.salesforceairesearch.com",
+      "huggingface_org": "Salesforce",
+      "description": "Enterprise AI research team developing CodeGen, XGen, and sponsoring open edge multimodal models.",
+      "flagship_families": [
+        "CodeGen 2.5",
+        "XGen",
+        "SFR-Embedding"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "United States"
+    },
+    {
+      "provider_id": "sakana-ai",
+      "name": "Sakana AI",
+      "legal_name": "Sakana AI Co., Ltd.",
+      "website": "https://sakana.ai",
+      "huggingface_org": "SakanaAI",
+      "description": "Tokyo-based research lab applying evolutionary algorithms and nature-inspired computation to model merging and foundation models.",
+      "flagship_families": [
+        "EvoLLM-JP",
+        "Disco-LLM"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "Japan"
+    },
+    {
+      "provider_id": "lg-ai-research",
+      "name": "LG AI Research",
+      "legal_name": "LG AI Research",
+      "website": "https://www.lgresearch.ai",
+      "huggingface_org": "LGAI-EXAONE",
+      "description": "South Korean laboratory building bilingual Korean-English foundation models including the EXAONE 3.0 family.",
+      "flagship_families": [
+        "EXAONE 3.0"
+      ],
+      "license_type": "EXAONE Open Model License",
+      "requires_community_agreement": false,
+      "country": "South Korea"
+    },
+    {
+      "provider_id": "nexusflow",
+      "name": "Nexusflow",
+      "legal_name": "Nexusflow AI",
+      "website": "https://nexusflow.ai",
+      "huggingface_org": "Nexusflow",
+      "description": "Specialists in state-of-the-art function calling, tool use, and agentic workflows, creators of Starling-LM.",
+      "flagship_families": [
+        "Starling-LM",
+        "NexusRaven"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "United States"
+    },
+    {
+      "provider_id": "nous-research",
+      "name": "Nous Research",
+      "legal_name": "Nous Research Collective",
+      "website": "https://nousresearch.com",
+      "huggingface_org": "NousResearch",
+      "description": "Independent collective producing premier instruction, reasoning, and tool-use fine-tunes with the Hermes model series.",
+      "flagship_families": [
+        "Hermes 3",
+        "Hermes 2 Pro",
+        "Genstruct"
+      ],
+      "license_type": "Apache 2.0 / MIT",
+      "requires_community_agreement": false,
+      "country": "United States"
+    },
+    {
+      "provider_id": "cognitive-computations",
+      "name": "Cognitive Computations",
+      "legal_name": "Cognitive Computations / Eric Hartford",
+      "website": "https://erichartford.com",
+      "huggingface_org": "cognitivecomputations",
+      "description": "Pioneers of unfiltered, compliant open weights with the Dolphin dataset and Dolphin series models.",
+      "flagship_families": [
+        "Dolphin 2.9",
+        "Dolphin-Vision",
+        "Samantha"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "United States"
+    },
+    {
+      "provider_id": "reka-ai",
+      "name": "Reka AI",
+      "legal_name": "Reka AI, Inc.",
+      "website": "https://www.reka.ai",
+      "huggingface_org": "RekaAI",
+      "description": "Multimodal AI research laboratory creating native video, audio, and visual reasoning models.",
+      "flagship_families": [
+        "Reka Flash",
+        "Reka Core",
+        "Reka Edge"
+      ],
+      "license_type": "Proprietary & Open Weights",
+      "requires_community_agreement": false,
+      "country": "United States"
+    },
+    {
+      "provider_id": "h2o-ai",
+      "name": "H2O.ai",
+      "legal_name": "H2O.ai, Inc.",
+      "website": "https://h2o.ai",
+      "huggingface_org": "h2oai",
+      "description": "Makers of enterprise machine learning platforms, creators of Danube 3 lightweight edge SLMs.",
+      "flagship_families": [
+        "Danube 3",
+        "H2O-Danube"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "United States"
+    },
+    {
+      "provider_id": "writer",
+      "name": "Writer",
+      "legal_name": "Writer, Inc.",
+      "website": "https://writer.com",
+      "huggingface_org": "Writer",
+      "description": "Enterprise generative AI provider creating domain-specialized Palmyra models for legal, financial, and medical reasoning.",
+      "flagship_families": [
+        "Palmyra",
+        "Palmyra-Med"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "United States"
+    },
+    {
+      "provider_id": "abacus-ai",
+      "name": "Abacus AI",
+      "legal_name": "Abacus.AI",
+      "website": "https://abacus.ai",
+      "huggingface_org": "abacusai",
+      "description": "Applied AI platform creators of Smaug 72B, once ranking #1 on the open LLM leaderboard via DPO improvements.",
+      "flagship_families": [
+        "Smaug",
+        "Liberated"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "United States"
+    },
+    {
+      "provider_id": "cerebras",
+      "name": "Cerebras",
+      "legal_name": "Cerebras Systems",
+      "website": "https://www.cerebras.net",
+      "huggingface_org": "cerebras",
+      "description": "Wafer-scale hardware pioneers producing cleanly trained open Chinchilla-optimal baseline models.",
+      "flagship_families": [
+        "Cerebras-GPT"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "United States"
+    },
+    {
+      "provider_id": "bytedance",
+      "name": "ByteDance",
+      "legal_name": "ByteDance Ltd.",
+      "website": "https://www.bytedance.com",
+      "huggingface_org": "ByteDance",
+      "description": "Global technology company researching visual generation, robotics foundation models, and multilingual models.",
+      "flagship_families": [
+        "Seed-LLM",
+        "GR-1"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "China"
+    },
+    {
+      "provider_id": "minimax",
+      "name": "MiniMax",
+      "legal_name": "MiniMax Technology Co., Ltd. (Minimas)",
+      "website": "https://www.minimaxi.com",
+      "huggingface_org": "MiniMaxAI",
+      "description": "Pioneers of ultra-long 4M context Lightning MoE models and multimodal vision reasoning.",
+      "flagship_families": [
+        "MiniMax-Text-01",
+        "MiniMax-VL-01",
+        "ABAB 6.5"
+      ],
+      "license_type": "Proprietary & Open Weights",
+      "requires_community_agreement": false,
+      "country": "China"
+    },
+    {
+      "provider_id": "stepfun",
+      "name": "StepFun",
+      "legal_name": "StepFun Inc.",
+      "website": "https://www.stepfun.com",
+      "huggingface_org": "stepfun-ai",
+      "description": "AGI researchers developing Step-1 and Step-2 multimodal foundation models.",
+      "flagship_families": [
+        "Step-1",
+        "Step-2"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "China"
+    },
+    {
+      "provider_id": "amazon",
+      "name": "Amazon",
+      "legal_name": "Amazon Web Services / Amazon.com, Inc.",
+      "website": "https://aws.amazon.com/ai",
+      "huggingface_org": "amazon",
+      "description": "Cloud computing giant producing open research models including Chronos probabilistic time series foundation models.",
+      "flagship_families": [
+        "Chronos",
+        "Amazon-Nova"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "United States"
+    },
+    {
+      "provider_id": "deci-ai",
+      "name": "Deci AI",
+      "legal_name": "Deci AI (acquired by NVIDIA)",
+      "website": "https://deci.ai",
+      "huggingface_org": "Deci",
+      "description": "Neural Architecture Search (NAS) specialists creating Variable Grouped-Query Attention models like DeciLM-7B.",
+      "flagship_families": [
+        "DeciLM 7B",
+        "DeciCoder"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "Israel"
+    }
+  ]
+}

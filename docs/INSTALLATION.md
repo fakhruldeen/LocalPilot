@@ -1,43 +1,45 @@
-# LocalPilot Installation Guide
+# LocalPilot Installation & Removal Guide
 
-LocalPilot supports Linux and macOS. It can be installed in several convenient ways depending on your workflow.
+This guide details installation options, environment scopes, and safe uninstallation procedures for Linux and macOS (and Windows via WSL2).
 
 ---
 
-## Method 1: Automated Shell Installer (Recommended for Beginners)
+## Method 1: Automated Installer (Recommended)
 
-If you do not want to manage Python virtual environments manually, use our automated one-line installer:
+For users who want a self-contained installation without configuring Python environments manually:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/fakhruldeen/LocalPilot/main/install-localpilot.sh | bash
 ```
 
-### What the installer does:
-1. Detects your operating system (Linux or macOS) and architecture (`x86_64` or `arm64`).
-2. Checks for Python 3.11+.
-3. Creates an isolated environment in `~/.local/share/localpilot/app-env` (or macOS equivalent).
-4. Installs the latest release of `localpilot` from PyPI without touching any system packages.
-5. Creates a launcher at `~/.local/bin/localpilot`.
+### What the Installer Does
+1. **Checks Compatibility**: Verifies that your operating system is Linux or macOS, and checks for Python 3.11+.
+2. **Creates an Isolated App Directory**:
+   * **Linux**: `~/.local/share/localpilot`
+   * **macOS**: `~/Library/Application Support/LocalPilot`
+3. **Installs LocalPilot**: Creates a dedicated Python virtual environment (`app-env`) inside that directory, installing required packages without modifying your system-wide Python environment.
+4. **Sets Up the Launcher**: Creates an executable command at `~/.local/share/localpilot/bin/localpilot` and creates a convenience link at `~/.local/bin/localpilot` if available.
+5. **No Administrator Privileges**: The installer runs entirely in unprivileged user space and never asks for `sudo` or root passwords.
 
-### Installer Options:
-You can download and pass custom flags to the installer script:
+### Non-Interactive and Custom Flags
+You can pass arguments to the installer via `bash -s --`:
 
 ```bash
-# Check system readiness without installing anything
+# Check system readiness without downloading packages
 curl -fsSL https://raw.githubusercontent.com/fakhruldeen/LocalPilot/main/install-localpilot.sh | bash -s -- --check
 
-# Non-interactive mode (accept defaults automatically)
+# Non-interactive mode (automatically accept defaults)
 curl -fsSL https://raw.githubusercontent.com/fakhruldeen/LocalPilot/main/install-localpilot.sh | bash -s -- -y
 
-# Specify installation scope: isolated (default), user, or system
+# Install to a specific scope: isolated (default), user, or system
 curl -fsSL https://raw.githubusercontent.com/fakhruldeen/LocalPilot/main/install-localpilot.sh | bash -s -- --scope user
 ```
 
 ---
 
-## Method 2: Install via `pipx` (Recommended for Python Users)
+## Method 2: Install via `pipx` (For Python Users)
 
-[`pipx`](https://pypa.github.io/pipx/) installs CLI tools in isolated virtual environments while making them globally accessible on your PATH:
+[`pipx`](https://pypa.github.io/pipx/) installs command-line applications in isolated virtual environments while exposing their binary on your PATH:
 
 ```bash
 pipx install localpilot
@@ -60,45 +62,52 @@ pip install localpilot
 If you are using `uv`:
 ```bash
 uv tool install localpilot
-# or
-uv pip install localpilot
 ```
 
 ---
 
 ## Post-Installation Verification
 
-Verify your installation by running the hardware diagnostic doctor:
+Confirm that LocalPilot is ready by running the hardware diagnostic doctor:
 
 ```bash
 localpilot doctor
 ```
 
-You should see your computer's hardware profile and safe memory budget.
+This verifies your CPU, RAM budget, graphics detection, and storage paths.
 
 ---
 
-## Uninstallation
+## Safe Uninstallation & Removal
 
-LocalPilot respects your computer and leaves no hidden background processes.
+LocalPilot is designed to be cleanly removable without leaving hidden background daemons.
 
-### If installed via the shell installer:
+### Option A: Remove Application While Preserving Downloaded Models (Recommended)
+If you wish to remove the LocalPilot software but keep your downloaded AI models safe on disk:
+
 ```bash
-# Uninstalls LocalPilot but keeps your downloaded model files safe
-sh install-localpilot.sh --uninstall
-
-# Uninstalls LocalPilot AND purges all downloaded models
-sh install-localpilot.sh --uninstall --purge-models
+curl -fsSL https://raw.githubusercontent.com/fakhruldeen/LocalPilot/main/install-localpilot.sh | bash -s -- --uninstall
 ```
 
-### If installed via `pipx` or `pip`:
+* **What is removed**: The launcher script and the isolated virtual environment (`app-env`).
+* **What is kept**: Your downloaded model weight files in the `models/` directory remain untouched so you do not have to redownload gigabytes of data if you reinstall later.
+
+If installed via `pipx` or `pip`:
 ```bash
 pipx uninstall localpilot
 # or
 pip uninstall localpilot
 ```
 
-To remove LocalPilot configuration and cached catalog data:
+---
+
+### Option B: Complete Removal Including All Downloaded Models
+
+> [!WARNING]
+> This option permanently deletes all downloaded model files from your computer. This action cannot be undone and will require redownloading all models if you choose to use them again.
+
+To remove both the application and purge all downloaded model weight files:
+
 ```bash
-rm -rf ~/.local/share/localpilot
+curl -fsSL https://raw.githubusercontent.com/fakhruldeen/LocalPilot/main/install-localpilot.sh | bash -s -- --uninstall --purge-models
 ```

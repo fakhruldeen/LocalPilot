@@ -74,36 +74,37 @@ class CatalogService:
                 """,
                 (now_iso, json.dumps({"description": "Built-in curated model candidates", "count": len(seeds)})),
             )
-            conn.execute(
-                """
-                INSERT OR IGNORE INTO catalog_sources (source_id, name, last_refreshed_at, status, details_json)
-                VALUES ('huggingface', 'Hugging Face Hub', NULL, 'ready', '{}')
-                """
-            )
-            conn.execute(
-                """
-                INSERT OR IGNORE INTO catalog_sources (source_id, name, last_refreshed_at, status, details_json)
-                VALUES ('ollama_library', 'Ollama Library', NULL, 'ready', '{}')
-                """
-            )
-            conn.execute(
-                """
-                INSERT OR IGNORE INTO catalog_sources (source_id, name, last_refreshed_at, status, details_json)
-                VALUES ('modelscope', 'Alibaba ModelScope Hub', NULL, 'ready', '{"description": "Open weights & regional models"}')
-                """
-            )
-            conn.execute(
-                """
-                INSERT OR IGNORE INTO catalog_sources (source_id, name, last_refreshed_at, status, details_json)
-                VALUES ('lmstudio', 'LM Studio Community Hub', NULL, 'ready', '{"description": "Desktop-optimized quantization library"}')
-                """
-            )
-            conn.execute(
-                """
-                INSERT OR IGNORE INTO catalog_sources (source_id, name, last_refreshed_at, status, details_json)
-                VALUES ('local_dir', 'Local GGUF Models Directory', NULL, 'ready', '{"description": "Manually downloaded local weights"}')
-                """
-            )
+            # Ensure all initial sources from sources.json are registered
+            try:
+                from localpilot.data import get_initial_sources
+                for isrc in get_initial_sources():
+                    sid = isrc.get("source_id")
+                    sname = isrc.get("name", sid)
+                    sdesc = isrc.get("description", "")
+                    surl = isrc.get("url", "")
+                    conn.execute(
+                        """
+                        INSERT OR IGNORE INTO catalog_sources (source_id, name, last_refreshed_at, status, details_json)
+                        VALUES (?, ?, NULL, 'ready', ?)
+                        """,
+                        (sid, sname, json.dumps({"description": sdesc, "url": surl})),
+                    )
+            except Exception:
+                # Fallback standard sources if data package load fails
+                for fallback_id, fallback_name in [
+                    ("huggingface", "Hugging Face Hub"),
+                    ("ollama_library", "Ollama Library"),
+                    ("modelscope", "Alibaba ModelScope Hub"),
+                    ("lmstudio", "LM Studio Community Hub"),
+                    ("local_dir", "Local GGUF Models Directory"),
+                ]:
+                    conn.execute(
+                        """
+                        INSERT OR IGNORE INTO catalog_sources (source_id, name, last_refreshed_at, status, details_json)
+                        VALUES (?, ?, NULL, 'ready', '{}')
+                        """,
+                        (fallback_id, fallback_name),
+                    )
 
     def is_first_run(self) -> bool:
         """Returns True if the catalog has never been refreshed from online sources."""
@@ -363,6 +364,10 @@ class CatalogService:
         query: str = "",
         only_compatible: bool = True,
         only_favorites: bool = False,
+        capabilities: Optional[Any] = None,
+        provider: Optional[str] = None,
+        source: Optional[str] = None,
+        access: Optional[str] = None,
     ) -> List[RankedCandidate]:
         report = self.inspector.inspect()
         hw = hardware or report.hardware
@@ -371,6 +376,10 @@ class CatalogService:
 
         all_candidates = self.get_cached_candidates()
 
+        caps_filter = set(str(c).lower().strip() for c in capabilities) if capabilities else None
+        prov_filter = provider.lower().strip() if provider else None
+        source_filter = source.lower().strip() if source else None
+        access_filter = access.lower().strip() if access else None
         filtered: List[NormalizedCandidate] = []
         q = query.lower().strip()
         for c in all_candidates:
@@ -378,11 +387,54 @@ class CatalogService:
                 continue
             if only_favorites and not self.is_favorite(c):
                 continue
+            if prov_filter and prov_filter != "all":
+                c_pub = (c.provenance or {}).get("publisher", "").lower()
+                c_pub_disp = getattr(c, "publisher_display", "").lower()
+                c_fam = getattr(c, "family", "").lower()
+                c_name = getattr(c, "name", "").lower()
+                c_mid = getattr(c, "model_id", "").lower()
+                c_alias = (c.short_alias or "").lower()
+                prov_match = (
+                    prov_filter in c_pub
+                    or prov_filter in c_pub_disp
+                    or prov_filter in c_fam
+                    or prov_filter in c_name
+                    or prov_filter in c_mid
+                    or prov_filter in c_alias
+                )
+                if not prov_match:
+                    continue
+            if source_filter and source_filter != "all":
+                if c.source.lower() != source_filter:
+                    continue
+            if access_filter and access_filter != "all":
+                is_gated = getattr(c, "requires_auth", False) or getattr(c, "is_gated", False)
+                if access_filter in ("free", "open") and is_gated:
+                    continue
+                elif access_filter in ("token", "gated", "required") and not is_gated:
+                    continue
+            if caps_filter:
+                cand_caps = set(getattr(c, "capability_tags", []))
+                for t in c.tasks:
+                    cand_caps.add(t.value if hasattr(t, "value") else str(t).lower())
+                # Check for intersection or alias mapping
+                matches_cap = any(
+                    cap in cand_caps
+                    or (cap in ("vision", "image") and ("image" in cand_caps or "vision" in cand_caps))
+                    or (cap in ("chat", "writing") and ("writing" in cand_caps or "chat" in cand_caps))
+                    or (cap in ("audio", "voice", "speech") and "audio" in cand_caps)
+                    or (cap in ("coding", "code") and "coding" in cand_caps)
+                    or (cap in ("reasoning", "math") and "reasoning" in cand_caps)
+                    for cap in caps_filter
+                )
+                if not matches_cap:
+                    continue
             if q:
                 pub = (c.provenance or {}).get("publisher", "").lower()
                 langs = [l.lower() for l in c.languages]
                 alias = (c.short_alias or "").lower()
                 disp_alias = c.display_alias.lower()
+                cand_caps = [cap.lower() for cap in getattr(c, "capability_tags", [])]
                 match = (
                     q in c.name.lower()
                     or q in c.model_id.lower()
@@ -390,6 +442,7 @@ class CatalogService:
                     or q in alias
                     or q in disp_alias
                     or q in pub
+                    or any(q in cap or cap in q for cap in cand_caps)
                     or (q in ("chinese", "zh") and "zh" in langs)
                 )
                 if not match:

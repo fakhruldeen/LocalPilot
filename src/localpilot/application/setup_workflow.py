@@ -34,7 +34,7 @@ from localpilot.runtimes.llamacpp import LlamaCppRuntimeAdapter
 from localpilot.runtimes.lm_studio import LMStudioServiceAdapter
 from localpilot.runtimes.ollama import OllamaRuntimeAdapter
 from localpilot.runtimes.vllm_backend import VllmBackendAdapter
-from localpilot.security import sanitize_artifact_subpath, validate_download_url, validate_path_within_root
+from localpilot.security import get_stored_secret, sanitize_artifact_subpath, validate_download_url, validate_path_within_root
 from localpilot.sources.huggingface import HuggingFaceSourceAdapter
 from localpilot.sources.ollama_library import OllamaLibrarySourceAdapter
 from localpilot.application.version_service import ModelVersionService
@@ -414,22 +414,40 @@ class SetupWorkflow:
                         if cancel_event and cancel_event.is_set():
                             self.job_mgr.fail_job(job.job_id, "user_cancelled", "Setup cancelled by user.")
                             raise asyncio.CancelledError("Setup cancelled by user.")
-                        async with httpx.AsyncClient(timeout=300.0, follow_redirects=True) as client:
-                            async with client.stream("GET", download_url) as resp:
-                                resp.raise_for_status()
-                                total = int(resp.headers.get("content-length", resolved_artifact.expected_bytes or candidate.total_bytes))
-                                with open(part_file, "wb") as f:
-                                    async for chunk in resp.aiter_bytes(chunk_size=65536):
-                                        if cancel_event and cancel_event.is_set():
-                                            f.close()
-                                            part_file.unlink(missing_ok=True)
-                                            self.job_mgr.fail_job(job.job_id, "user_cancelled", "Setup cancelled by user.")
-                                            raise asyncio.CancelledError("Setup cancelled by user.")
-                                        f.write(chunk)
-                                        hasher.update(chunk)
-                                        downloaded += len(chunk)
-                                        if progress_callback and total > 0:
-                                            progress_callback(f"Downloading {candidate.name}...", downloaded, total)
+                        headers = {"User-Agent": "LocalPilot/0.2.5"}
+                        if hasattr(source_adapter, "_get_headers"):
+                            headers.update(source_adapter._get_headers())
+                        token = get_stored_secret("localpilot", "hf_token")
+                        if token:
+                            token = token.strip()
+                        if token and "Authorization" not in headers:
+                            headers["Authorization"] = f"Bearer {token}"
+
+                        try:
+                            async with httpx.AsyncClient(timeout=300.0, follow_redirects=True, headers=headers) as client:
+                                async with client.stream("GET", download_url) as resp:
+                                    resp.raise_for_status()
+                                    total = int(resp.headers.get("content-length", resolved_artifact.expected_bytes or candidate.total_bytes))
+                                    with open(part_file, "wb") as f:
+                                        async for chunk in resp.aiter_bytes(chunk_size=65536):
+                                            if cancel_event and cancel_event.is_set():
+                                                f.close()
+                                                part_file.unlink(missing_ok=True)
+                                                self.job_mgr.fail_job(job.job_id, "user_cancelled", "Setup cancelled by user.")
+                                                raise asyncio.CancelledError("Setup cancelled by user.")
+                                            f.write(chunk)
+                                            hasher.update(chunk)
+                                            downloaded += len(chunk)
+                                            if progress_callback and total > 0:
+                                                progress_callback(f"Downloading {candidate.name}...", downloaded, total)
+                        except httpx.HTTPStatusError as exc:
+                            if exc.response.status_code == 401:
+                                raise RuntimeError(
+                                    f"Access Denied (401 Unauthorized) downloading {candidate.name}.\n"
+                                    "Please verify that you accepted terms on Hugging Face and that your token has Read permissions.\n"
+                                    f"Download URL: {download_url}"
+                                ) from exc
+                            raise
 
                         if total > 0 and downloaded < total:
                             part_file.unlink(missing_ok=True)

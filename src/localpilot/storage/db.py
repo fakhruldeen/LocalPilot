@@ -445,6 +445,106 @@ class DatabaseManager:
                 )
                 applied.add(5)
 
+            if 6 not in applied:
+                # Migration v6: Benchmarks, task runs, search collections, and voice runs
+                conn.execute("""
+                CREATE TABLE IF NOT EXISTS benchmarks (
+                    benchmark_id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    description TEXT,
+                    prompt_text TEXT NOT NULL,
+                    expected_tokens INTEGER,
+                    created_at TEXT NOT NULL
+                )
+                """)
+
+                conn.execute("""
+                CREATE TABLE IF NOT EXISTS benchmark_runs (
+                    run_id TEXT PRIMARY KEY,
+                    model_alias TEXT NOT NULL,
+                    version_id TEXT,
+                    suite_name TEXT NOT NULL,
+                    prompt_tokens INTEGER NOT NULL,
+                    completion_tokens INTEGER NOT NULL,
+                    ttft_ms REAL NOT NULL,
+                    tps REAL NOT NULL,
+                    total_duration_ms REAL NOT NULL,
+                    peak_memory_mb REAL NOT NULL DEFAULT 0.0,
+                    created_at TEXT NOT NULL,
+                    raw_metrics_json TEXT NOT NULL DEFAULT '{}'
+                )
+                """)
+
+                conn.execute("""
+                CREATE TABLE IF NOT EXISTS task_runs (
+                    run_id TEXT PRIMARY KEY,
+                    task_id TEXT NOT NULL,
+                    model_alias TEXT NOT NULL,
+                    status TEXT NOT NULL,
+                    input_summary TEXT NOT NULL,
+                    output_text TEXT,
+                    duration_ms REAL NOT NULL DEFAULT 0.0,
+                    tokens_used INTEGER NOT NULL DEFAULT 0,
+                    error_message TEXT,
+                    created_at TEXT NOT NULL
+                )
+                """)
+
+                conn.execute("""
+                CREATE TABLE IF NOT EXISTS task_artifacts (
+                    artifact_id TEXT PRIMARY KEY,
+                    run_id TEXT NOT NULL REFERENCES task_runs(run_id),
+                    name TEXT NOT NULL,
+                    artifact_type TEXT NOT NULL,
+                    content TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                )
+                """)
+
+                conn.execute("""
+                CREATE TABLE IF NOT EXISTS search_collections (
+                    collection_id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL UNIQUE,
+                    path TEXT NOT NULL,
+                    file_count INTEGER NOT NULL DEFAULT 0,
+                    passage_count INTEGER NOT NULL DEFAULT 0,
+                    last_indexed_at TEXT NOT NULL,
+                    status TEXT NOT NULL DEFAULT 'ready'
+                )
+                """)
+
+                conn.execute("""
+                CREATE TABLE IF NOT EXISTS search_passages (
+                    passage_id TEXT PRIMARY KEY,
+                    collection_id TEXT NOT NULL REFERENCES search_collections(collection_id),
+                    file_path TEXT NOT NULL,
+                    relative_path TEXT NOT NULL,
+                    line_start INTEGER NOT NULL,
+                    line_end INTEGER NOT NULL,
+                    content TEXT NOT NULL,
+                    metadata_json TEXT NOT NULL DEFAULT '{}'
+                )
+                """)
+
+                conn.execute("""
+                CREATE TABLE IF NOT EXISTS voice_runs (
+                    run_id TEXT PRIMARY KEY,
+                    direction TEXT NOT NULL,
+                    model TEXT NOT NULL,
+                    duration_ms REAL NOT NULL DEFAULT 0.0,
+                    audio_seconds REAL NOT NULL DEFAULT 0.0,
+                    transcript TEXT,
+                    status TEXT NOT NULL DEFAULT 'completed',
+                    error_message TEXT,
+                    created_at TEXT NOT NULL
+                )
+                """)
+
+                conn.execute(
+                    "INSERT INTO schema_migrations (version, applied_at, description) VALUES (6, datetime('now'), 'v6: benchmarks, tasks, search, and voice')"
+                )
+                applied.add(6)
+
     def backfill_v4_from_installations(self, conn: sqlite3.Connection) -> None:
         """Non-destructive idempotent backfill promoting installations to versioned model management."""
         installations = conn.execute("SELECT * FROM installations").fetchall()
@@ -564,6 +664,234 @@ class DatabaseManager:
         conn = self.get_connection()
         row = conn.execute("SELECT 1 FROM model_favorites WHERE model_ref = ?", (model_ref,)).fetchone()
         return row is not None
+
+    # V6 Table Helpers: Benchmarks
+    def record_benchmark_run(self, run: Dict[str, Any]) -> None:
+        import json
+        conn = self.get_connection()
+        with conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO benchmark_runs (
+                    run_id, model_alias, version_id, suite_name, prompt_tokens,
+                    completion_tokens, ttft_ms, tps, total_duration_ms, peak_memory_mb,
+                    created_at, raw_metrics_json
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    run["run_id"],
+                    run["model_alias"],
+                    run.get("version_id"),
+                    run["suite_name"],
+                    run.get("prompt_tokens", 0),
+                    run.get("completion_tokens", 0),
+                    run.get("ttft_ms", 0.0),
+                    run.get("tps", 0.0),
+                    run.get("total_duration_ms", 0.0),
+                    run.get("peak_memory_mb", 0.0),
+                    run["created_at"],
+                    json.dumps(run.get("raw_metrics", {})),
+                ),
+            )
+
+    def list_benchmark_runs(self, model_alias: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        import json
+        conn = self.get_connection()
+        if model_alias:
+            rows = conn.execute(
+                "SELECT * FROM benchmark_runs WHERE model_alias = ? ORDER BY created_at DESC LIMIT ?",
+                (model_alias, limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM benchmark_runs ORDER BY created_at DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+        result = []
+        for r in rows:
+            d = dict(r)
+            if "raw_metrics_json" in d:
+                try:
+                    d["raw_metrics"] = json.loads(d["raw_metrics_json"])
+                except Exception:
+                    d["raw_metrics"] = {}
+            result.append(d)
+        return result
+
+    def get_benchmark_run(self, run_id: str) -> Optional[Dict[str, Any]]:
+        import json
+        conn = self.get_connection()
+        row = conn.execute("SELECT * FROM benchmark_runs WHERE run_id = ?", (run_id,)).fetchone()
+        if not row:
+            return None
+        d = dict(row)
+        if "raw_metrics_json" in d:
+            try:
+                d["raw_metrics"] = json.loads(d["raw_metrics_json"])
+            except Exception:
+                d["raw_metrics"] = {}
+        return d
+
+    # V6 Table Helpers: Tasks
+    def record_task_run(self, run: Dict[str, Any], artifacts: Optional[List[Dict[str, Any]]] = None) -> None:
+        conn = self.get_connection()
+        with conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO task_runs (
+                    run_id, task_id, model_alias, status, input_summary,
+                    output_text, duration_ms, tokens_used, error_message, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    run["run_id"],
+                    run["task_id"],
+                    run["model_alias"],
+                    run["status"],
+                    run.get("input_summary", ""),
+                    run.get("output_text"),
+                    run.get("duration_ms", 0.0),
+                    run.get("tokens_used", 0),
+                    run.get("error_message"),
+                    run["created_at"],
+                ),
+            )
+            if artifacts:
+                for art in artifacts:
+                    conn.execute(
+                        """
+                        INSERT OR REPLACE INTO task_artifacts (
+                            artifact_id, run_id, name, artifact_type, content, created_at
+                        ) VALUES (?, ?, ?, ?, ?, ?)
+                        """,
+                        (
+                            art["artifact_id"],
+                            run["run_id"],
+                            art["name"],
+                            art["artifact_type"],
+                            art["content"],
+                            art.get("created_at", run["created_at"]),
+                        ),
+                    )
+
+    def list_task_runs(self, task_id: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+        conn = self.get_connection()
+        if task_id:
+            rows = conn.execute(
+                "SELECT * FROM task_runs WHERE task_id = ? ORDER BY created_at DESC LIMIT ?",
+                (task_id, limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                "SELECT * FROM task_runs ORDER BY created_at DESC LIMIT ?",
+                (limit,),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+    # V6 Table Helpers: Search Collections & Passages
+    def save_search_collection(self, collection_id: str, name: str, path: str, file_count: int, passage_count: int) -> None:
+        from datetime import datetime, timezone
+        now = datetime.now(timezone.utc).isoformat()
+        conn = self.get_connection()
+        with conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO search_collections (
+                    collection_id, name, path, file_count, passage_count, last_indexed_at, status
+                ) VALUES (?, ?, ?, ?, ?, ?, 'ready')
+                """,
+                (collection_id, name, path, file_count, passage_count, now),
+            )
+
+    def list_search_collections(self) -> List[Dict[str, Any]]:
+        conn = self.get_connection()
+        rows = conn.execute("SELECT * FROM search_collections ORDER BY last_indexed_at DESC").fetchall()
+        return [dict(r) for r in rows]
+
+    def get_search_collection(self, name_or_id: str) -> Optional[Dict[str, Any]]:
+        conn = self.get_connection()
+        row = conn.execute(
+            "SELECT * FROM search_collections WHERE collection_id = ? OR name = ?",
+            (name_or_id, name_or_id),
+        ).fetchone()
+        return dict(row) if row else None
+
+    def delete_search_collection(self, collection_id: str) -> None:
+        conn = self.get_connection()
+        with conn:
+            conn.execute("DELETE FROM search_passages WHERE collection_id = ?", (collection_id,))
+            conn.execute("DELETE FROM search_collections WHERE collection_id = ?", (collection_id,))
+
+    def save_search_passages(self, passages: List[Dict[str, Any]]) -> None:
+        import json
+        conn = self.get_connection()
+        with conn:
+            for p in passages:
+                conn.execute(
+                    """
+                    INSERT OR REPLACE INTO search_passages (
+                        passage_id, collection_id, file_path, relative_path,
+                        line_start, line_end, content, metadata_json
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        p["passage_id"],
+                        p["collection_id"],
+                        p["file_path"],
+                        p.get("relative_path", p["file_path"]),
+                        p.get("line_start", 1),
+                        p.get("line_end", 1),
+                        p["content"],
+                        json.dumps(p.get("metadata", {})),
+                    ),
+                )
+
+    def get_search_passages(self, collection_id: str) -> List[Dict[str, Any]]:
+        import json
+        conn = self.get_connection()
+        rows = conn.execute(
+            "SELECT * FROM search_passages WHERE collection_id = ?",
+            (collection_id,),
+        ).fetchall()
+        res = []
+        for r in rows:
+            d = dict(r)
+            if "metadata_json" in d:
+                try:
+                    d["metadata"] = json.loads(d["metadata_json"])
+                except Exception:
+                    d["metadata"] = {}
+            res.append(d)
+        return res
+
+    # V6 Table Helpers: Voice
+    def record_voice_run(self, run: Dict[str, Any]) -> None:
+        conn = self.get_connection()
+        with conn:
+            conn.execute(
+                """
+                INSERT OR REPLACE INTO voice_runs (
+                    run_id, direction, model, duration_ms, audio_seconds,
+                    transcript, status, error_message, created_at
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    run["run_id"],
+                    run["direction"],
+                    run["model"],
+                    run.get("duration_ms", 0.0),
+                    run.get("audio_seconds", 0.0),
+                    run.get("transcript"),
+                    run.get("status", "completed"),
+                    run.get("error_message"),
+                    run["created_at"],
+                ),
+            )
+
+    def list_voice_runs(self, limit: int = 50) -> List[Dict[str, Any]]:
+        conn = self.get_connection()
+        rows = conn.execute("SELECT * FROM voice_runs ORDER BY created_at DESC LIMIT ?", (limit,)).fetchall()
+        return [dict(r) for r in rows]
 
 
 # Global shared instance

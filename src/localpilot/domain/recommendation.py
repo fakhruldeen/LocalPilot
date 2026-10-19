@@ -70,6 +70,7 @@ class ModelComparisonRow(BaseModel):
     candidate_id: str
     model_id: str
     name: str
+    alias: str = ""
     purpose: str
     distinction: str
     release_date: str
@@ -260,25 +261,26 @@ class ModelRecommendationEngine:
 
         # Badge and why_selected explanation based on distinction and evidence
         task_label = "coding and technical questions" if target_task == TaskCategory.CODING else "writing and everyday questions"
+        caps_desc = getattr(c, "why_capabilities_summary", f"Specialized for {task_label}.")
 
         score_val = getattr(ranked, "score", None)
         score_num = f"{score_val.total_score:.0f}/100" if score_val else "top ranked"
 
         if distinction == ShortlistDistinction.TOP_PICK:
             badge = "★ Top Pick (Recommended)"
-            why = f"Best overall suitability score ({score_num}) with ~{sz_mb:.0f} MB download and {headroom_band.lower()} for {task_label}."
+            why = f"{caps_desc} Best overall suitability score ({score_num}) with ~{sz_mb:.0f} MB download and {headroom_band.lower()}."
         elif distinction == ShortlistDistinction.SMALLER_DOWNLOAD:
             badge = "Compact Choice (Smaller Download)"
-            why = f"Significantly smaller download (~{sz_mb:.0f} MB) that downloads quickly while still handling {task_label}."
+            why = f"{caps_desc} Significantly smaller download (~{sz_mb:.0f} MB) that downloads quickly."
         elif distinction == ShortlistDistinction.LONGER_CONTEXT:
             badge = "Extended Memory (Longer Context)"
-            why = f"Expanded context window ({plan.usable_context:,} tokens) with more room for long documents, codebases, or extended discussions."
+            why = f"{caps_desc} Expanded context window ({plan.usable_context:,} tokens) with more room for long documents, codebases, or extended discussions."
         elif distinction == ShortlistDistinction.LOWER_MEMORY:
             badge = "Lightweight Choice (Low RAM)"
-            why = f"Minimized memory footprint leaving maximum headroom for your other open computer applications."
+            why = f"{caps_desc} Minimized memory footprint leaving maximum headroom for your other open computer applications."
         else:
             badge = "Alternative Option"
-            why = f"Strong alternative fit with compatible execution plan for your computer."
+            why = f"{caps_desc} Strong alternative fit with compatible execution plan for your computer."
 
         # Supporting setup description (truthful distinction between external vs isolated install)
         backend_name = plan.inference_backend.value if hasattr(plan.inference_backend, "value") else str(plan.inference_backend)
@@ -324,20 +326,32 @@ class ModelRecommendationEngine:
             disk_mb = (plan.estimated_disk_bytes + getattr(plan, "temp_disk_bytes", 0)) / (1024 * 1024)
             mem_mb = (plan.estimated_ram_bytes + plan.estimated_vram_bytes) / (1024 * 1024)
 
-            purpose = "General Chat & Writing"
-            if TaskCategory.CODING in c.tasks:
-                purpose = "Coding & Programming"
-            elif TaskCategory.REASONING in c.tasks:
-                purpose = "Deep Reasoning & Math"
+            caps_tags = getattr(c, "capability_tags", [])
+            purpose_parts = []
+            if "coding" in caps_tags:
+                purpose_parts.append("Coding")
+            if "writing" in caps_tags:
+                purpose_parts.append("Writing")
+            if "image" in caps_tags:
+                purpose_parts.append("Vision/Image")
+            if "audio" in caps_tags:
+                purpose_parts.append("Audio")
+            if "video" in caps_tags:
+                purpose_parts.append("Video")
+            if "reasoning" in caps_tags:
+                purpose_parts.append("Reasoning")
+            purpose = " • ".join(purpose_parts) if purpose_parts else "General AI"
 
             backend = plan.inference_backend.value if hasattr(plan.inference_backend, "value") else str(plan.inference_backend)
             mode = plan.requested_execution_mode.value if hasattr(plan.requested_execution_mode, "value") else str(plan.requested_execution_mode)
+            alias = getattr(c, "short_alias", None) or getattr(c, "display_alias", None) or c.name
 
             rows.append(
                 ModelComparisonRow(
                     candidate_id=c.candidate_id,
                     model_id=c.model_id,
                     name=c.name,
+                    alias=alias,
                     purpose=purpose,
                     distinction=getattr(r, "badge_label", "Standard"),
                     release_date=c.verified_release_at or c.repo_created_at or "Estimated",
@@ -346,7 +360,7 @@ class ModelRecommendationEngine:
                     context_window=f"{plan.usable_context:,} tokens",
                     memory_burden=f"~{mem_mb:.0f} MB estimated",
                     execution_plan=f"{backend} ({mode})",
-                    access_requirements="Free Access Key Required" if c.requires_auth else "Open Access",
+                    access_requirements="[✓] Free Token Required (Hugging Face)" if (c.requires_auth or getattr(c, "is_gated", False)) else "[ ] Free / Open Access",
                     confidence=c.confidence.value.title(),
                 )
             )

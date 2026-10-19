@@ -152,6 +152,120 @@ console.log(response.choices[0].message.content);"""
             "nodejs": node_snippet,
         }
 
+    @staticmethod
+    def get_cline_instructions(base_url: str, api_key: str, model_alias: str = "coding") -> Dict[str, Any]:
+        """Generates configuration for Cline (Claude Dev) autonomous coding agent in VS Code."""
+        return {
+            "application": "Cline (VS Code)",
+            "steps": [
+                "Open Cline in VS Code sidebar -> Click the Settings (gear) icon",
+                "Set API Provider: 'OpenAI Compatible'",
+                f"Set Base URL: {base_url.rstrip('/')}",
+                f"Set API Key: {api_key}",
+                f"Set Model ID: {model_alias}",
+            ],
+            "configuration": {
+                "api_provider": "OpenAI Compatible",
+                "base_url": base_url.rstrip("/"),
+                "api_key": api_key,
+                "model_id": model_alias,
+            },
+        }
+
+    @staticmethod
+    def get_aider_instructions(base_url: str, api_key: str, model_alias: str = "coding") -> Dict[str, Any]:
+        """Generates startup command and environment variables for Aider terminal pair programmer."""
+        clean_url = base_url.rstrip("/")
+        cmd = f"aider --openai-api-base {clean_url} --openai-api-key {api_key} --model openai/{model_alias}"
+        env_cmd = (
+            f"export OPENAI_API_BASE={clean_url}\n"
+            f"export OPENAI_API_KEY={api_key}\n"
+            f"aider --model openai/{model_alias}"
+        )
+        return {
+            "application": "Aider",
+            "command": cmd,
+            "env_setup": env_cmd,
+            "model": f"openai/{model_alias}",
+        }
+
+    @staticmethod
+    def get_librechat_template(base_url: str, api_key: str, model_alias: str = "default") -> str:
+        """Generates custom endpoint configuration for LibreChat in librechat.yaml."""
+        clean_url = base_url.rstrip("/")
+        return f"""endpoints:
+  custom:
+    - name: "LocalPilot"
+      apiKey: "{api_key}"
+      baseURL: "{clean_url}"
+      models:
+        default: ["{model_alias}", "coding", "default", "reasoning"]
+        fetch: false
+      titleConvo: true
+      titleModel: "{model_alias}"
+      summarize: false
+      summaryModel: "{model_alias}"
+      forcePrompt: false
+      modelDisplayLabel: "LocalPilot ({model_alias})"
+"""
+
+    @staticmethod
+    def get_openwebui_instructions(base_url: str, api_key: str, model_alias: str = "default") -> Dict[str, Any]:
+        """Generates connection settings for Open WebUI self-hosted interface."""
+        return {
+            "application": "Open WebUI",
+            "steps": [
+                "Navigate to Open WebUI -> Admin Settings -> Connections",
+                "Under 'OpenAI API', toggle connection to ON",
+                f"Set URL: {base_url.rstrip('/')}",
+                f"Set API Key: {api_key}",
+                "Click Save and verify connection status turns green",
+            ],
+            "configuration": {
+                "url": base_url.rstrip("/"),
+                "api_key": api_key,
+                "model": model_alias,
+            },
+        }
+
+    @staticmethod
+    def get_anythingllm_instructions(base_url: str, api_key: str, model_alias: str = "default") -> Dict[str, Any]:
+        """Generates connection settings for AnythingLLM Desktop and Docker."""
+        return {
+            "application": "AnythingLLM",
+            "steps": [
+                "Open AnythingLLM Settings -> LLM Preference",
+                "Choose LLM Provider: 'Generic OpenAI'",
+                f"Enter Base URL: {base_url.rstrip('/')}",
+                f"Enter API Key: {api_key}",
+                f"Enter Chat Model Name: {model_alias}",
+                "Save changes",
+            ],
+            "configuration": {
+                "provider": "Generic OpenAI",
+                "base_url": base_url.rstrip("/"),
+                "api_key": api_key,
+                "model": model_alias,
+            },
+        }
+
+    @staticmethod
+    def get_zed_template(base_url: str, api_key: str, model_alias: str = "coding") -> Dict[str, Any]:
+        """Generates language_models config for Zed Editor (~/.config/zed/settings.json)."""
+        return {
+            "language_models": {
+                "openai": {
+                    "api_url": base_url.rstrip("/"),
+                    "available_models": [
+                        {
+                            "name": model_alias,
+                            "max_tokens": 4096,
+                        }
+                    ],
+                }
+            }
+        }
+
     @classmethod
     def apply_opencode_config(
         cls,
@@ -532,6 +646,65 @@ class ConnectionManager:
             "action_taken": action_taken,
             "restored_path": restored_path,
             "key_revoked": key_revoked,
+        }
+
+    def restore_connection(self, connection_id: str) -> Dict[str, Any]:
+        """Restores client configuration from its backup file."""
+        profile = self.get_connection(connection_id)
+        if not profile:
+            raise ValueError(f"Connection profile '{connection_id}' not found.")
+
+        if not profile.backup_path or not Path(profile.backup_path).exists():
+            # If no physical backup file, fall back to safe disconnect logic
+            return self.disconnect_connection(connection_id)
+
+        target_p = Path(profile.target_path)
+        backup_p = Path(profile.backup_path)
+        shutil.copy2(backup_p, target_p)
+
+        now_str = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
+        conn = self.db.get_connection()
+        with conn:
+            conn.execute(
+                "UPDATE connection_profiles SET status = ?, updated_at = ? WHERE connection_id = ?",
+                (ConnectionStatus.DISCONNECTED.value, now_str, connection_id),
+            )
+
+        return {
+            "connection_id": connection_id,
+            "status": "restored",
+            "restored_from": str(backup_p),
+            "restored_to": str(target_p),
+            "success": True,
+        }
+
+    def remove_connection(self, connection_id: str, revoke_key: bool = False, delete_backup: bool = False) -> Dict[str, Any]:
+        """Removes a connection profile record from LocalPilot, optionally revoking key and cleaning backup."""
+        profile = self.get_connection(connection_id)
+        if not profile:
+            raise ValueError(f"Connection profile '{connection_id}' not found.")
+
+        key_revoked = False
+        if revoke_key and profile.key_id:
+            key_revoked = self.api_keys.revoke_key(profile.key_id)
+
+        backup_deleted = False
+        if delete_backup and profile.backup_path and Path(profile.backup_path).exists():
+            try:
+                Path(profile.backup_path).unlink()
+                backup_deleted = True
+            except Exception:
+                pass
+
+        conn = self.db.get_connection()
+        with conn:
+            conn.execute("DELETE FROM connection_profiles WHERE connection_id = ?", (connection_id,))
+
+        return {
+            "connection_id": connection_id,
+            "status": "removed",
+            "key_revoked": key_revoked,
+            "backup_deleted": backup_deleted,
         }
 
     def test_connection(self, connection_id: str, probe_live: bool = True) -> ConnectionVerificationResult:

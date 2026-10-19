@@ -9,9 +9,9 @@ import subprocess
 import sys
 import time
 import uuid
-from typing import Any, Callable, Dict, List, Optional
+from typing import Any, Callable, Dict, List, Optional, Set, Union
 import psutil
-from textual import work
+from textual import events, work
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen, Screen
@@ -19,6 +19,7 @@ from textual.binding import Binding
 from textual.timer import Timer
 from textual.widgets import (
     Button,
+    Checkbox,
     DataTable,
     Footer,
     Header,
@@ -62,6 +63,10 @@ from localpilot.application.api_key_service import ApiKeyService
 from localpilot.application.version_service import ModelVersionService
 from localpilot.gateway.server import GatewayServer
 from localpilot.observability.activity import ActivityService
+from localpilot.application.task_service import TaskService
+from localpilot.application.search_service import SearchService
+from localpilot.application.benchmark_service import BenchmarkService
+from localpilot.application.diagnostic_service import DiagnosticService
 from localpilot.security import get_stored_secret, store_secret
 from localpilot.sources.catalog_service import CatalogService, RankedCandidate
 from localpilot.storage.db import get_db
@@ -441,8 +446,10 @@ class ModelComparisonModal(ModalScreen[None]):
 
     def on_mount(self) -> None:
         table = self.query_one("#comparison-table", DataTable)
-        table.add_columns("Metric", *(r.name for r in self.rows))
+        headers = [getattr(r, "alias", None) or r.name for r in self.rows]
+        table.add_columns("Metric", *headers)
         metrics = [
+            ("Full Name", [r.name for r in self.rows]),
             ("Distinction", [r.distinction for r in self.rows]),
             ("Intended Purpose", [r.purpose for r in self.rows]),
             ("Release Date", [r.release_date for r in self.rows]),
@@ -662,6 +669,72 @@ class ConnectionSetupModal(ModalScreen[None]):
                             + py_code
                             + "```\n"
                         )
+                with TabPane("Cline (VS Code)", id="client-cline"):
+                    with VerticalScroll():
+                        cline_info = IntegrationTemplateService.get_cline_instructions("http://127.0.0.1:8080/v1", self.api_key, "coding")
+                        steps_md = "\n".join(f"{i+1}. {s}" for i, s in enumerate(cline_info["steps"]))
+                        yield Markdown(
+                            "### Cline (VS Code Extension)\n\n"
+                            + steps_md
+                            + "\n\n```json\n"
+                            + json.dumps(cline_info["configuration"], indent=2)
+                            + "\n```\n"
+                        )
+                with TabPane("Aider (CLI)", id="client-aider"):
+                    with VerticalScroll():
+                        aider_info = IntegrationTemplateService.get_aider_instructions("http://127.0.0.1:8080/v1", self.api_key, "coding")
+                        yield Markdown(
+                            "### Aider Terminal Pair Programmer\n\n"
+                            "Launch Aider connected to LocalPilot:\n\n"
+                            "```bash\n"
+                            + aider_info["command"]
+                            + "\n```\n\n"
+                            "Or set environment variables:\n\n"
+                            "```bash\n"
+                            + aider_info["env_setup"]
+                            + "\n```\n"
+                        )
+                with TabPane("LibreChat", id="client-librechat"):
+                    with VerticalScroll():
+                        librechat_yaml = IntegrationTemplateService.get_librechat_template("http://127.0.0.1:8080/v1", self.api_key, "default")
+                        yield Markdown(
+                            "### LibreChat Configuration\n\n"
+                            "Add this custom endpoint to your `librechat.yaml`:\n\n"
+                            "```yaml\n"
+                            + librechat_yaml
+                            + "```\n"
+                        )
+                with TabPane("Open WebUI", id="client-openwebui"):
+                    with VerticalScroll():
+                        ow_info = IntegrationTemplateService.get_openwebui_instructions("http://127.0.0.1:8080/v1", self.api_key, "default")
+                        steps_md = "\n".join(f"{i+1}. {s}" for i, s in enumerate(ow_info["steps"]))
+                        yield Markdown(
+                            "### Open WebUI Settings\n\n"
+                            + steps_md
+                            + "\n\n**Base URL:** `http://127.0.0.1:8080/v1`\n"
+                            + f"**API Key:** `{self.api_key}`\n"
+                        )
+                with TabPane("AnythingLLM", id="client-anythingllm"):
+                    with VerticalScroll():
+                        any_info = IntegrationTemplateService.get_anythingllm_instructions("http://127.0.0.1:8080/v1", self.api_key, "default")
+                        steps_md = "\n".join(f"{i+1}. {s}" for i, s in enumerate(any_info["steps"]))
+                        yield Markdown(
+                            "### AnythingLLM Desktop / Docker\n\n"
+                            + steps_md
+                            + "\n\n**Base URL:** `http://127.0.0.1:8080/v1`\n"
+                            + f"**API Key:** `{self.api_key}`\n"
+                            + "**Model:** `default`\n"
+                        )
+                with TabPane("Zed Editor", id="client-zed"):
+                    with VerticalScroll():
+                        zed_cfg = IntegrationTemplateService.get_zed_template("http://127.0.0.1:8080/v1", self.api_key, "coding")
+                        yield Markdown(
+                            "### Zed Editor (~/.config/zed/settings.json)\n\n"
+                            "Add to your Zed configuration:\n\n"
+                            "```json\n"
+                            + json.dumps(zed_cfg, indent=2)
+                            + "\n```\n"
+                        )
 
             with Horizontal(id="setup-guide-buttons"):
                 yield Button("Close (Esc)", variant="primary", id="btn-close-guide")
@@ -763,7 +836,467 @@ class SwitchAliasModal(ModalScreen[Optional[Dict[str, str]]]):
             else:
                 self.dismiss(None)
 
+def open_url_in_browser(url: str) -> bool:
+    """Opens a URL in the user's default web browser using webbrowser and system tools."""
+    if not url:
+        return False
+    try:
+        import webbrowser
+        if webbrowser.open(url):
+            return True
+    except Exception:
+        pass
+    try:
+        import subprocess, sys
+        if sys.platform == "win32":
+            subprocess.Popen(["start", url], shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return True
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return True
+        else:
+            subprocess.Popen(["xdg-open", url], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return True
+    except Exception:
+        pass
+    return False
+
+
+class AuthTokenModal(ModalScreen[Optional[str]]):
+    """Modal to enter a Hugging Face API access token for gated models (Option B)."""
+
+    BINDINGS = [
+        ("escape", "dismiss_none", "Cancel"),
+    ]
+
+    def __init__(self, model_name: str, publisher_url: str = "") -> None:
+        super().__init__()
+        self.model_name = model_name
+        self.publisher_url = publisher_url or "https://huggingface.co"
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="auth-token-dialog"):
+            yield Label(f"[bold cyan]Option B: Download {self.model_name} with Your Free Token[/bold cyan]", id="auth-modal-title")
+            desc_text = (
+                f"This model requires agreeing to publisher terms on Hugging Face before download.\n\n"
+                f"1. Accept terms at model repository:\n"
+                f"   [link=\"{self.publisher_url}\"][bold underline cyan]{self.publisher_url}[/bold underline cyan][/link]\n\n"
+                f"2. Generate your free Personal Access Token (Read-only):\n"
+                f"   [link=\"https://huggingface.co/settings/tokens\"][bold underline cyan]https://huggingface.co/settings/tokens[/bold underline cyan][/link]\n\n"
+                f"3. Paste your token (starts with hf_...) below to continue setup:\n"
+                f"   • Token is stored securely in your OS credential store (never logged).\n"
+                f"   • Alternatively, press Cancel to pick an open model (marked [ ] Free) that requires no key."
+            )
+            yield Label(desc_text, id="auth-modal-desc")
+            with Horizontal(classes="wizard-buttons"):
+                yield Button("🌐 Open Model Page in Browser", variant="default", id="btn-auth-open-model", tooltip="Open model repository in your web browser")
+                yield Button("🔑 Open Token Settings in Browser", variant="default", id="btn-auth-open-token", tooltip="Open Hugging Face token creation page in your browser")
+            yield Input(placeholder="hf_...", password=True, id="auth-modal-input", tooltip="Paste your read-only Hugging Face access token here")
+            with Horizontal(classes="wizard-buttons"):
+                yield Button("Cancel", variant="default", id="btn-auth-modal-cancel")
+                yield Button("Save Token & Continue →", variant="primary", id="btn-auth-modal-save")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn-auth-modal-save":
+            val = self.query_one("#auth-modal-input", Input).value.strip()
+            if val:
+                self.dismiss(val)
+            else:
+                self.notify("Please paste a token or click Cancel.", severity="warning")
+        elif event.button.id == "btn-auth-modal-cancel":
+            self.dismiss(None)
+        elif event.button.id in ("btn-auth-open-model", "btn-modal-open-model"):
+            open_url_in_browser(self.publisher_url)
+            self.notify(f"Opened {self.publisher_url} in your browser.", title="Browser")
+        elif event.button.id in ("btn-auth-open-token", "btn-modal-open-token"):
+            open_url_in_browser("https://huggingface.co/settings/tokens")
+            self.notify("Opened Hugging Face Token Settings in your browser.", title="Browser")
+
     def action_dismiss_none(self) -> None:
+        self.dismiss(None)
+
+
+def get_catalog_statistics_rows() -> List[Tuple[str, str, str]]:
+    """Retrieve the authoritative 7 rows of LocalPilot Catalog & Database Statistics."""
+    from localpilot.data import get_initial_sources, get_initial_providers, get_initial_developers, get_initial_models
+    from localpilot.storage.db import get_db
+
+    try:
+        db = get_db()
+        conn = db.get_connection()
+        cached_models = conn.execute("SELECT COUNT(*) as c FROM catalog_models").fetchone()["c"]
+        fav_count = conn.execute("SELECT COUNT(*) as c FROM model_favorites").fetchone()["c"]
+        installed_count = conn.execute("SELECT COUNT(*) as c FROM installations").fetchone()["c"]
+    except Exception:
+        cached_models = 0
+        fav_count = 0
+        installed_count = 0
+
+    sources_count = len(get_initial_sources())
+    providers_count = len(get_initial_providers())
+    devs_count = len(get_initial_developers())
+    bundled_models = len(get_initial_models())
+
+    return [
+        ("Initial Bundled Models", str(bundled_models), "Packaged in localpilot/data/models.json"),
+        ("Local Cached Models", str(cached_models), "Stored in local SQLite state.db"),
+        ("Model Registries / Sources", str(sources_count), "Packaged in sources.json"),
+        ("AI Labs / Providers", str(providers_count), "Packaged in providers.json"),
+        ("Community Developers", str(devs_count), "Packaged in developers.json"),
+        ("Favorited Models", str(fav_count), "User-selected favorites"),
+        ("Installed Models", str(installed_count), "Installed on this computer"),
+    ]
+
+
+class CatalogStatsModal(ModalScreen[None]):
+    """Modal dialog displaying LocalPilot Catalog & Database Statistics."""
+
+    BINDINGS = [
+        ("escape", "action_close", "Close"),
+        ("enter", "action_close", "Close"),
+    ]
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="catalog-stats-dialog"):
+            yield Label("[bold cyan]📊 LocalPilot Catalog & Database Statistics[/bold cyan]", id="catalog-stats-modal-title")
+            yield Label(
+                "Authoritative database metrics for bundled assets, registries, AI providers, and local caches.\n"
+                "[dim]• Synchronized with local SQLite storage and packaged catalog databases.[/dim]",
+                id="catalog-stats-modal-subtitle",
+            )
+            yield DataTable(id="catalog-stats-modal-table")
+            with Horizontal(classes="wizard-buttons"):
+                yield Button("Close (Esc)", variant="primary", id="btn-catalog-stats-close")
+
+    def on_mount(self) -> None:
+        table = self.query_one("#catalog-stats-modal-table", DataTable)
+        table.cursor_type = "row"
+        table.zebra_stripes = True
+        table.add_columns("Category", "Count", "Notes")
+        for row in get_catalog_statistics_rows():
+            table.add_row(*row)
+
+    def action_close(self) -> None:
+        self.dismiss()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn-catalog-stats-close":
+            self.action_close()
+
+
+class ComprehensiveFilterModal(ModalScreen[Optional[Dict[str, Any]]]):
+    """Unified modal dialog to configure capabilities, providers, sources, access requirements, and RAM budget."""
+
+    BINDINGS = [
+        ("escape", "action_cancel", "Cancel"),
+        ("enter", "action_apply", "Apply Filters"),
+    ]
+
+    CAPABILITIES = [
+        ("coding", "💻 Coding & Software Development", "Code generation, debugging, algorithms, refactoring"),
+        ("writing", "✍️ Writing & Conversational Dialogue", "Essays, copywriting, editing, summaries, and chat"),
+        ("image", "👁️ Image & Multimodal Vision", "Visual image reasoning, diagrams, charts, OCR"),
+        ("audio", "🎙️ Audio & Voice Processing", "Speech-to-text transcription and voice recognition"),
+        ("video", "🎬 Video Comprehension", "Video understanding and multi-frame visual reasoning"),
+        ("reasoning", "🧠 Deep Reasoning & Mathematics", "Complex multi-step logic, proofs, and math problems"),
+        ("embedding", "🔍 Search & Embedding", "Fast semantic document indexing and vector search"),
+    ]
+
+    PROVIDERS = [
+        ("all", "All Providers (Any)"),
+        ("NVIDIA", "NVIDIA"),
+        ("Cohere", "Cohere (Command-R)"),
+        ("Meta", "Meta (Llama)"),
+        ("Google", "Google (Gemma)"),
+        ("DeepSeek", "DeepSeek AI (R1 & Distills)"),
+        ("Mistral", "Mistral AI"),
+        ("Microsoft", "Microsoft (Phi)"),
+        ("Qwen", "Qwen Team / Alibaba"),
+        ("AllenAI", "AllenAI (OLMo / Tulu)"),
+        ("01.AI", "01.AI (Yi)"),
+        ("Snowflake", "Snowflake (Arctic)"),
+        ("Stability AI", "Stability AI (StableLM)"),
+        ("Upstage", "Upstage (Solar)"),
+        ("BigCode", "BigCode (StarCoder)"),
+        ("Liquid AI", "Liquid AI (LFM)"),
+        ("OpenBMB", "OpenBMB (MiniCPM)"),
+        ("Kimi", "Kimi (Moonshot AI)"),
+        ("Groq", "Groq"),
+        ("GLM", "GLM (Zhipu AI / THUDM)"),
+        ("KLM", "KLM (Korean Language Model)"),
+        ("MiniMax", "MiniMax (Minimas)"),
+        ("GPT-OSS", "GPT-OSS (OpenAI)"),
+    ]
+
+    SOURCES = [
+        ("all", "All Registries / Sources"),
+        ("huggingface", "Hugging Face Hub"),
+        ("ollama", "Ollama Library"),
+        ("modelscope", "Alibaba ModelScope Hub"),
+    ]
+
+    ACCESS = [
+        ("all", "All Models (Any Access Requirement)"),
+        ("free", "Free / Open Access Only (No Token Needed)"),
+        ("token", "Token Required Only (Hugging Face Option B)"),
+    ]
+
+    MEMORY_FIT = [
+        ("fits", "Fits Safe Memory Budget Only (Recommended)"),
+        ("all", "Show All Models (Include models exceeding RAM)"),
+    ]
+
+    FAVORITES = [
+        ("all", "All Models"),
+        ("favorites", "★ Favorites Only"),
+    ]
+
+    def __init__(
+        self,
+        current_capabilities: Optional[Set[str]] = None,
+        current_provider: Optional[str] = None,
+        current_source: Optional[str] = None,
+        current_access: Optional[str] = None,
+        show_all: bool = False,
+        only_favorites: bool = False,
+    ) -> None:
+        super().__init__()
+        self.selected_caps: Set[str] = set(current_capabilities) if current_capabilities else set()
+        self.selected_provider: str = current_provider or "all"
+        self.selected_source: str = current_source or "all"
+        self.selected_access: str = current_access or "all"
+        self.show_all: bool = show_all
+        self.only_favorites: bool = only_favorites
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="comprehensive-filter-dialog"):
+            yield Label("[bold cyan]🎯 Comprehensive Model Catalog Filters[/bold cyan]", id="filter-modal-title")
+            yield Label(
+                "Filter models by capabilities, creator labs, download sources, and access keys.\n"
+                "[dim]• Check specific boxes below to focus on matching models. Leave blank for all.[/dim]",
+                id="filter-modal-subtitle",
+            )
+            with VerticalScroll(id="filter-modal-scroll"):
+                yield Label("[bold]1. Model Capabilities & Categories:[/bold]")
+                with Horizontal(classes="filter-quick-buttons"):
+                    yield Button("💻 Code Only", variant="default", id="btn-quick-code")
+                    yield Button("🧠 Reason Only", variant="default", id="btn-quick-reason")
+                    yield Button("👁️ Vision Only", variant="default", id="btn-quick-vision")
+                with Horizontal(classes="filter-quick-buttons"):
+                    yield Button("🎙️ Audio Only", variant="default", id="btn-quick-audio")
+                    yield Button("✍️ Writing Only", variant="default", id="btn-quick-writing")
+                    yield Button("🎬 Video Only", variant="default", id="btn-quick-video")
+                with Horizontal(classes="filter-quick-buttons"):
+                    yield Button("🔍 Embed Only", variant="default", id="btn-quick-embed")
+                    yield Button("Select All", variant="default", id="btn-quick-select-all")
+                    yield Button("Clear All", variant="default", id="btn-quick-clear-all")
+
+                with Vertical(id="filter-caps-container"):
+                    for key, label, desc in self.CAPABILITIES:
+                        is_checked = key in self.selected_caps
+                        yield Checkbox(
+                            f"[bold]{label}[/bold]\n   [dim]{desc}[/dim]",
+                            value=is_checked,
+                            id=f"chk-filter-cap-{key}",
+                        )
+
+                yield Label("\n[bold]2. Model Provider / Creator Lab:[/bold]")
+                yield Select([(name, val) for val, name in self.PROVIDERS], value=self.selected_provider, id="select-filter-provider")
+
+                yield Label("\n[bold]3. Download Registry Source:[/bold]")
+                yield Select([(name, val) for val, name in self.SOURCES], value=self.selected_source, id="select-filter-source")
+
+                yield Label("\n[bold]4. Access & Token Requirements:[/bold]")
+                yield Select([(name, val) for val, name in self.ACCESS], value=self.selected_access, id="select-filter-access")
+
+                yield Label("\n[bold]5. Computer Memory (RAM) Budget:[/bold]")
+                yield Select([(name, val) for val, name in self.MEMORY_FIT], value="all" if self.show_all else "fits", id="select-filter-memory")
+
+                yield Label("\n[bold]6. Favorite Models:[/bold]")
+                yield Select([(name, val) for val, name in self.FAVORITES], value="favorites" if self.only_favorites else "all", id="select-filter-favs")
+
+            with Horizontal(classes="wizard-buttons"):
+                yield Button("Reset All Filters", variant="default", id="btn-filter-reset")
+                yield Button("Cancel (Esc)", variant="default", id="btn-filter-cancel")
+                yield Button("Apply Filters (Enter)", variant="primary", id="btn-filter-apply")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        btn_id = event.button.id
+        if btn_id == "btn-filter-apply":
+            self.action_apply()
+        elif btn_id == "btn-filter-cancel":
+            self.action_cancel()
+        elif btn_id == "btn-filter-reset":
+            for key, _, _ in self.CAPABILITIES:
+                try:
+                    self.query_one(f"#chk-filter-cap-{key}", Checkbox).value = False
+                except Exception:
+                    pass
+            try:
+                self.query_one("#select-filter-provider", Select).value = "all"
+                self.query_one("#select-filter-source", Select).value = "all"
+                self.query_one("#select-filter-access", Select).value = "all"
+                self.query_one("#select-filter-memory", Select).value = "fits"
+                self.query_one("#select-filter-favs", Select).value = "all"
+            except Exception:
+                pass
+        elif btn_id == "btn-quick-select-all":
+            for key, _, _ in self.CAPABILITIES:
+                try:
+                    self.query_one(f"#chk-filter-cap-{key}", Checkbox).value = True
+                except Exception:
+                    pass
+        elif btn_id == "btn-quick-clear-all":
+            for key, _, _ in self.CAPABILITIES:
+                try:
+                    self.query_one(f"#chk-filter-cap-{key}", Checkbox).value = False
+                except Exception:
+                    pass
+        elif btn_id == "btn-quick-code":
+            self._set_single_capability("coding")
+        elif btn_id == "btn-quick-reason":
+            self._set_single_capability("reasoning")
+        elif btn_id == "btn-quick-vision":
+            self._set_single_capability("image")
+        elif btn_id == "btn-quick-audio":
+            self._set_single_capability("audio")
+        elif btn_id == "btn-quick-writing":
+            self._set_single_capability("writing")
+        elif btn_id == "btn-quick-video":
+            self._set_single_capability("video")
+        elif btn_id == "btn-quick-embed":
+            self._set_single_capability("embedding")
+
+    def _set_single_capability(self, target_key: str) -> None:
+        for key, _, _ in self.CAPABILITIES:
+            try:
+                self.query_one(f"#chk-filter-cap-{key}", Checkbox).value = (key == target_key)
+            except Exception:
+                pass
+
+    def action_apply(self) -> None:
+        selected_caps: Set[str] = set()
+        for key, _, _ in self.CAPABILITIES:
+            try:
+                if self.query_one(f"#chk-filter-cap-{key}", Checkbox).value:
+                    selected_caps.add(key)
+            except Exception:
+                pass
+
+        try:
+            prov_val = str(self.query_one("#select-filter-provider", Select).value)
+        except Exception:
+            prov_val = "all"
+
+        try:
+            source_val = str(self.query_one("#select-filter-source", Select).value)
+        except Exception:
+            source_val = "all"
+
+        try:
+            access_val = str(self.query_one("#select-filter-access", Select).value)
+        except Exception:
+            access_val = "all"
+
+        try:
+            mem_val = str(self.query_one("#select-filter-memory", Select).value)
+        except Exception:
+            mem_val = "fits"
+
+        try:
+            fav_val = str(self.query_one("#select-filter-favs", Select).value)
+        except Exception:
+            fav_val = "all"
+
+        result = {
+            "capabilities": selected_caps,
+            "provider": None if prov_val == "all" else prov_val,
+            "source": None if source_val == "all" else source_val,
+            "access": None if access_val == "all" else access_val,
+            "show_all": (mem_val == "all"),
+            "only_favorites": (fav_val == "favorites"),
+        }
+        self.dismiss(result)
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)
+
+
+class CapabilityFilterModal(ModalScreen[Optional[Set[str]]]):
+    """Multiple choice modal dialog for filtering models by specialized capability categories."""
+
+    BINDINGS = [
+        ("escape", "action_cancel", "Cancel"),
+        ("enter", "action_apply", "Apply Filter"),
+    ]
+
+    CAPABILITIES = [
+        ("coding", "💻 Coding & Software Development", "Code generation, debugging, algorithms, refactoring"),
+        ("writing", "✍️ Writing & Conversational Dialogue", "Essays, copywriting, editing, summaries, and chat"),
+        ("image", "👁️ Image & Multimodal Vision", "Visual image reasoning, diagrams, charts, OCR"),
+        ("audio", "🎙️ Audio & Voice Processing", "Speech-to-text transcription and voice recognition"),
+        ("video", "🎬 Video Comprehension", "Video understanding and multi-frame visual reasoning"),
+        ("reasoning", "🧠 Deep Reasoning & Mathematics", "Complex multi-step logic, proofs, and math problems"),
+        ("embedding", "🔍 Search & Embedding", "Fast semantic document indexing and vector search"),
+    ]
+
+    def __init__(self, current_selected: Optional[Set[str]] = None) -> None:
+        super().__init__()
+        self.current_selected = set(current_selected) if current_selected else set()
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="capability-filter-dialog"):
+            yield Label("[bold cyan]Filter by Model Capabilities[/bold cyan]", id="cap-filter-title")
+            yield Label(
+                "Select one or more categories to filter the catalog:\n"
+                "[dim]• Check specific boxes to focus on specialized models. Leave empty to see all.[/dim]",
+                id="cap-filter-desc",
+            )
+            with Horizontal(classes="filter-quick-buttons"):
+                yield Button("Select All", variant="default", id="btn-cap-select-all")
+                yield Button("Clear All", variant="default", id="btn-cap-clear-all")
+            with VerticalScroll(id="cap-checkboxes-scroll"):
+                for key, label, desc in self.CAPABILITIES:
+                    is_checked = (key in self.current_selected)
+                    yield Checkbox(
+                        f"[bold]{label}[/bold]\n   [dim]{desc}[/dim]",
+                        value=is_checked,
+                        id=f"chk-cap-{key}",
+                    )
+            with Horizontal(classes="wizard-buttons"):
+                yield Button("Cancel (Esc)", variant="default", id="btn-cap-cancel")
+                yield Button("Apply Filter (Enter)", variant="primary", id="btn-cap-apply")
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        btn_id = event.button.id
+        if btn_id == "btn-cap-apply":
+            self.action_apply()
+        elif btn_id == "btn-cap-cancel":
+            self.action_cancel()
+        elif btn_id == "btn-cap-select-all":
+            for key, _, _ in self.CAPABILITIES:
+                try:
+                    self.query_one(f"#chk-cap-{key}", Checkbox).value = True
+                except Exception:
+                    pass
+        elif btn_id == "btn-cap-clear-all":
+            for key, _, _ in self.CAPABILITIES:
+                try:
+                    self.query_one(f"#chk-cap-{key}", Checkbox).value = False
+                except Exception:
+                    pass
+
+    def action_apply(self) -> None:
+        selected: Set[str] = set()
+        for key, _, _ in self.CAPABILITIES:
+            try:
+                if self.query_one(f"#chk-cap-{key}", Checkbox).value:
+                    selected.add(key)
+            except Exception:
+                pass
+        self.dismiss(selected)
+
+    def action_cancel(self) -> None:
         self.dismiss(None)
 
 
@@ -839,6 +1372,7 @@ class GuidedSetupModal(ModalScreen[Optional[str]]):
                         tooltip="View all models in the catalog that fit safely within your computer's RAM.",
                     )
                 with Horizontal(classes="wizard-buttons"):
+                    yield Button("Cancel", variant="default", id="step2-cancel-btn", tooltip="Cancel guided setup and return to home (Esc)")
                     yield Button("← Back", variant="default", id="step2-back-btn", tooltip="Go back to computer capability check")
                     yield Button("Find Best Models →", variant="primary", id="step2-next-btn", tooltip="Search for models that match your chosen goal")
 
@@ -855,25 +1389,32 @@ class GuidedSetupModal(ModalScreen[Optional[str]]):
                     with RadioSet(id="candidate-radioset"):
                         pass
                 with Horizontal(classes="wizard-buttons"):
-                    yield Button("← Back", variant="default", id="step3-back-btn", tooltip="Go back to goal selection")
                     yield Button("Compare Options (c)", variant="default", id="step3-compare-btn", tooltip="Open side-by-side comparison matrix (c)")
                     yield Button("Browse Full Catalog", variant="default", id="step3-catalog-btn", tooltip="Explore all models in the catalog")
+                with Horizontal(classes="wizard-buttons"):
+                    yield Button("Cancel", variant="default", id="step3-cancel-btn", tooltip="Cancel guided setup and return to home (Esc)")
+                    yield Button("← Back", variant="default", id="step3-back-btn", tooltip="Go back to goal selection")
                     yield Button("Review Setup →", variant="primary", id="step3-next-btn", tooltip="Review download size, storage, and safety before setup")
 
             # Step 3.5: Authentication Step (Section 8 - Conditional)
             with Vertical(id="wizard-step-auth", classes="wizard-step hidden"):
-                yield Label("[bold cyan]Access Key Required[/bold cyan]", classes="wizard-step-title")
+                yield Label("[bold cyan]Option B: Download with Your Free Access Token[/bold cyan]", id="auth-step-title", classes="wizard-step-title")
                 yield Label(
                     "This model requires agreeing to publisher terms on Hugging Face before download.\n\n"
-                    "• Source: Hugging Face (https://huggingface.co/settings/tokens)\n"
+                    "• Token URL: https://huggingface.co/settings/tokens\n"
                     "• Permission: A free read-only personal access token (never enter your account password).\n"
                     "• Security: Saved in your operating system's secure credential store and never logged.\n",
+                    id="auth-desc",
                     classes="wizard-desc",
                 )
+                with Horizontal(classes="wizard-buttons"):
+                    yield Button("🌐 Open Model Page in Browser", variant="default", id="step3-auth-open-model-btn", tooltip="Open model repository in your web browser")
+                    yield Button("🔑 Open Token Settings in Browser", variant="default", id="step3-auth-open-token-btn", tooltip="Open Hugging Face token creation page in your browser")
                 with Vertical(classes="wizard-card"):
                     yield Input(placeholder="hf_...", password=True, id="auth-token-input", tooltip="Paste your read-only Hugging Face access token here")
                     yield Label("[dim]Your key will be securely saved in your local credential store and never logged.[/dim]")
                 with Horizontal(classes="wizard-buttons"):
+                    yield Button("Cancel", variant="default", id="auth-cancel-btn", tooltip="Cancel guided setup and return to home (Esc)")
                     yield Button("← Back to Models", variant="default", id="auth-back-btn", tooltip="Return to model shortlist")
                     yield Button("Save Key and Continue →", variant="primary", id="auth-save-btn", tooltip="Save token and proceed to setup review")
 
@@ -896,6 +1437,7 @@ class GuidedSetupModal(ModalScreen[Optional[str]]):
                         classes="wizard-guarantee",
                     )
                 with Horizontal(classes="wizard-buttons"):
+                    yield Button("Cancel", variant="default", id="step4-cancel-btn", tooltip="Cancel guided setup and return to home (Esc)")
                     yield Button("← Back", variant="default", id="step4-back-btn", tooltip="Return to model selection")
                     yield Button("Technical Details", variant="default", id="step4-tech-btn", tooltip="Inspect technical execution plan and SHA-256 digests")
                     yield Button("Set Up Model", variant="primary", id="step4-approve-btn", tooltip="Approve plan and begin downloading model weights")
@@ -918,8 +1460,9 @@ class GuidedSetupModal(ModalScreen[Optional[str]]):
                     yield Label("Downloading model weights... You can cancel safely at any time.", id="wizard-progress-wait-note")
                 with Horizontal(classes="wizard-buttons"):
                     yield Button("Cancel Setup", variant="default", id="step5-cancel-btn", tooltip="Stop setup and safely clean up partial files (Esc)")
+                    yield Button("Enter Access Key", variant="primary", id="step5-auth-btn", classes="hidden", tooltip="Enter your free read-only Hugging Face token")
                     yield Button("Technical Details", variant="default", id="step5-tech-btn", tooltip="View underlying technical events and logs")
-                    yield Button("Back to Recommendations", variant="primary", id="step5-cancelled-back-btn", classes="hidden")
+                    yield Button("Back to Recommendations", variant="default", id="step5-cancelled-back-btn", classes="hidden")
 
             # Step 6: Completion & Chat (Section 11)
             with Vertical(id="wizard-step-6", classes="wizard-step hidden"):
@@ -999,10 +1542,41 @@ class GuidedSetupModal(ModalScreen[Optional[str]]):
             except Exception:
                 pass
 
+        if str(step_name) == "auth":
+            cand = self._selected_candidate.candidate if self._selected_candidate else (self._candidates[0].candidate if self._candidates else None)
+            if cand:
+                pub_url = getattr(cand, "source_url", None) or f"https://huggingface.co/{cand.model_id}"
+                token_url = "https://huggingface.co/settings/tokens"
+                self._auth_publisher_url = pub_url
+                try:
+                    self.query_one("#auth-step-title", Label).update(
+                        f"[bold cyan]Option B: Download {cand.name} with Your Free Token[/bold cyan]"
+                    )
+                    desc_text = (
+                        f"This model requires agreeing to publisher terms on Hugging Face before download.\n\n"
+                        f"1. Accept terms at model repository:\n"
+                        f"   [link=\"{pub_url}\"][bold underline cyan]{pub_url}[/bold underline cyan][/link]\n\n"
+                        f"2. Generate your free Personal Access Token (Read-only):\n"
+                        f"   [link=\"{token_url}\"][bold underline cyan]{token_url}[/bold underline cyan][/link]\n\n"
+                        f"3. Paste your token (starts with hf_...) below to continue setup:\n"
+                        f"   • Stored securely in your operating system credential store (never logged).\n"
+                        f"   • Option A alternative: Click [← Back to Models] to pick an open model (marked [ ] Free) that requires no key or account."
+                    )
+                    self.query_one("#auth-desc", Label).update(desc_text)
+                except Exception:
+                    pass
+
     def on_button_pressed(self, event: Button.Pressed) -> None:
         btn_id = event.button.id
-        if btn_id == "step1-cancel-btn":
-            self.dismiss(None)
+        if btn_id in ("step1-cancel-btn", "step2-cancel-btn", "step3-cancel-btn", "auth-cancel-btn", "step4-cancel-btn"):
+            self.action_cancel()
+        elif btn_id == "step3-auth-open-model-btn":
+            pub_url = getattr(self, "_auth_publisher_url", "https://huggingface.co")
+            open_url_in_browser(pub_url)
+            self.notify(f"Opened {pub_url} in your browser.", title="Browser")
+        elif btn_id == "step3-auth-open-token-btn":
+            open_url_in_browser("https://huggingface.co/settings/tokens")
+            self.notify("Opened Hugging Face Token Settings in your browser.", title="Browser")
         elif btn_id == "step1-details-btn":
             self.app.push_screen(ModelDetailsModal("Computer Hardware Diagnostics", self._get_hw_details_dict()))
         elif btn_id == "step1-perf-btn":
@@ -1035,13 +1609,10 @@ class GuidedSetupModal(ModalScreen[Optional[str]]):
                 self.notify("No compatible model selected. Please select a model or browse the catalog.", title="Selection Required", severity="warning")
                 return
             cand = self._selected_candidate.candidate
+            token = get_stored_secret("localpilot", "hf_token")
             needs_auth = False
-            if getattr(cand, "requires_auth", False):
+            if (getattr(cand, "requires_auth", False) or getattr(cand, "is_gated", False)) and not token:
                 needs_auth = True
-            elif cand.source == "huggingface" and getattr(cand, "is_gated", False):
-                token = get_stored_secret("localpilot", "hf_token")
-                if not token:
-                    needs_auth = True
 
             if needs_auth:
                 self._switch_step("auth")
@@ -1086,6 +1657,8 @@ class GuidedSetupModal(ModalScreen[Optional[str]]):
                 if self._cancel_event:
                     self._cancel_event.set()
                 self.query_one("#wizard-progress-detail", Label).update("[bold yellow]Cancellation requested... Stopping safely and cleaning up partial files.[/bold yellow]")
+        elif btn_id == "step5-auth-btn":
+            self._switch_step("auth")
         elif btn_id == "step5-cancelled-back-btn":
             self._switch_step(3)
         elif btn_id == "step5-tech-btn":
@@ -1138,37 +1711,81 @@ class GuidedSetupModal(ModalScreen[Optional[str]]):
                 return
 
             status.update(f"Found {len(self._candidates)} top recommendation(s) for your computer:")
+            first_btn = None
             for idx, r in enumerate(self._candidates):
                 cand = r.candidate
                 sz_mb = cand.total_bytes / (1024 * 1024)
                 badge_label = getattr(r, "badge_label", None) or ("★ Top Pick (Recommended)" if idx == 0 else "Alternative Option")
-                why = getattr(r, "why_selected", None) or r.compatibility.friendly_explanation
-                plan_desc = r.recommended_plan.deployment_method.value if r.recommended_plan else "Isolated engine"
-                access_desc = getattr(r, "access_requirement", "Open model")
+                why = getattr(r, "why_selected", None) or getattr(r.compatibility, "friendly_explanation", "Compatible")
+                plan_desc = r.recommended_plan.deployment_method.value if (getattr(r, "recommended_plan", None) and getattr(r.recommended_plan, "deployment_method", None)) else "Isolated engine"
+                needs_token = getattr(cand, "requires_auth", False) or getattr(cand, "is_gated", False)
+                access_desc = "[bold yellow][✓] Token Required (Hugging Face)[/bold yellow]" if needs_token else "[green][ ] Free / Open (No Token)[/green]"
 
                 label_text = (
                     f"[{badge_label}] {cand.name} (~{sz_mb:.0f} MB)\n"
                     f"  • {why}\n"
                     f"  • Supporting software: {plan_desc} • Access: {access_desc}"
                 )
-                btn = RadioButton(label_text, value=str(idx), id=f"cand-{idx}")
+                btn = RadioButton(label_text, value=(idx == 0), id=f"cand-{idx}")
                 rs.mount(btn)
                 if idx == 0:
-                    btn.value = True
+                    first_btn = btn
                     self._selected_candidate = r
 
+            if first_btn:
+                rs._pressed_button = first_btn
+                rs._selected = 0
             rs.focus()
+        except Exception:
+            pass
+
+    def _select_candidate_index(self, idx: int) -> None:
+        if not (0 <= idx < len(self._candidates)):
+            return
+        self._selected_candidate = self._candidates[idx]
+        try:
+            rs = self.query_one("#candidate-radioset", RadioSet)
+            buttons = list(rs.query(RadioButton))
+            if 0 <= idx < len(buttons):
+                target = buttons[idx]
+                with rs.prevent(RadioButton.Changed):
+                    for b in buttons:
+                        b.value = (b == target)
+                rs._pressed_button = target
+                rs._selected = idx
         except Exception:
             pass
 
     def on_radio_set_changed(self, event: RadioSet.Changed) -> None:
         if event.radio_set.id == "candidate-radioset":
             try:
-                idx = int(event.pressed.value)
-                if 0 <= idx < len(self._candidates):
-                    self._selected_candidate = self._candidates[idx]
+                idx = getattr(event, "index", None)
+                if idx is None and event.pressed and getattr(event.pressed, "id", None):
+                    idx = int(str(event.pressed.id).replace("cand-", ""))
+                if idx is not None:
+                    self._select_candidate_index(idx)
             except Exception:
                 pass
+
+    def on_radio_button_changed(self, event: RadioButton.Changed) -> None:
+        btn_id = getattr(event.radio_button, "id", "") or ""
+        if btn_id.startswith("cand-") and event.value:
+            try:
+                idx = int(btn_id.replace("cand-", ""))
+                self._select_candidate_index(idx)
+            except Exception:
+                pass
+
+    def on_click(self, event: events.Click) -> None:
+        """Allow clicking anywhere on a recommendation card or text to select it."""
+        try:
+            for node in getattr(event.widget, "ancestors_with_self", []):
+                if isinstance(node, RadioButton) and node.id and node.id.startswith("cand-"):
+                    idx = int(node.id.replace("cand-", ""))
+                    self._select_candidate_index(idx)
+                    break
+        except Exception:
+            pass
 
     def _prepare_step4_review(self) -> None:
         if not self._selected_candidate:
@@ -1283,10 +1900,16 @@ class GuidedSetupModal(ModalScreen[Optional[str]]):
                 f"[dim]• Support ID: {app_err.support_id}[/dim]"
             )
             self.query_one("#step5-cancel-btn", Button).add_class("hidden")
+            is_auth_err = ("auth" in err.lower() or "401" in err or "unauthorized" in err.lower() or getattr(app_err, "code", None) == ErrorCode.AUTH_REQUIRED)
+            if is_auth_err:
+                btn_auth = self.query_one("#step5-auth-btn", Button)
+                btn_auth.remove_class("hidden")
+                btn_auth.focus()
             btn_back = self.query_one("#step5-cancelled-back-btn", Button)
             btn_back.remove_class("hidden")
             btn_back.label = "Back to Recommendations"
-            btn_back.focus()
+            if not is_auth_err:
+                btn_back.focus()
         except Exception:
             pass
 
@@ -1431,15 +2054,75 @@ class LocalPilotTUI(App):
     }
 
     /* Modal dialog styling */
-    ConfirmModal, RemoveModelModal, ModelDetailsModal, GuidedSetupModal, HelpModal, PerformanceSettingsModal, InterruptedSetupModal, AppErrorModal, ModelComparisonModal, CreateKeyModal, KeyDisplayModal, RotateKeyModal, ConnectionSetupModal, CompareVersionsModal, SwitchAliasModal {
+    ConfirmModal, RemoveModelModal, ModelDetailsModal, GuidedSetupModal, HelpModal, PerformanceSettingsModal, InterruptedSetupModal, AppErrorModal, ModelComparisonModal, CreateKeyModal, KeyDisplayModal, RotateKeyModal, ConnectionSetupModal, CompareVersionsModal, SwitchAliasModal, AuthTokenModal, CapabilityFilterModal, ComprehensiveFilterModal, CatalogStatsModal {
         align: center middle;
     }
-    #confirm-dialog, #remove-dialog, #perf-dialog, #interrupted-dialog, #app-error-dialog, #create-key-dialog, #key-display-dialog, #rotate-key-dialog, #compare-versions-dialog, #switch-alias-dialog {
+    #confirm-dialog, #remove-dialog, #perf-dialog, #interrupted-dialog, #app-error-dialog, #create-key-dialog, #key-display-dialog, #rotate-key-dialog, #compare-versions-dialog, #switch-alias-dialog, #auth-token-dialog, #capability-filter-dialog, #catalog-stats-dialog {
         padding: 1 2;
-        width: 76;
+        width: 78;
         height: auto;
         border: solid #00e5ff;
         background: #1e1e1e;
+    }
+    #catalog-stats-modal-title {
+        color: #00e5ff;
+        text-style: bold;
+        margin-bottom: 0;
+    }
+    #catalog-stats-modal-subtitle {
+        margin-bottom: 1;
+    }
+    #catalog-stats-modal-table {
+        height: 10;
+        margin-bottom: 1;
+    }
+    #home-catalog-stats-card {
+        border: round #00e5ff;
+        padding: 1 2;
+        margin-top: 1;
+        margin-bottom: 1;
+        background: #181818;
+        height: auto;
+    }
+    #home-catalog-stats-header {
+        height: auto;
+        align: right middle;
+        margin-bottom: 1;
+    }
+    #home-catalog-stats-title {
+        color: #00e5ff;
+        text-style: bold;
+    }
+    #home-catalog-stats-table {
+        height: 10;
+        margin: 0;
+    }
+    #comprehensive-filter-dialog {
+        padding: 1 2;
+        width: 86;
+        height: 85%;
+        border: solid #00e5ff;
+        background: #1e1e1e;
+    }
+    #filter-modal-scroll {
+        max-height: 24;
+        padding: 1;
+        border: round #333333;
+        margin-bottom: 1;
+    }
+    .filter-quick-buttons {
+        height: auto;
+        margin-bottom: 1;
+    }
+    .filter-quick-buttons Button {
+        min-width: 8;
+        margin-right: 1;
+    }
+    #cap-checkboxes-scroll {
+        max-height: 14;
+        padding: 1;
+        border: round #333333;
+        margin-bottom: 1;
     }
     #setup-guide-dialog {
         padding: 1 2;
@@ -1455,7 +2138,7 @@ class LocalPilotTUI(App):
         margin: 1 0;
     }
     #home-live-bar {
-        height: auto;
+        height: 3;
         min-height: 2;
         align: left middle;
         margin-bottom: 1;
@@ -1465,6 +2148,21 @@ class LocalPilotTUI(App):
     }
     #home-live-bar Label {
         margin-right: 2;
+    }
+    #home-live-bar Button {
+        height: 1;
+        min-height: 1;
+        min-width: 12;
+        max-width: 16;
+        padding: 0 1;
+        margin: 0 0 0 1;
+        border: none;
+        background: #2a2a2a;
+        color: #e0e0e0;
+    }
+    #home-live-bar Button:hover {
+        background: #3d3d3d;
+        color: #ffffff;
     }
     #home-primary-actions {
         height: 3;
@@ -1623,7 +2321,7 @@ class LocalPilotTUI(App):
         margin-left: 1;
     }
     #wizard-shortlist-scroll {
-        max-height: 13;
+        max-height: 11;
         padding: 1;
     }
 
@@ -1674,6 +2372,8 @@ class LocalPilotTUI(App):
         Binding("s", "switch_to_storage", "Storage", show=False),
         Binding("a", "switch_to_activity", "Activity", show=False),
         Binding("v", "action_details_selected", "Details", show=False),
+        Binding("o", "open_selected_model_link", "Open Link", show=False),
+        Binding("k", "open_comprehensive_filter", "Filters", show=False),
         Binding("enter", "select_action", "Action", show=False),
         Binding("x", "stop_action", "Stop", show=False),
         Binding("delete", "remove_action", "Remove", show=False),
@@ -1714,6 +2414,7 @@ class LocalPilotTUI(App):
         self._discover_only_favorites: bool = False
         self._discover_show_all: bool = False
         self._discover_sort_mode: str = "score"
+        self._discover_capability_filter: Set[str] = set()
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -1725,7 +2426,8 @@ class LocalPilotTUI(App):
                     # Live status & telemetry bar
                     with Horizontal(id="home-live-bar"):
                         yield Label("[dim]○ Local API Gateway: Inactive (Optional)[/dim]", id="home-gateway-status")
-                        yield Label("[dim]● Live Telemetry: Active (every 5s) • Press 'P' to pause[/dim]", id="home-freshness-pill", classes="freshness-pill")
+                        yield Label("Updated: just now", id="home-freshness-pill", classes="freshness-pill")
+                        yield Button("Pause (P)", variant="default", id="btn-pause-live", tooltip="Pause or resume live telemetry refresh (P)")
 
                     # Badges summary row
                     with Horizontal(id="home-badges-bar"):
@@ -1763,6 +2465,7 @@ class LocalPilotTUI(App):
                                 yield Button("▶ Help me get started (Enter)", variant="primary", id="btn-get-started", tooltip="Start guided wizard to test your computer and select a model")
                                 yield Button("Chat with AI (Enter)", variant="primary", id="btn-continue-chat", classes="hidden", tooltip="Open chat session with your most recent model")
                                 yield Button("Browse Model Catalog (2)", variant="default", id="btn-home-discover", tooltip="Explore all models in the catalog")
+                                yield Button("📊 Catalog Stats", variant="default", id="btn-home-catalog-stats-action", tooltip="View bundled models, registries, providers, and database metrics")
                                 yield Button("My Models (3)", variant="default", id="btn-home-installed", classes="hidden", tooltip="View your installed model library")
                                 yield Button("Find Another Model", variant="default", id="btn-home-find-another", classes="hidden", tooltip="Browse catalog to add another model")
                                 yield Button("Active Models (4)", variant="default", id="btn-home-running", classes="hidden", tooltip="View and manage running model instances")
@@ -1786,10 +2489,20 @@ class LocalPilotTUI(App):
                             yield Label("[bold]Storage Managed[/bold]")
                             yield Label("Checking...", id="home-storage-status")
 
+                    with Container(id="home-catalog-stats-card"):
+                        with Horizontal(id="home-catalog-stats-header"):
+                            yield Label("[bold cyan]📊 LocalPilot Catalog & Database Statistics[/bold cyan]", id="home-catalog-stats-title")
+                            yield Button("Full Stats", variant="default", id="btn-home-catalog-stats", tooltip="Open catalog database statistics view")
+                        yield DataTable(id="home-catalog-stats-table")
+
             with TabPane("Find a Model", id="discover-tab"):
                 with Vertical():
                     with Horizontal(id="discover-filter-bar"):
                         yield Input(placeholder="Search models (e.g. gemma, deepseek, qwen, kimi, coding)...", id="search-input", tooltip="Filter models by name, alias, lab, or family (Type to search)")
+                        yield Button("⚙️ Filters...", id="btn-discover-filters-modal", variant="primary", tooltip="Open comprehensive catalog filter dialog: capabilities, providers, sources, access requirements, and RAM budget (K)")
+                        yield Button("🎯 Caps: All", id="btn-discover-caps-filter", variant="default", tooltip="Filter by capabilities: Coding, Writing, Image, Audio, Video, Reasoning")
+                        yield Button("🏢 Provider: All", id="btn-discover-provider-filter", variant="default", tooltip="Filter by model provider/lab: Meta, Google, NVIDIA, DeepSeek, Mistral, Microsoft, etc.")
+                        yield Button("🌐 Source: All", id="btn-discover-source-filter", variant="default", tooltip="Filter by model registry source: All, Hugging Face, Ollama, ModelScope")
                         yield Button("★ Favorites Only", id="btn-discover-fav-filter", variant="default", tooltip="Show only favorited models")
                         yield Button("Sort: Score ▼", id="btn-discover-sort", variant="default", tooltip="Cycle sort order (Score, Name, Size, Context)")
                         yield Button("RAM: Fits Budget", id="btn-discover-compat-toggle", variant="default", tooltip="Currently showing models that fit your memory budget. Click to show all models.")
@@ -1800,7 +2513,9 @@ class LocalPilotTUI(App):
                         yield Label("", id="setup-progress-text")
                     with Horizontal(classes="table-actions-bar"):
                         yield Button("Set Up Selected Model (Enter)", variant="primary", id="btn-discover-setup", tooltip="Review and set up highlighted model (Enter)")
+                        yield Button("⚙️ Filters (K)", variant="default", id="btn-discover-filter-modal", tooltip="Open comprehensive filters: capabilities, providers, sources, access (K)")
                         yield Button("Favorite (F)", variant="default", id="btn-discover-favorite", tooltip="Add or remove highlighted model from favorites (F)")
+                        yield Button("🌐 Open in Browser (O)", variant="default", id="btn-discover-open-link", tooltip="Open model repository or Hugging Face page in your browser (O)")
                         yield Button("Update List (U)", variant="default", id="btn-discover-refresh", tooltip="Download and update models list from Hugging Face & Ollama (U)")
 
             with TabPane("Installed Models", id="installed-tab"):
@@ -1900,12 +2615,41 @@ class LocalPilotTUI(App):
                         yield Button("Clean Up Partial Files", variant="default", id="btn-jobs-cleanup", tooltip="Delete temporary files for interrupted jobs")
                         yield Button("Refresh Jobs", variant="default", id="btn-jobs-refresh", tooltip="Refresh jobs list")
 
+            with TabPane("AI Tools", id="tools-tab"):
+                with Vertical():
+                    yield Label("[bold cyan]18 Task-Specific AI Interfaces[/bold cyan]")
+                    yield DataTable(id="tools-table")
+                    with Horizontal(classes="table-actions-bar"):
+                        yield Button("Refresh Tools", variant="default", id="btn-tools-refresh")
+
+            with TabPane("Document Search", id="search-tab"):
+                with Vertical():
+                    yield Label("[bold cyan]Local Indexed Collections & Grounded Retrieval[/bold cyan]")
+                    yield DataTable(id="search-collections-table")
+                    with Horizontal(classes="table-actions-bar"):
+                        yield Button("Refresh Search Collections", variant="default", id="btn-search-refresh")
+
+            with TabPane("Benchmarks", id="bench-tab"):
+                with Vertical():
+                    yield Label("[bold cyan]Model Throughput (TPS) & Latency (TTFT)[/bold cyan]")
+                    yield DataTable(id="bench-table")
+                    with Horizontal(classes="table-actions-bar"):
+                        yield Button("Refresh Benchmarks", variant="default", id="btn-bench-refresh")
+
+            with TabPane("System Doctor", id="doctor-tab"):
+                with Vertical():
+                    yield Label("[bold cyan]System Health & Self-Healing Repairs[/bold cyan]")
+                    yield DataTable(id="doctor-findings-table")
+                    with Horizontal(classes="table-actions-bar"):
+                        yield Button("Re-Run Doctor Check", variant="primary", id="btn-doctor-rerun")
+
         with Container(id="context-help-container"):
             yield Label("• Use Tab / Arrow keys to navigate. Press '?' or F1 for documentation manual.", id="context-help-text")
         yield Footer()
 
     def on_mount(self) -> None:
         self._setup_home_hw_table()
+        self._setup_home_catalog_stats_table()
         self._setup_discover_table()
         self._setup_installed_table()
         self._setup_running_table()
@@ -1913,6 +2657,10 @@ class LocalPilotTUI(App):
         self._setup_gateway_tab()
         self._setup_usage_tab()
         self._setup_jobs_tab()
+        self._setup_tools_tab()
+        self._setup_search_tab()
+        self._setup_bench_tab()
+        self._setup_doctor_tab()
         self._refresh_storage()
         self._load_health_background()
         self._check_for_interrupted_work()
@@ -1922,6 +2670,29 @@ class LocalPilotTUI(App):
 
         if self._start_wizard_on_mount:
             self.action_start_guided_setup()
+
+    def _setup_home_catalog_stats_table(self) -> None:
+        try:
+            stats_table = self.query_one("#home-catalog-stats-table", DataTable)
+            stats_table.cursor_type = "row"
+            stats_table.zebra_stripes = True
+            stats_table.add_columns("Category", "Count", "Notes")
+            self._update_home_catalog_stats()
+        except Exception:
+            pass
+
+    def _update_home_catalog_stats(self) -> None:
+        try:
+            stats_table = self.query_one("#home-catalog-stats-table", DataTable)
+            stats_table.clear()
+            for row in get_catalog_statistics_rows():
+                stats_table.add_row(*row)
+        except Exception:
+            pass
+
+    def action_show_catalog_stats(self) -> None:
+        """Opens the Catalog & Database Statistics dialog."""
+        self.push_screen(CatalogStatsModal())
 
     def _setup_home_hw_table(self) -> None:
         try:
@@ -2006,12 +2777,16 @@ class LocalPilotTUI(App):
     def _setup_discover_table(self) -> None:
         table = self.query_one("#discover-table", DataTable)
         table.cursor_type = "row"
-        table.add_columns("Score", "Short Alias", "Model Name", "Resource", "Source", "Size", "Context (tokens)")
+        table.add_columns("Score", "Short Alias", "Model Name", "Capabilities", "Provider", "Source", "Needs Token", "Released", "Size", "Context (tokens)")
         try:
             initial_results = self.cat_svc.discover(
                 query="",
                 only_favorites=getattr(self, "_discover_only_favorites", False),
                 only_compatible=not getattr(self, "_discover_show_all", False),
+                capabilities=getattr(self, "_discover_capability_filter", None),
+                provider=getattr(self, "_discover_provider_filter", None),
+                source=getattr(self, "_discover_source_filter", None),
+                access=getattr(self, "_discover_access_filter", None),
             )
             self._update_discover_table(initial_results, self._search_seq)
         except Exception:
@@ -2031,6 +2806,10 @@ class LocalPilotTUI(App):
             query=query,
             only_favorites=only_favs,
             only_compatible=only_compat,
+            capabilities=getattr(self, "_discover_capability_filter", None),
+            provider=getattr(self, "_discover_provider_filter", None),
+            source=getattr(self, "_discover_source_filter", None),
+            access=getattr(self, "_discover_access_filter", None),
         )
 
         if sort_mode == "name":
@@ -2039,6 +2818,8 @@ class LocalPilotTUI(App):
             results = sorted(results, key=lambda r: -r.candidate.usable_context)
         elif sort_mode == "size":
             results = sorted(results, key=lambda r: -r.candidate.total_bytes)
+        elif sort_mode == "date":
+            results = sorted(results, key=lambda r: str(r.candidate.verified_release_at or r.candidate.repo_created_at or ""), reverse=True)
 
         self.call_from_thread(self._update_discover_table, results, seq)
 
@@ -2096,7 +2877,10 @@ class LocalPilotTUI(App):
                 "-",
                 "No models match current filters",
                 "-",
-                "Catalog",
+                "-",
+                "-",
+                "-",
+                "-",
                 "0 MB",
                 "0",
                 key="empty_discover",
@@ -2109,15 +2893,35 @@ class LocalPilotTUI(App):
         for r in results:
             cand = r.candidate
             sz_mb = cand.total_bytes / (1024 * 1024)
-            name_display = f"★ {cand.name}" if r.is_favorite else cand.name
-            alias_display = cand.short_alias or cand.display_alias
-            resource_display = f"✓ Official ({cand.provenance.get('publisher', cand.source.title())})" if cand.is_official else f"Community ({cand.provenance.get('publisher', 'Contrib')})"
+            alias_val = cand.short_alias or cand.display_alias or "-"
+            name_val = cand.name
+            score_val = f"{r.score.total_score:.0f}"
+
+            if r.is_favorite:
+                score_display = f"[bold yellow]{score_val}[/bold yellow]"
+                alias_display = f"[bold yellow]★ {alias_val}[/bold yellow]"
+                name_display = f"[bold yellow]{name_val}[/bold yellow]"
+            else:
+                score_display = score_val
+                alias_display = alias_val
+                name_display = name_val
+
+            caps_display = getattr(cand, "capabilities_table_badge", "General")
+            needs_token = getattr(cand, "requires_auth", False) or getattr(cand, "is_gated", False)
+            token_display = "[bold yellow][✓] Required[/bold yellow]" if needs_token else "[green][ ] Free[/green]"
+
+            prov_name = cand.publisher_display
+            provider_display = f"[bold green]✓ {prov_name}[/bold green]" if cand.is_official else f"Community ({prov_name})"
+            rel_display = cand.release_date_display
             table.add_row(
-                f"{r.score.total_score:.0f}",
+                score_display,
                 alias_display,
                 name_display,
-                resource_display,
+                caps_display,
+                provider_display,
                 cand.source.title(),
+                token_display,
+                rel_display,
                 f"{sz_mb:.0f} MB",
                 str(cand.usable_context),
                 key=cand.candidate_id,
@@ -2150,17 +2954,28 @@ class LocalPilotTUI(App):
             alias_str = item.candidate.short_alias or item.candidate.display_alias
             official_badge = ""
             if item.candidate.is_official:
-                pub = item.candidate.provenance.get("publisher", "Official")
+                pub = item.candidate.publisher_display
                 url_part = f" ([underline cyan]{item.candidate.official_resource_url}[/underline cyan])" if item.candidate.official_resource_url else ""
                 official_badge = f" • [bold green]✓ Official ({pub})[/bold green]{url_part}"
 
-            line1 = f"{fav_prefix}[bold cyan]{item.candidate.name}[/bold cyan] [bold yellow](Alias: {alias_str})[/bold yellow] • {item.candidate.source.title()} • {sz_mb:.0f} MB • Score: [bold green]{item.score.total_score:.0f}/100[/bold green]{official_badge}"
-            line2 = f"[bold]Fit & Capacity:[/bold] {item.compatibility.friendly_explanation} • Usable Context: {context_info}"
-            line3 = f"[bold]Recommendation Rationale:[/bold] {item.score.explanation}"
-            line4 = f"[bold]Engine Plan:[/bold] {plan_info}" if plan_info else ""
-            line5 = f"[dim]Confidence: {item.candidate.confidence.value} • Press Enter to Setup • Press F to Favorite • Press A to Add/Switch Alias[/dim]"
+            needs_token = getattr(item.candidate, "requires_auth", False) or getattr(item.candidate, "is_gated", False)
+            if needs_token:
+                pub_url = getattr(item.candidate, "source_url", None) or f"https://huggingface.co/{item.candidate.model_id}"
+                token_info = f"[bold yellow][✓] Token Required[/bold yellow] (Option B: Agree at [link=\"{pub_url}\"][underline cyan]{pub_url}[/underline cyan][/link] • Get Free Token: [link=\"https://huggingface.co/settings/tokens\"][underline cyan]https://huggingface.co/settings/tokens[/underline cyan][/link] • Press O to open)"
+            else:
+                token_info = "[green][ ] Free / Open Access[/green] (No Hugging Face token required)"
 
-            lines = [l for l in [line1, line2, line3, line4, line5] if l]
+            caps_text = getattr(item.candidate, "capabilities_display_text", "")
+            why_caps = getattr(item.candidate, "why_capabilities_summary", "")
+
+            line1 = f"{fav_prefix}[bold cyan]{item.candidate.name}[/bold cyan] [bold yellow](Alias: {alias_str})[/bold yellow] • [bold]Provider:[/bold] {item.candidate.publisher_display} • [bold]Released:[/bold] {item.candidate.release_date_display} • [bold]Registry Source:[/bold] {item.candidate.source.title()} • {sz_mb:.0f} MB • Score: [bold green]{item.score.total_score:.0f}/100[/bold green]{official_badge}"
+            line_caps = f"[bold]Capabilities & Categories:[/bold] [bold cyan]{caps_text}[/bold cyan]" if caps_text else ""
+            line2 = f"[bold]Fit & Capacity:[/bold] {item.compatibility.friendly_explanation} • Usable Context: {context_info} • Access: {token_info}"
+            line3 = f"[bold]Why this model:[/bold] {why_caps} • [bold]Scoring Rationale:[/bold] {item.score.explanation}"
+            line4 = f"[bold]Engine Plan:[/bold] {plan_info}" if plan_info else ""
+            line5 = f"[dim]Confidence: {item.candidate.confidence.value} • Press Enter to Setup • Press F to Favorite • Press K to Filter Capabilities • Press A to Add/Switch Alias[/dim]"
+
+            lines = [l for l in [line1, line_caps, line2, line3, line4, line5] if l]
             expl_label.update("\n".join(lines))
 
     def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
@@ -2401,12 +3216,17 @@ class LocalPilotTUI(App):
     def _update_freshness_pill(self) -> None:
         try:
             pill = self.query_one("#home-freshness-pill", Label)
+            btn = self.query_one("#btn-pause-live", Button)
             if self._live_paused:
-                pill.update("[bold yellow]● Live Telemetry: PAUSED • Press 'P' to resume[/bold yellow]")
+                pill.update("[bold yellow]PAUSED[/bold yellow]")
+                btn.label = "Resume (P)"
+                btn.variant = "success"
             else:
                 diff = int(time.time() - self._last_refresh_timestamp)
                 txt = "just now" if diff < 3 else f"{diff}s ago"
-                pill.update(f"[dim]● Live Telemetry: Active (updated {txt}) • Press 'P' to pause[/dim]")
+                pill.update(f"Updated: {txt}")
+                btn.label = "Pause (P)"
+                btn.variant = "default"
         except Exception:
             pass
 
@@ -2730,6 +3550,126 @@ class LocalPilotTUI(App):
         except Exception:
             pass
 
+    def _setup_tools_tab(self) -> None:
+        try:
+            table = self.query_one("#tools-table", DataTable)
+            table.cursor_type = "row"
+            table.clear(columns=True)
+            table.add_columns("Tool ID", "Name", "Category", "Description", "Example")
+            self._refresh_tools_tab()
+        except Exception:
+            pass
+
+    def _refresh_tools_tab(self) -> None:
+        try:
+            table = self.query_one("#tools-table", DataTable)
+            table.clear()
+            svc = TaskService(get_db())
+            for t in svc.list_tasks():
+                table.add_row(
+                    t.task_id,
+                    t.name,
+                    t.category.value,
+                    t.description,
+                    t.example_usage,
+                    key=f"tool_{t.task_id}",
+                )
+        except Exception:
+            pass
+
+    def _setup_search_tab(self) -> None:
+        try:
+            table = self.query_one("#search-collections-table", DataTable)
+            table.cursor_type = "row"
+            table.clear(columns=True)
+            table.add_columns("Collection ID", "Name", "Files", "Passages", "Path", "Last Indexed")
+            self._refresh_search_tab()
+        except Exception:
+            pass
+
+    def _refresh_search_tab(self) -> None:
+        try:
+            table = self.query_one("#search-collections-table", DataTable)
+            table.clear()
+            search_svc = SearchService(get_db())
+            cols = search_svc.list_collections()
+            if not cols:
+                table.add_row("No collections indexed", "-", "0", "0", "Use 'localpilot search add <folder>'", "-", key="empty_cols")
+            else:
+                for c in cols:
+                    table.add_row(
+                        c.collection_id,
+                        c.name,
+                        str(c.file_count),
+                        str(c.passage_count),
+                        c.path,
+                        c.last_indexed_at[:19].replace("T", " "),
+                        key=c.collection_id,
+                    )
+        except Exception:
+            pass
+
+    def _setup_bench_tab(self) -> None:
+        try:
+            table = self.query_one("#bench-table", DataTable)
+            table.cursor_type = "row"
+            table.clear(columns=True)
+            table.add_columns("Run ID", "Model Alias", "Suite", "TPS (Throughput)", "TTFT (Latency)", "Duration", "Recorded At")
+            self._refresh_bench_tab()
+        except Exception:
+            pass
+
+    def _refresh_bench_tab(self) -> None:
+        try:
+            table = self.query_one("#bench-table", DataTable)
+            table.clear()
+            bench_svc = BenchmarkService(get_db())
+            runs = bench_svc.list_results(limit=25)
+            if not runs:
+                table.add_row("No benchmark runs recorded", "-", "-", "-", "-", "-", "-", key="empty_bench")
+            else:
+                for r in runs:
+                    table.add_row(
+                        r.run_id,
+                        r.model_alias,
+                        r.suite_name,
+                        f"{r.tps:.2f} tok/s",
+                        f"{r.ttft_ms:.1f} ms",
+                        f"{r.total_duration_ms:.0f} ms",
+                        r.created_at[:19].replace("T", " "),
+                        key=r.run_id,
+                    )
+        except Exception:
+            pass
+
+    def _setup_doctor_tab(self) -> None:
+        try:
+            table = self.query_one("#doctor-findings-table", DataTable)
+            table.cursor_type = "row"
+            table.clear(columns=True)
+            table.add_columns("Severity", "Category", "Finding", "Details", "Auto-Repair")
+            self._refresh_doctor_tab()
+        except Exception:
+            pass
+
+    def _refresh_doctor_tab(self) -> None:
+        try:
+            table = self.query_one("#doctor-findings-table", DataTable)
+            table.clear()
+            diag_svc = DiagnosticService(get_db())
+            findings = diag_svc.run_general_diagnostics()
+            for f in findings:
+                table.add_row(
+                    f.severity.value.upper(),
+                    f.category.title(),
+                    f.title,
+                    f.message,
+                    f"Available ({f.repair_action})" if f.can_repair else "None",
+                    key=f.finding_id,
+                )
+        except Exception:
+            pass
+
     def action_create_key(self) -> None:
         def _on_create(data: Optional[Dict[str, Any]]) -> None:
             if not data:
@@ -2910,6 +3850,163 @@ class LocalPilotTUI(App):
             except Exception:
                 pass
 
+    def action_open_selected_model_link(self) -> None:
+        """Opens the selected model's webpage or Hugging Face repository in default web browser."""
+        current_tab = self.query_one("#main-tabs", TabbedContent).active
+        if current_tab == "discover-tab" and hasattr(self, "_ranked_candidates") and self._ranked_candidates:
+            table = self.query_one("#discover-table", DataTable)
+            row_idx = table.cursor_row
+            if 0 <= row_idx < len(self._ranked_candidates):
+                item = self._ranked_candidates[row_idx]
+                cand = item.candidate
+                url = getattr(cand, "browser_url", None) or getattr(cand, "official_resource_url", None) or getattr(cand, "source_url", None) or f"https://huggingface.co/{cand.model_id}"
+                if open_url_in_browser(url):
+                    self.notify(f"Opened {url} in your browser.", title="Browser")
+                else:
+                    self.notify(f"Could not open browser. Link: {url}", title="Browser Notice", severity="warning")
+        elif current_tab in ("installed-tab", "running-tab"):
+            self.notify("Press 'o' or click 'Open in Browser' in Find a Model tab to view repositories.", title="Browser")
+
+    def action_open_comprehensive_filter(self) -> None:
+        """Opens comprehensive modal dialog to configure capabilities, providers, sources, access requirements, and RAM budget."""
+        def _on_filter_dismiss(res: Optional[Dict[str, Any]]) -> None:
+            if res is not None:
+                self._discover_capability_filter = res.get("capabilities", set())
+                self._discover_provider_filter = res.get("provider")
+                self._discover_source_filter = res.get("source")
+                self._discover_access_filter = res.get("access")
+                self._discover_show_all = res.get("show_all", False)
+                self._discover_only_favorites = res.get("only_favorites", False)
+                self._update_filter_button_labels()
+                self._refresh_discover_table(getattr(self, "_pending_query", ""))
+                active_count = 0
+                if self._discover_capability_filter:
+                    active_count += 1
+                if self._discover_provider_filter:
+                    active_count += 1
+                if self._discover_source_filter:
+                    active_count += 1
+                if self._discover_access_filter:
+                    active_count += 1
+                if self._discover_show_all:
+                    active_count += 1
+                if self._discover_only_favorites:
+                    active_count += 1
+                msg = f"Applied {active_count} active filters." if active_count else "All catalog filters cleared."
+                self.notify(msg, title="Catalog Filters")
+
+        self.push_screen(
+            ComprehensiveFilterModal(
+                current_capabilities=getattr(self, "_discover_capability_filter", set()),
+                current_provider=getattr(self, "_discover_provider_filter", None),
+                current_source=getattr(self, "_discover_source_filter", None),
+                current_access=getattr(self, "_discover_access_filter", None),
+                show_all=getattr(self, "_discover_show_all", False),
+                only_favorites=getattr(self, "_discover_only_favorites", False),
+            ),
+            _on_filter_dismiss,
+        )
+
+    def action_filter_capabilities(self) -> None:
+        """Opens multiple choice capability filter modal for Find a Model tab."""
+        self.action_open_comprehensive_filter()
+
+    def _update_filter_button_labels(self) -> None:
+        """Updates all filter button labels on the discover bar to reflect current filter state."""
+        active_filters_count = 0
+
+        # Caps button
+        try:
+            caps_btn = self.query_one("#btn-discover-caps-filter", Button)
+            selected_caps = getattr(self, "_discover_capability_filter", set())
+            if not selected_caps:
+                caps_btn.label = "🎯 Caps: All"
+                caps_btn.variant = "default"
+            elif len(selected_caps) == 1:
+                caps_btn.label = f"🎯 {list(selected_caps)[0].title()}"
+                caps_btn.variant = "primary"
+                active_filters_count += 1
+            else:
+                caps_btn.label = f"🎯 Caps ({len(selected_caps)})"
+                caps_btn.variant = "primary"
+                active_filters_count += 1
+        except Exception:
+            pass
+
+        # Provider button
+        try:
+            prov_btn = self.query_one("#btn-discover-provider-filter", Button)
+            prov = getattr(self, "_discover_provider_filter", None)
+            if not prov or prov == "all":
+                prov_btn.label = "🏢 Provider: All"
+                prov_btn.variant = "default"
+            else:
+                prov_btn.label = f"🏢 Provider: {prov}"
+                prov_btn.variant = "primary"
+                active_filters_count += 1
+        except Exception:
+            pass
+
+        # Source button
+        try:
+            src_btn = self.query_one("#btn-discover-source-filter", Button)
+            src = getattr(self, "_discover_source_filter", None)
+            if not src or src == "all":
+                src_btn.label = "🌐 Source: All"
+                src_btn.variant = "default"
+            else:
+                src_name = "HF" if "hugging" in src.lower() else src.title()
+                src_btn.label = f"🌐 Source: {src_name}"
+                src_btn.variant = "primary"
+                active_filters_count += 1
+        except Exception:
+            pass
+
+        # Access requirement check
+        access = getattr(self, "_discover_access_filter", None)
+        if access and access != "all":
+            active_filters_count += 1
+
+        # RAM budget button
+        try:
+            compat_btn = self.query_one("#btn-discover-compat-toggle", Button)
+            show_all = getattr(self, "_discover_show_all", False)
+            if show_all:
+                compat_btn.label = "RAM: All Models"
+                compat_btn.variant = "warning"
+                active_filters_count += 1
+            else:
+                compat_btn.label = "RAM: Fits Budget"
+                compat_btn.variant = "default"
+        except Exception:
+            pass
+
+        # Favorites button
+        try:
+            fav_btn = self.query_one("#btn-discover-fav-filter", Button)
+            only_favs = getattr(self, "_discover_only_favorites", False)
+            if only_favs:
+                fav_btn.label = "★ Favorites: ON"
+                fav_btn.variant = "warning"
+                active_filters_count += 1
+            else:
+                fav_btn.label = "★ Favorites Only"
+                fav_btn.variant = "default"
+        except Exception:
+            pass
+
+        # Master comprehensive filter modal button
+        try:
+            btn_filter_modal = self.query_one("#btn-discover-filters-modal", Button)
+            if active_filters_count > 0:
+                btn_filter_modal.label = f"⚙️ Filters ({active_filters_count})"
+                btn_filter_modal.variant = "warning"
+            else:
+                btn_filter_modal.label = "⚙️ Filters..."
+                btn_filter_modal.variant = "primary"
+        except Exception:
+            pass
+
     def _resume_selected_job(self) -> None:
         table = self.query_one("#jobs-table", DataTable)
         if table.row_count == 0 or table.cursor_row < 0:
@@ -2952,7 +4049,9 @@ class LocalPilotTUI(App):
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         btn_id = event.button.id
-        if btn_id == "btn-get-started":
+        if btn_id == "btn-pause-live":
+            self.action_toggle_pause_live()
+        elif btn_id == "btn-get-started":
             self.action_start_guided_setup()
         elif btn_id == "btn-continue-chat":
             self.action_continue_most_recent()
@@ -2977,6 +4076,8 @@ class LocalPilotTUI(App):
             self.action_switch_to_running()
         elif btn_id == "btn-home-discover":
             self.action_switch_to_discover()
+        elif btn_id in ("btn-home-catalog-stats", "btn-home-catalog-stats-action"):
+            self.action_show_catalog_stats()
         elif btn_id == "btn-home-help":
             self.action_show_help()
         elif btn_id == "btn-discover-setup":
@@ -2985,15 +4086,61 @@ class LocalPilotTUI(App):
             self.action_toggle_favorite_action()
         elif btn_id == "btn-discover-refresh":
             self.action_refresh_catalog_action()
+        elif btn_id == "btn-discover-open-link":
+            self.action_open_selected_model_link()
+        elif btn_id in ("btn-discover-caps-filter", "btn-discover-filter-modal", "btn-discover-filters-modal"):
+            self.action_open_comprehensive_filter()
+        elif btn_id == "btn-discover-provider-filter":
+            providers = [
+                "all",
+                "NVIDIA",
+                "Cohere",
+                "Meta",
+                "Google",
+                "DeepSeek",
+                "Mistral",
+                "Microsoft",
+                "Qwen",
+                "AllenAI",
+                "01.AI",
+                "Snowflake",
+                "Stability AI",
+                "Upstage",
+                "BigCode",
+                "Liquid AI",
+                "OpenBMB",
+                "Kimi",
+                "Groq",
+                "GLM",
+                "KLM",
+                "MiniMax",
+                "GPT-OSS",
+            ]
+            current_prov = getattr(self, "_discover_provider_filter", "all") or "all"
+            try:
+                curr_idx = providers.index(current_prov)
+            except ValueError:
+                curr_idx = 0
+            next_idx = (curr_idx + 1) % len(providers)
+            next_prov = providers[next_idx]
+            self._discover_provider_filter = None if next_prov == "all" else next_prov
+            self._update_filter_button_labels()
+            self._refresh_discover_table(getattr(self, "_pending_query", ""))
+        elif btn_id == "btn-discover-source-filter":
+            sources = ["all", "huggingface", "ollama", "modelscope"]
+            current_src = getattr(self, "_discover_source_filter", "all") or "all"
+            try:
+                curr_idx = sources.index(current_src)
+            except ValueError:
+                curr_idx = 0
+            next_idx = (curr_idx + 1) % len(sources)
+            next_src = sources[next_idx]
+            self._discover_source_filter = None if next_src == "all" else next_src
+            self._update_filter_button_labels()
+            self._refresh_discover_table(getattr(self, "_pending_query", ""))
         elif btn_id == "btn-discover-fav-filter":
             self._discover_only_favorites = not getattr(self, "_discover_only_favorites", False)
-            btn = self.query_one("#btn-discover-fav-filter", Button)
-            if self._discover_only_favorites:
-                btn.label = "★ Favorites Only"
-                btn.variant = "warning"
-            else:
-                btn.label = "★ All Models"
-                btn.variant = "default"
+            self._update_filter_button_labels()
             self._refresh_discover_table(getattr(self, "_pending_query", ""))
         elif btn_id == "btn-discover-sort":
             current_mode = getattr(self, "_discover_sort_mode", "score")
@@ -3010,13 +4157,7 @@ class LocalPilotTUI(App):
             self._refresh_discover_table(getattr(self, "_pending_query", ""))
         elif btn_id == "btn-discover-compat-toggle":
             self._discover_show_all = not getattr(self, "_discover_show_all", False)
-            btn = self.query_one("#btn-discover-compat-toggle", Button)
-            if self._discover_show_all:
-                btn.label = "RAM: All Models"
-                btn.variant = "warning"
-            else:
-                btn.label = "RAM: Fits Budget"
-                btn.variant = "default"
+            self._update_filter_button_labels()
             self._refresh_discover_table(getattr(self, "_pending_query", ""))
         elif btn_id == "btn-installed-chat":
             self.action_chat_selected()
@@ -3068,6 +4209,14 @@ class LocalPilotTUI(App):
             self._cleanup_selected_job()
         elif btn_id == "btn-jobs-refresh":
             self._refresh_jobs_tab()
+        elif btn_id == "btn-tools-refresh":
+            self._refresh_tools_tab()
+        elif btn_id == "btn-search-refresh":
+            self._refresh_search_tab()
+        elif btn_id == "btn-bench-refresh":
+            self._refresh_bench_tab()
+        elif btn_id == "btn-doctor-rerun":
+            self._refresh_doctor_tab()
 
     def _handle_interrupted_decision(self, decision: str) -> None:
         if decision == "resume":
@@ -3096,26 +4245,45 @@ class LocalPilotTUI(App):
                     alternative_plans=item.alternative_plans,
                 )
 
-                def _on_confirm(confirmed: bool) -> None:
-                    if confirmed:
-                        approval = ApprovalRecord.create_for_plan(built_plan, approved_by="user_tui")
-                        self.notify(f"Starting setup for {item.candidate.name}...", title="Setup Started")
-                        self._run_setup_worker(item.candidate, built_plan, approval)
+                def _start_confirm() -> None:
+                    def _on_confirm(confirmed: bool) -> None:
+                        if confirmed:
+                            approval = ApprovalRecord.create_for_plan(built_plan, approved_by="user_tui")
+                            self.notify(f"Starting setup for {item.candidate.name}...", title="Setup Started")
+                            self._run_setup_worker(item.candidate, built_plan, approval)
 
-                backend_str = getattr(built_plan.inference_backend, "value", str(built_plan.inference_backend))
-                mode_str = getattr(built_plan.execution_mode, "value", str(built_plan.execution_mode))
-                msg = (
-                    f"Set up {item.candidate.name}?\n\n"
-                    f"• Engine: {built_plan.runtime_name} ({backend_str})\n"
-                    f"• Download: ~{built_plan.download_bytes / (1024*1024):.0f} MB\n"
-                    f"• Storage: {built_plan.target_install_dir}\n"
-                    f"• Hardware Mode: {mode_str}\n\n"
-                    "No system drivers or administrator settings will be modified."
-                )
-                self.push_screen(
-                    ConfirmModal("Approve Model Setup", msg, confirm_label="Set Up Model", cancel_label="Cancel"),
-                    _on_confirm,
-                )
+                    backend_str = getattr(built_plan.inference_backend, "value", str(built_plan.inference_backend))
+                    mode_str = getattr(built_plan.execution_mode, "value", str(built_plan.execution_mode))
+                    msg = (
+                        f"Set up {item.candidate.name}?\n\n"
+                        f"• Engine: {built_plan.runtime_name} ({backend_str})\n"
+                        f"• Download: ~{built_plan.download_bytes / (1024*1024):.0f} MB\n"
+                        f"• Storage: {built_plan.target_install_dir}\n"
+                        f"• Hardware Mode: {mode_str}\n\n"
+                        "No system drivers or administrator settings will be modified."
+                    )
+                    self.push_screen(
+                        ConfirmModal("Approve Model Setup", msg, confirm_label="Set Up Model", cancel_label="Cancel"),
+                        _on_confirm,
+                    )
+
+                cand = item.candidate
+                token = get_stored_secret("localpilot", "hf_token")
+                needs_auth = (getattr(cand, "requires_auth", False) or getattr(cand, "is_gated", False)) and not token
+
+                if needs_auth:
+                    pub_url = getattr(cand, "source_url", None) or f"https://huggingface.co/{cand.model_id}"
+                    def _on_token_entered(tok: Optional[str]) -> None:
+                        if tok:
+                            store_secret("localpilot", "hf_token", tok)
+                            self.notify("Access token saved securely in credential store.", title="Token Saved")
+                            _start_confirm()
+                        else:
+                            self.notify("Setup cancelled: An access key is required to download this model.", title="Access Key Required", severity="warning")
+
+                    self.push_screen(AuthTokenModal(cand.name, pub_url), _on_token_entered)
+                else:
+                    _start_confirm()
 
         elif current_tab in ("installed-tab", "running-tab"):
             self.action_chat_selected()
@@ -3197,6 +4365,28 @@ class LocalPilotTUI(App):
             return
         current_tab = self.query_one("#main-tabs", TabbedContent).active
         conn = get_db().get_connection()
+
+        if current_tab == "discover-tab" and hasattr(self, "_ranked_candidates") and self._ranked_candidates:
+            table = self.query_one("#discover-table", DataTable)
+            row_idx = table.cursor_row
+            if 0 <= row_idx < len(self._ranked_candidates):
+                item = self._ranked_candidates[row_idx]
+                cand = item.candidate
+                details = {
+                    "Model Name": cand.name,
+                    "Model ID": cand.model_id,
+                    "Short Alias": cand.short_alias or cand.display_alias,
+                    "Specialized Categories": cand.capabilities_display_text,
+                    "Why This Model": cand.why_capabilities_summary,
+                    "Scoring Rationale": item.score.explanation,
+                    "Memory & Fit": item.compatibility.friendly_explanation,
+                    "Context Length": f"{cand.usable_context:,} tokens",
+                    "Download Size": f"{cand.total_bytes / (1024*1024):.1f} MB",
+                    "Source Registry": cand.source.title(),
+                    "License": cand.license or "Standard Open Weights",
+                }
+                self.push_screen(ModelDetailsModal(cand.name, details))
+            return
 
         if current_tab == "installed-tab":
             table = self.query_one("#installed-table", DataTable)

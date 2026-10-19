@@ -1,0 +1,524 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "version": "1.1.0",
+  "database": "developers",
+  "name": "LocalPilot Initial Developers Database",
+  "description": "Authoritative registry of key developers, quantizers, runtime authors, and community maintainers enabling local desktop AI.",
+  "updated_at": "2026-10-19T20:58:54.763391Z",
+  "homepage": "https://fakhruldeen.github.io/LocalPilot/",
+  "license": "GPL-3.0-only",
+  "total_count": 39,
+  "developers": [
+    {
+      "developer_id": "bartowski",
+      "name": "bartowski",
+      "role": "Lead Community GGUF Quantizer & Distribution Maintainer",
+      "huggingface_url": "https://huggingface.co/bartowski",
+      "website": "https://huggingface.co/bartowski",
+      "specialties": [
+        "imatrix quantization",
+        "Q4_K_M",
+        "Q5_K_M",
+        "Q8_0",
+        "all modern architectures"
+      ],
+      "description": "Widely recognized across the local AI community as the premier maintainer of high-fidelity importance-matrix (imatrix) GGUF quantizations."
+    },
+    {
+      "developer_id": "thebloke",
+      "name": "Tom Jobbins (TheBloke)",
+      "role": "Pioneering Local LLM Quantizer & Ecosystem Builder",
+      "huggingface_url": "https://huggingface.co/TheBloke",
+      "website": "https://huggingface.co/TheBloke",
+      "specialties": [
+        "Automated multi-quantization pipelines",
+        "AWQ",
+        "GPTQ",
+        "GGUF"
+      ],
+      "description": "Pioneered automated multi-quantization pipelines for open-weights models, enabling millions of practitioners worldwide to run LLMs locally on consumer hardware."
+    },
+    {
+      "developer_id": "mradermacher",
+      "name": "mradermacher",
+      "role": "Prolific Automated GGUF Quantizer",
+      "huggingface_url": "https://huggingface.co/mradermacher",
+      "website": "https://huggingface.co/mradermacher",
+      "specialties": [
+        "Broad architecture coverage",
+        "High-throughput automation",
+        "i1-matrix calibration"
+      ],
+      "description": "Maintains an exhaustive library of tens of thousands of GGUF quantizations for newly released open-source models."
+    },
+    {
+      "developer_id": "maziyarpanahi",
+      "name": "Maziyar Panahi",
+      "role": "Open LLM Quantizer & Evaluation Researcher",
+      "huggingface_url": "https://huggingface.co/MaziyarPanahi",
+      "website": "https://huggingface.co/MaziyarPanahi",
+      "specialties": [
+        "Benchmark evaluation",
+        "GGUF builds",
+        "Mistral and Llama derivatives"
+      ],
+      "description": "Active researcher providing verified quantizations paired with benchmark scores and performance rankings."
+    },
+    {
+      "developer_id": "unsloth",
+      "name": "Unsloth AI",
+      "role": "High-Performance Fine-Tuning & Dynamic Quantization Lab",
+      "huggingface_url": "https://huggingface.co/unsloth",
+      "website": "https://unsloth.ai",
+      "specialties": [
+        "Custom Triton GPU kernels",
+        "2x-5x faster fine-tuning",
+        "Dynamic BF16/GGUF quantizations"
+      ],
+      "description": "Engineered highly optimized manual CUDA kernels for LLM training and quantization, saving memory and accelerating inference."
+    },
+    {
+      "developer_id": "ggerganov",
+      "name": "Georgi Gerganov",
+      "role": "Author & Lead Developer of llama.cpp, whisper.cpp & the GGUF Format",
+      "huggingface_url": "https://github.com/ggerganov",
+      "website": "https://github.com/ggerganov/llama.cpp",
+      "specialties": [
+        "Pure C/C++ inference",
+        "AVX2/AVX-512/NEON/Metal kernels",
+        "GGUF file format specification"
+      ],
+      "description": "Created the foundational C/C++ inference runtime (llama.cpp) and GGUF binary format that powers local, private AI worldwide."
+    },
+    {
+      "developer_id": "ikawrakow",
+      "name": "Iwan Kawrakow",
+      "role": "Core llama.cpp Contributor & Author of IQ Quantization",
+      "huggingface_url": "https://github.com/ikawrakow",
+      "website": "https://github.com/ggerganov/llama.cpp",
+      "specialties": [
+        "IQ1_S through IQ4_XS",
+        "Importance Matrix (imatrix) algorithms",
+        "Sub-2-bit vector quantization"
+      ],
+      "description": "Invented the importance-matrix quantization techniques (IQ quants) enabling massive quality retention at ultra-low bitrates."
+    },
+    {
+      "developer_id": "lonestriker",
+      "name": "LoneStriker",
+      "role": "Quantization Specialist & ExLlamaV2 Ecosystem Maintainer",
+      "huggingface_url": "https://huggingface.co/LoneStriker",
+      "website": "https://huggingface.co/LoneStriker",
+      "specialties": [
+        "EXL2 variable-bit quantization",
+        "GGUF fallback builds",
+        "High-speed token generation"
+      ],
+      "description": "Maintains precision-calibrated EXL2 and GGUF checkpoints designed for maximizing GPU offload throughput."
+    },
+    {
+      "developer_id": "turboderp",
+      "name": "turboderp",
+      "role": "Author of ExLlama & ExLlamaV2",
+      "huggingface_url": "https://github.com/turboderp",
+      "website": "https://github.com/turboderp/exllamav2",
+      "specialties": [
+        "Custom CUDA kernel optimization",
+        "Variable-bit EXL2 format",
+        "High-throughput local serving"
+      ],
+      "description": "Created the fastest standalone local LLM inference engine for NVIDIA GPUs with custom flash-attention kernels."
+    },
+    {
+      "developer_id": "ollama",
+      "name": "Ollama Team",
+      "role": "Desktop Inference Daemon & Model Packaging Runtime",
+      "huggingface_url": "https://github.com/ollama/ollama",
+      "website": "https://ollama.com",
+      "specialties": [
+        "Daemon orchestration",
+        "Modelfile encapsulation",
+        "Unified CLI & OpenAI-compatible REST API"
+      ],
+      "description": "Built the most popular desktop daemon for running local models effortlessly with a single terminal command."
+    },
+    {
+      "developer_id": "lmstudio",
+      "name": "LM Studio Team",
+      "role": "Desktop AI Engine & Community Model Hub",
+      "huggingface_url": "https://lmstudio.ai",
+      "website": "https://lmstudio.ai",
+      "specialties": [
+        "Desktop graphical interface",
+        "GGUF catalogue curation",
+        "Local OpenAI-compatible server"
+      ],
+      "description": "Created a polished local AI desktop client and model repository simplifying local LLM exploration."
+    },
+    {
+      "developer_id": "huihui-ai",
+      "name": "Huihui AI",
+      "role": "Open Multimodal & Conversational Fine-Tuning Specialist",
+      "huggingface_url": "https://huggingface.co/huihui-ai",
+      "website": "https://huggingface.co/huihui-ai",
+      "specialties": [
+        "Vision-language alignment",
+        "Abliterated conversational models",
+        "Qwen derivatives"
+      ],
+      "description": "Community researcher producing high-quality vision-language and uncensored conversational checkpoints."
+    },
+    {
+      "developer_id": "atomicchat",
+      "name": "AtomicChat",
+      "role": "Multimodal & Vision Optimization Specialist",
+      "huggingface_url": "https://huggingface.co/AtomicChat",
+      "website": "https://huggingface.co/AtomicChat",
+      "specialties": [
+        "Qwen-Image",
+        "Multimodal GGUF adapters",
+        "Vision reasoning"
+      ],
+      "description": "Specializes in multimodal vision-language model adaptations and quantized deployment artifacts."
+    },
+    {
+      "developer_id": "jetbrains",
+      "name": "JetBrains AI Research",
+      "role": "Developer Tooling & Coding Model Specialists",
+      "huggingface_url": "https://huggingface.co/JetBrains",
+      "website": "https://www.jetbrains.com",
+      "specialties": [
+        "Code completion",
+        "Thinking/Reasoning code generation",
+        "Mellum family"
+      ],
+      "description": "Creator of IDEs and developer tools, crafting models designed to assist software developers with deep reasoning."
+    },
+    {
+      "developer_id": "davidau",
+      "name": "DavidAU",
+      "role": "Extreme Context & Hybrid Quantization Researcher",
+      "huggingface_url": "https://huggingface.co/DavidAU",
+      "website": "https://huggingface.co/DavidAU",
+      "specialties": [
+        "Multi-Token Prediction (MTP)",
+        "Long context windows",
+        "DeepSeek reasoning distills"
+      ],
+      "description": "Researches extended context window optimizations, multi-token prediction (MTP), and deep reasoning distills."
+    },
+    {
+      "developer_id": "prism-ml",
+      "name": "Prism ML",
+      "role": "Ternary & Extreme Low-Bit Quantization Researchers",
+      "huggingface_url": "https://huggingface.co/prism-ml",
+      "website": "https://huggingface.co/prism-ml",
+      "specialties": [
+        "Ternary weights",
+        "Sub-2-bit quantization",
+        "Extreme edge efficiency"
+      ],
+      "description": "Pioneering ternary and sub-2-bit weight quantization architectures for ultra-low memory footprints."
+    },
+    {
+      "developer_id": "alesha-pro",
+      "name": "Alesha Pro",
+      "role": "Refusal-Direction & Representation Engineering Researcher",
+      "huggingface_url": "https://huggingface.co/alesha-pro",
+      "website": "https://huggingface.co/alesha-pro",
+      "specialties": [
+        "Geometric representation engineering",
+        "Refusal direction mitigation",
+        "Qwen distills"
+      ],
+      "description": "Applies geometric representation engineering and refusal-direction mitigation to open weights."
+    },
+    {
+      "developer_id": "sc117",
+      "name": "SC117",
+      "role": "Specialized IQ-Quantization Maintainer",
+      "huggingface_url": "https://huggingface.co/SC117",
+      "website": "https://huggingface.co/SC117",
+      "specialties": [
+        "IQ2_XS",
+        "IQ3_XXS",
+        "Extreme memory budget packaging"
+      ],
+      "description": "Specializes in extreme low-bit quantized artifacts allowing larger models to run on modest RAM."
+    },
+    {
+      "developer_id": "casper-hansen",
+      "name": "Casper Hansen",
+      "role": "Author of AutoAWQ",
+      "huggingface_url": "https://huggingface.co/casperhansen",
+      "website": "https://github.com/casper-hansen/AutoAWQ",
+      "specialties": [
+        "Activation-aware Weight Quantization (AWQ)",
+        "4-bit GPU acceleration"
+      ],
+      "description": "Developed the AutoAWQ library bringing activation-aware weight quantization to consumer and server hardware."
+    },
+    {
+      "developer_id": "tim-dettmers",
+      "name": "Tim Dettmers",
+      "role": "Author of bitsandbytes & 4-bit Quantization Pioneer",
+      "huggingface_url": "https://huggingface.co/TimDettmers",
+      "website": "https://timdettmers.com",
+      "specialties": [
+        "QLoRA",
+        "8-bit matrix multiplication",
+        "NormalFloat4 (NF4) data type"
+      ],
+      "description": "Pioneered memory-efficient LLM training and quantization with QLoRA and bitsandbytes."
+    },
+    {
+      "developer_id": "woosuk-kwon",
+      "name": "Woosuk Kwon",
+      "role": "Co-Founder of vLLM & PagedAttention Lead",
+      "huggingface_url": "https://github.com/woosuk",
+      "website": "https://vllm.ai",
+      "specialties": [
+        "PagedAttention algorithm",
+        "High-throughput serving",
+        "Dynamic batching"
+      ],
+      "description": "Lead creator of vLLM, revolutionizing LLM serving efficiency via virtual memory management for key-value caches."
+    },
+    {
+      "developer_id": "eric-hartford",
+      "name": "Eric Hartford",
+      "role": "Creator of Dolphin Datasets & Cognitive Computations Lead",
+      "huggingface_url": "https://huggingface.co/cognitivecomputations",
+      "website": "https://erichartford.com",
+      "specialties": [
+        "Dataset curation",
+        "Uncensored instruction alignment",
+        "Dolphin series"
+      ],
+      "description": "Created the globally recognized Dolphin dataset family training helpful, uncensored open models."
+    },
+    {
+      "developer_id": "teknium",
+      "name": "Teknium",
+      "role": "Lead Alignment Researcher at Nous Research",
+      "huggingface_url": "https://huggingface.co/Teknium",
+      "website": "https://nousresearch.com",
+      "specialties": [
+        "Hermes instruction series",
+        "Function calling",
+        "Synthetic dataset generation"
+      ],
+      "description": "Developed the Hermes series of models renowned for instruction following, coding, and multi-step reasoning."
+    },
+    {
+      "developer_id": "undi95",
+      "name": "Undi95",
+      "role": "Creative Writing & Model Merging Specialist",
+      "huggingface_url": "https://huggingface.co/Undi95",
+      "website": "https://huggingface.co/Undi95",
+      "specialties": [
+        "SLERP merges",
+        "Creative prose calibration",
+        "GGUF distribution"
+      ],
+      "description": "Specializes in high-nuance model merges and creative writing instruction checkpoints."
+    },
+    {
+      "developer_id": "sao10k",
+      "name": "Sao10K",
+      "role": "Conversational Nuance & Reasoning Fine-Tuner",
+      "huggingface_url": "https://huggingface.co/Sao10K",
+      "website": "https://huggingface.co/Sao10K",
+      "specialties": [
+        "Fimbulvetr",
+        "Llama 3 fine-tunes",
+        "Complex narrative understanding"
+      ],
+      "description": "Produces beloved community models tuned for depth, emotional intelligence, and extended narratives."
+    },
+    {
+      "developer_id": "doctorshotgun",
+      "name": "DoctorShotgun",
+      "role": "Quantization Calibration & Imbalance Engineer",
+      "huggingface_url": "https://huggingface.co/DoctorShotgun",
+      "website": "https://huggingface.co/DoctorShotgun",
+      "specialties": [
+        "Imatrix calibration datasets",
+        "Lossless 5-bit/6-bit quants",
+        "Quality validation"
+      ],
+      "description": "Designs specialized calibration datasets that drastically minimize perplexity degradation in GGUF quantizations."
+    },
+    {
+      "developer_id": "winglian",
+      "name": "Wing Lian",
+      "role": "Creator of Axolotl",
+      "huggingface_url": "https://github.com/winglian",
+      "website": "https://github.com/axolotl-ai-cloud/axolotl",
+      "specialties": [
+        "Axolotl framework",
+        "Deepspeed integration",
+        "FlashAttention fine-tuning"
+      ],
+      "description": "Author of Axolotl, the premier configuration-driven framework used to train thousands of open models."
+    },
+    {
+      "developer_id": "philschmid",
+      "name": "Philipp Schmid",
+      "role": "Technical Director at Hugging Face",
+      "huggingface_url": "https://huggingface.co/philschmid",
+      "website": "https://www.philschmid.de",
+      "specialties": [
+        "Local inference optimization",
+        "Text-generation-inference (TGI)",
+        "Edge deployment"
+      ],
+      "description": "Author of numerous guides and toolchains optimizing local deployment of LLMs on CPU and GPU."
+    },
+    {
+      "developer_id": "mudler",
+      "name": "Ettore Di Giacinto (Mudler)",
+      "role": "Author & Lead Developer of LocalAI",
+      "huggingface_url": "https://github.com/mudler",
+      "website": "https://localai.io",
+      "specialties": [
+        "LocalAI runtime",
+        "Containerized local inference",
+        "Cross-backend unified API"
+      ],
+      "description": "Created LocalAI, the drop-in OpenAI-compatible local AI proxy and multi-backend orchestrator."
+    },
+    {
+      "developer_id": "menlo-jan",
+      "name": "Menlo / Jan Team",
+      "role": "Authors of Jan.ai & Cortex.cpp",
+      "huggingface_url": "https://github.com/janhq",
+      "website": "https://jan.ai",
+      "specialties": [
+        "Cortex.cpp C++ inference",
+        "Local desktop UX",
+        "Privacy-first model hub"
+      ],
+      "description": "Builds local-first desktop AI software and the Cortex inference backend for offline users."
+    },
+    {
+      "developer_id": "mintplex-labs",
+      "name": "Mintplex Labs",
+      "role": "Authors of AnythingLLM",
+      "huggingface_url": "https://github.com/Mintplex-Labs",
+      "website": "https://anythingllm.com",
+      "specialties": [
+        "Local RAG orchestration",
+        "Document parsing",
+        "Vector database management"
+      ],
+      "description": "Creators of AnythingLLM, enabling turn-key local private document search with open models."
+    },
+    {
+      "developer_id": "vikhyatk",
+      "name": "Vikhyat Korrapati",
+      "role": "Creator of Moondream Vision",
+      "huggingface_url": "https://huggingface.co/vikhyatk",
+      "website": "https://moondream.ai",
+      "specialties": [
+        "Edge vision-language models",
+        "Moondream2",
+        "Extreme visual efficiency"
+      ],
+      "description": "Created Moondream, the tiny 1.8B vision-language model that runs with high accuracy on low-power devices."
+    },
+    {
+      "developer_id": "vdr",
+      "name": "Vik Paruchuri",
+      "role": "Creator of Marker & Surya OCR",
+      "huggingface_url": "https://huggingface.co/vikp",
+      "website": "https://github.com/VikParuchuri",
+      "specialties": [
+        "Document OCR",
+        "Multilingual text detection",
+        "PDF-to-Markdown conversion"
+      ],
+      "description": "Researches local vision and OCR models that convert documents, math, and tables into clean markdown."
+    },
+    {
+      "developer_id": "kerfuffle",
+      "name": "Kerfuffle",
+      "role": "Core Contributor to llama.cpp",
+      "huggingface_url": "https://github.com/KerfuffleV2",
+      "website": "https://github.com/ggerganov/llama.cpp",
+      "specialties": [
+        "llama.cpp architecture support",
+        "GGUF compatibility",
+        "Memory mapping"
+      ],
+      "description": "Contributed core support for numerous new model architectures in llama.cpp and quantization fixes."
+    },
+    {
+      "developer_id": "fakhruldeen",
+      "name": "Mohamed Fouad Fakhruldeen",
+      "role": "Creator & Lead Maintainer of LocalPilot",
+      "huggingface_url": "https://github.com/fakhruldeen",
+      "website": "https://fakhr.me",
+      "specialties": [
+        "Local AI orchestration",
+        "Zero-config hardware detection",
+        "Bilingual English/Arabic TUI & CLI"
+      ],
+      "description": "Architect and developer of LocalPilot, making private, offline AI accessible, simple, and transparent for everyone."
+    },
+    {
+      "developer_id": "kimi-moonshot",
+      "name": "Moonshot AI / Kimi Team",
+      "role": "Long-Context LLM & Moonlight Architecture Research",
+      "huggingface_url": "https://huggingface.co/moonshotai",
+      "website": "https://kimi.moonshot.cn",
+      "specialties": [
+        "Kimi",
+        "Moonlight MoE",
+        "256k context attention",
+        "Chinese/English bilingual reasoning"
+      ],
+      "description": "Research team behind the Moonlight MoE and Kimi assistant architectures."
+    },
+    {
+      "developer_id": "groq-hardware",
+      "name": "Groq Systems",
+      "role": "LPU Ultra-Fast Inference Architecture & LLM Compilation",
+      "huggingface_url": "https://huggingface.co/groq",
+      "website": "https://groq.com",
+      "specialties": [
+        "Tensor streaming",
+        "LPU compilation",
+        "ultra-low latency quantization"
+      ],
+      "description": "Engineers behind the Language Processing Unit (LPU) and low-latency open LLM execution."
+    },
+    {
+      "developer_id": "zhipu-thudm",
+      "name": "Zhipu AI / Tsinghua KEG Lab",
+      "role": "General Language Model (GLM) & Multimodal Foundation Research",
+      "huggingface_url": "https://huggingface.co/THUDM",
+      "website": "https://zhipuai.cn",
+      "specialties": [
+        "GLM-4",
+        "ChatGLM",
+        "CogVLM",
+        "CodeGeeX"
+      ],
+      "description": "Renowned foundational lab pioneering autoregressive blank infilling and bilingual GLM foundation models."
+    },
+    {
+      "developer_id": "kt-klm",
+      "name": "KT AI / Korean Language Model Lab",
+      "role": "East Asian Foundation Models & Multilingual Knowledge Retrieval",
+      "huggingface_url": "https://huggingface.co/kt-ai",
+      "website": "https://corp.kt.com",
+      "specialties": [
+        "KLM",
+        "Mi:dm",
+        "Korean/English instruction tuning"
+      ],
+      "description": "Consortium specializing in Korean linguistic adaptation and Asian multilingual foundations."
+    }
+  ]
+}

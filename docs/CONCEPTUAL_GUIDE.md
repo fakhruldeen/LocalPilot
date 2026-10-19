@@ -1,164 +1,118 @@
-# Demystifying Local AI: Backends, Services, Daemons, Containers & Hardware Explained from Scratch
+# Understanding Local AI: A Plain-Language Conceptual Guide
 
-For non-technical users and newcomers, the local AI ecosystem can feel overwhelming. Terms like **weights**, **GGUF**, **llama.cpp**, **vLLM**, **Ollama**, **LM Studio**, **Docker**, **VRAM**, **KV cache**, and **Unified Memory** are thrown around interchangeably.
-
-This guide breaks down every core concept from the ground up, explains why they exist, and shows how **LocalPilot** handles the technical complexity behind the scenes.
+If you are new to running artificial intelligence models on your own machine, this guide answers the core questions without unnecessary technical jargon.
 
 ---
 
-## 1. The Anatomy of Running an AI Model Locally
+## ❓ Common Questions Answered
 
-When you chat with ChatGPT or Claude, everything runs in a massive cloud data center. Running an AI model **on your own computer** requires three distinct pieces:
+### 1. What actually happens when I run an AI on my computer?
+When you use cloud chatbots (like ChatGPT or Claude), your computer sends your questions across the internet to massive data centers.
+
+When you run an AI **locally with LocalPilot**:
+1. You download an AI model file onto your hard drive once.
+2. When you want to chat, LocalPilot loads that model into your computer's memory (RAM).
+3. Supporting software on your computer processes your prompt, thinks through the patterns, and writes back the reply word by word.
+4. **Nothing leaves your machine**: your prompts and replies travel only through a private connection inside your computer (`127.0.0.1`).
+
+---
+
+### 2. What is an "AI model file" (or "weights")?
+Think of an AI model like a giant, specialized encyclopedia file. During training, researchers feed billions of documents into an algorithm to calculate mathematical patterns (called "weights").
+
+* The resulting file (often ending in `.gguf`) contains all the knowledge and language ability of that model.
+* Having the file stored on your disk does not consume memory or slow down your computer until you actually open and run it.
+
+---
+
+### 3. Why does my computer need memory (RAM) to run AI?
+Unlike a text document or photo that sits quietly on your disk, an AI model needs to be actively read in real time to generate answers:
+* When you start a model, its weights are loaded into your computer's **short-term memory (RAM)**.
+* In addition, the model uses a small slice of memory (the **context buffer** or "KV cache") to remember recent questions and replies in your conversation.
+* If a model needs 12 GB of RAM, but your computer only has 8 GB, your operating system will struggle, causing other applications to slow down.
+* **How LocalPilot protects you**: It measures your computer's memory first and calculates a **Safe Memory Budget**—leaving plenty of room for your operating system, web browser, and other open apps.
+
+---
+
+### 4. Do I need an expensive graphics card (GPU)?
+**No.** Many capable models run smoothly on standard computer processors (CPUs):
+* **Standard Processors (CPU + RAM)**: Any modern computer can run lightweight models (such as 1.5B to 3B parameter models) smoothly using standard RAM.
+* **Apple Silicon Macs (M1, M2, M3, M4)**: Apple laptops feature "Unified Memory," where the processor and graphics chip share the same ultra-fast memory pool. This allows modern Macs to run medium and large models very efficiently.
+* **Dedicated Graphics Cards (NVIDIA CUDA / AMD ROCm)**: If you have a computer with a dedicated graphics card and video memory (VRAM), LocalPilot can use it to generate text faster.
+
+---
+
+### 5. What is a "supporting runtime" (like llama.cpp or Ollama)?
+A model file by itself is just data on a disk; it needs an "engine" to read it and perform the mathematical calculations. This engine is called an **inference runtime**:
+* **`llama.cpp`**: A fast, lightweight engine written in C++ that reads `.gguf` files. LocalPilot uses this directly to run models in isolated worker processes.
+* **`Ollama`**: A popular background service that some users already have on their computer. If you have Ollama installed, LocalPilot can connect to it peacefully without disrupting it.
+* **You do not need to install or configure these yourself**: LocalPilot prepares the appropriate software automatically during setup.
+
+---
+
+### 6. What does "Expected to Fit" mean?
+In LocalPilot, models are evaluated against your actual hardware. "Expected to fit" means:
+* The model's download size and memory footprint fit within your computer's safe memory budget.
+* There is adequate free storage space on your hard drive.
+* LocalPilot tests the model with a live test query before marking the setup complete.
+
+---
+
+## ⚙️ Advanced Technical Architecture (For Developers)
+
+For software engineers, system administrators, and technical users, this section outlines how LocalPilot decouples model computation across three orthogonal axes.
+
+### The 3-Axis Architecture
 
 ```text
-┌─────────────────────────────────────────────────────────┐
-│ 1. The Model Weights (The Knowledge File)               │
-│    e.g. Qwen2.5-Coder-1.5B.gguf                         │
-└───────────────────────────┬─────────────────────────────┘
-                            │ read by
-                            ▼
-┌─────────────────────────────────────────────────────────┐
-│ 2. The Inference Backend (The Computation Engine)       │
-│    e.g. llama.cpp, vLLM                                 │
-└───────────────────────────┬─────────────────────────────┘
-                            │ hosted & managed by
-                            ▼
-┌─────────────────────────────────────────────────────────┐
-│ 3. The Execution Service & Deployment Method            │
-│    e.g. Direct Worker Subprocess, Ollama Daemon, Docker  │
-└─────────────────────────────────────────────────────────┘
+Application Interface (CLI / TUI / HTTP)
+                   │
+                   ▼
+         ┌───────────────────┐
+         │   ExecutionPlan   │
+         └─────────┬─────────┘
+                   │
+  ┌────────────────┼────────────────┐
+  ▼                ▼                ▼
+Axis 1: Backend  Axis 2: Service  Axis 3: Deployment
+llama.cpp        Ollama           direct_worker
+vLLM             LM Studio        local_api_service
+                 Docker Runner    container
 ```
 
-### Piece 1: The Model Weights (The "Book")
-- **What it is**: An AI model is essentially a massive file of mathematical numbers ("weights") created during training. It contains the model's vocabulary and learned knowledge.
-- **Common formats**:
-  - **GGUF**: The most popular format for consumer PCs and Macs. It bundles the model weights and metadata into a single file and allows models to be quantized (compressed) so they fit on normal computers.
-  - **Safetensors**: The raw, high-precision format commonly hosted on Hugging Face.
-- **Analogy**: The model weights are like a massive dictionary or textbook. Having the book on your desk does nothing until someone actually reads and processes it.
+1. **Inference Backend (Computation Engine)**:
+   * **`llama.cpp`**: Primary C/C++ engine supporting GGUF artifacts with CPU, Apple Metal, NVIDIA CUDA, and Vulkan acceleration.
+   * **`vLLM`**: High-throughput server engine designed for discrete multi-GPU Linux installations.
+2. **Managed Execution Service (Process Lifecycle)**:
+   * **`none` (Direct)**: LocalPilot manages the runtime process directly.
+   * **`ollama`**: Connects via loopback REST API (`http://127.0.0.1:11434`) without killing the shared background daemon on model unload.
+   * **`lm_studio` / `docker_model_runner`**: External service adapters.
+3. **Deployment Method (Isolation Boundary)**:
+   * **`direct_worker`**: Spawns an isolated child process with tracked PID and timestamp. Clean process isolation ensures the main CLI/TUI remains unaffected if a model runs out of memory.
+   * **`local_api_service`**: Binds to local loopback interface (`127.0.0.1`) for OpenAI-compatible HTTP streaming.
 
 ---
 
-### Piece 2: The Inference Backend (The "Engine")
-- **What it is**: The software library that does the heavy matrix math. It loads the model weights into memory and calculates the next word (token) on your CPU or GPU.
-- **Core Backends**:
-  - **`llama.cpp`**: The universal Swiss Army knife of local AI. Highly optimized in C/C++, runs on almost any machine (Apple Metal, NVIDIA CUDA, AMD ROCm, or plain CPU), and reads GGUF files.
-  - **`vLLM`**: A high-throughput inference engine built for enterprise Linux servers with dedicated GPUs.
-- **Analogy**: The backend is the engine of the car. It transforms stored energy (weights) into movement (generated text).
+### Safe Memory Budget Formula
+
+LocalPilot uses an empirical formula to determine the safe allocation budget:
+
+$$\text{Safe RAM Budget} = \max\left(0, \text{Available RAM} - \text{OS Buffer}\right)$$
+
+* On systems with $\le 8\text{ GB}$ total RAM: Reserves at least $2.5\text{ GB}$ for the OS and essential applications.
+* On systems with $16\text{ GB}$ total RAM: Reserves at least $4.0\text{ GB}$.
+* On systems with $\ge 32\text{ GB}$ total RAM: Reserves at least $6.0\text{ GB}$.
+
+### Context Window Memory Scaling
+Each active conversation requires a Key-Value (KV) cache proportional to the configured context length:
+$$\text{Memory}_{\text{total}} \approx \text{Weights Size} + \left(2 \times N_{\text{layers}} \times D_{\text{model}} \times N_{\text{tokens}} \times \text{bytes per element}\right)$$
+
+LocalPilot sets conservative default context lengths ($2{,}048$ to $4{,}096$ tokens) to prevent runaway memory allocation.
 
 ---
 
-### Piece 3: The Managed Execution Service (The "Manager")
-- **What it is**: An optional background service or desktop program that manages downloading, serving, and loading models.
-- **Core Services**:
-  - **Ollama**: A popular background daemon that downloads models from its registry and exposes a local REST API.
-  - **LM Studio / llmster**: A desktop application accompanied by a headless daemon (`llmster`) and CLI (`lms`).
-  - **Docker Model Runner**: A Docker-managed plugin that runs models inside containerized tooling.
-  - **None (Direct)**: LocalPilot can run the inference backend directly without needing any third-party daemon running.
-- **Why this distinction matters in LocalPilot**:  
-  If you already have Ollama or LM Studio running, LocalPilot **detects them automatically and uses them**. It will never force you to install a redundant runtime, and it will **never terminate your external apps or daemons**.
-
----
-
-### Piece 4: The Deployment Method (How it Runs on Your System)
-How model execution is isolated and connected to your interface:
-1. **Direct Worker Process (`direct_worker`)**:  
-   LocalPilot spawns a dedicated child process. If the model crashes or runs out of memory, only the child process dies—**LocalPilot and your terminal never crash**, and the error is cleanly reported.
-2. **Local API Service (`local_api_service`)**:  
-   Communicates over localhost (`http://127.0.0.1`) with a background HTTP daemon (like Ollama or llama-server).
-3. **Container (`container`)**:  
-   Runs inside an isolated Docker/Podman container.
-4. **Browser (`browser`)**:  
-   Runs in-browser via WebAssembly (future extension point).
-
----
-
-## 2. Docker vs. Background Daemons vs. Direct Workers
-
-A common source of confusion is understanding whether you need Docker or a background daemon to run local AI.
-
-| Approach | What is it? | Startup Speed | Memory Overhead | Best For |
-|---|---|---|---|---|
-| **Direct Worker Process** | An isolated child process launched on demand by LocalPilot | Instant (< 1s) | Minimal (only model + engine) | Everyday users wanting simple, fast, zero-dependency AI |
-| **Background Daemon** (e.g. Ollama, llmster) | A service that stays running in the background of your OS | Fast (service already awake) | Low background memory | Users who share models across multiple apps or IDE plugins |
-| **Container (Docker)** | A virtualized container filesystem packaging the whole OS stack | Slower (starts container image) | Higher (daemon + container runtime) | Enterprise servers, CI/CD, and strictly isolated cloud environments |
-
-**The LocalPilot Philosophy**: You do not need Docker or complex daemons to run AI. LocalPilot defaults to clean, direct worker processes, but seamlessly connects to your existing daemons if you already use them!
-
----
-
-## 3. Hardware Demystified: RAM vs. VRAM vs. Unified Memory
-
-AI models require immense bandwidth and memory. Understanding your hardware prevents crashes:
-
-### A. System RAM (Regular Memory)
-- Found in every computer (e.g. 16 GB, 32 GB RAM).
-- Slower bandwidth (typically 30–80 GB/s on PC DDR4/DDR5).
-- Good baseline: any modern CPU can run smaller models (e.g. 1.5B or 3B parameters) on RAM alone.
-
-### B. GPU VRAM (Video RAM)
-- Found on dedicated graphics cards (e.g. NVIDIA RTX 3060 with 12 GB VRAM).
-- Ultra-high bandwidth (300–1000+ GB/s).
-- Text generates 5x to 20x faster than on CPU.
-- **The Catch**: If a model requires 13 GB and your graphics card only has 12 GB, the model either fails to load or spills over into system RAM ("CPU offloading").
-
-### C. Apple Silicon Unified Memory (M1, M2, M3, M4 Macs)
-- Macs do not have separate VRAM. Instead, the CPU and GPU share the **exact same pool of ultra-fast memory** (up to 400+ GB/s on Pro/Max chips).
-- **The Superpower**: A Mac with 36 GB or 64 GB of unified memory can run huge 14B or 32B models directly on the GPU without needing an expensive $2,000 graphics card!
-
-### D. Safe Memory Budget & KV Cache
-When you generate text, your computer needs memory for:
-1. **The Model Weights** (e.g. 4.5 GB for a 7B Q4 model).
-2. **The KV Cache**: Memory needed to remember the conversation history. Longer conversations take more memory.
-3. **Runtime Buffers & Operating System**: Your OS, browser, and background apps need breathing room.
-
-> [!IMPORTANT]
-> If an app uses 100% of your RAM, your computer freezes or crashes.  
-> **LocalPilot enforces a Safe Memory Budget**: it reserves headroom for your operating system and only recommends models that comfortably fit within safe limits.
-
----
-
-## 4. Multi-Scope Installation
-
-When software or runtimes are installed, LocalPilot gives you three clean choices:
-
-1. **Application-Isolated (`isolated`, default)**:  
-   Everything is stored inside `~/.local/share/localpilot/runtimes/`.  
-   - Zero side-effects on your other Python projects.  
-   - No `sudo` or administrator privileges required.  
-   - Removing LocalPilot completely cleans everything up.
-2. **User-Space (`user`)**:  
-   Placed in `~/.local/bin/`. Available in your terminal shell, no root needed.
-3. **System-Wide (`system`)**:  
-   Placed in `/usr/local/bin/`. Accessible to all user accounts on the machine (requires `sudo`).
-
----
-
-## 5. How LocalPilot Automates the Technical Decisions
-
-You do not need to memorize any of this to use LocalPilot:
-
-1. **`localpilot doctor`**: Inspects your CPU, GPU, Apple Silicon architecture, RAM, and free disk space.
-2. **`localpilot discover`**: Calculates exact compatibility scores for each model based on your real hardware.
-3. **`localpilot setup <model>`**: Assembles an **Execution Plan**, re-uses existing software if already installed, sets up safe defaults, and verifies readiness.
-4. **`localpilot run <model>`**: Connects you to chat immediately!
-
----
-
-## 6. Versioning, Local Gateway & Connecting Coding Tools
-
-Modern development workflows often require connecting your local models to external editors (like VS Code Continue, Cursor, or OpenCode):
-
-1. **Model Versioning (`localpilot versions`)**:  
-   Every model download creates an immutable version record. You can pin versions to prevent accidental cleanup, compare versions, and roll back instantly with `localpilot alias rollback`.
-2. **Local OpenAI Gateway (`localpilot gateway start`)**:  
-   Exposes a 100% loopback OpenAI-compatible API (`http://127.0.0.1:8080/v1`) with `/v1/models` and streaming `/v1/chat/completions`. No data leaves your computer.
-3. **Local API Keys & Stats (`localpilot keys`, `localpilot stats`)**:  
-   Generate scoped local tokens for your editor and track real-time tokens-per-second (TPS), time-to-first-token (TTFT), and latency.
-4. **Instant Editor Setup (`localpilot connect`)**:  
-   Automatically configure your favorite local coding assistants:
-   ```bash
-   localpilot connect opencode --write
-   localpilot connect continue --write
-   localpilot connect cursor
-   ```
-
+### Additional References
+* [Verified Support Matrix](VERIFIED_SUPPORT_MATRIX.md)
+* [Known Limitations & Operational Boundaries](KNOWN_LIMITATIONS.md)
+* [API Reference (OpenAPI 3.1)](openapi.json)
+* [Interactive Architecture Diagram (architecture.html)](architecture.html)

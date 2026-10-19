@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocalPilot — شغّل الذكاء الاصطناعي على حاسوبك الشخصي</title>
+    <meta name="description" content="تطبيق مفتوح المصدر يفحص عتاد حاسوبك، ويرشح لك النماذج المناسبة، ويرشدك خلال التثبيت لتشغيل الذكاء الاصطناعي محلياً بدون خوادم سحابية.">
+    
+    <!-- Open Graph / Meta -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://fakhr.me/LocalPilot/ar/">
+    <meta property="og:title" content="LocalPilot — شغّل الذكاء الاصطناعي على حاسوبك الشخصي">
+    <meta property="og:description" content="فحص ذكي للعتاد، ترشيح نماذج متوافقة، واستنتاج محلي على جهازك دون إرسال بيانات إلى السحابة.">
+    <meta property="og:image" content="https://raw.githubusercontent.com/fakhruldeen/LocalPilot/main/docs/img/banner-social.jpeg">
+
+    <link rel="icon" type="image/png" href="../img/logo.png">
+    
+    <!-- Google Fonts & Tailwind CDN -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800;900&family=Tajawal:wght@400;500;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            DEFAULT: '#0df2c9',
+                            400: '#2ef5d1',
+                            500: '#0df2c9',
+                            600: '#00cbb6',
+                        },
+                        dark: {
+                            950: '#070a0f',
+                            900: '#0b0f17',
+                            850: '#101623',
+                            800: '#161f31',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Tajawal', 'Cairo', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                        heading: ['Cairo', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Tajawal', sans-serif;
+        }
+        h1, h2, h3, h4, h5, h6 {
+            font-family: 'Cairo', sans-serif;
+        }
+        .code-box {
+            background-color: #0b0f17;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .hero-bg {
+            background-image: linear-gradient(to bottom, rgba(11, 15, 23, 0.88), rgba(7, 10, 15, 0.98)), url('../img/bg.jpeg');
+            background-size: cover;
+            background-position: center;
+        }
+    
+        :root, [data-theme="dark"] {
+            --bg-main: #070A0F;
+            --bg-card: #0B0F17;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-main: #f8fafc;
+            --btn-utility-bg: rgba(255, 255, 255, 0.05);
+            --btn-utility-border: rgba(255, 255, 255, 0.1);
+            --hero-gradient: linear-gradient(to bottom, rgba(11, 15, 23, 0.85), rgba(7, 10, 15, 0.98));
+        }
+        [data-theme="light"] {
+            --bg-main: #f8fafc;
+            --bg-card: #ffffff;
+            --border-color: #e2e8f0;
+            --text-main: #0f172a;
+            --btn-utility-bg: #f1f5f9;
+            --btn-utility-border: #cbd5e1;
+            --hero-gradient: linear-gradient(to bottom, rgba(248, 250, 252, 0.88), rgba(241, 245, 249, 0.98));
+        }
+        [data-theme="light"] body { background-color: var(--bg-main) !important; color: var(--text-main) !important; }
+        [data-theme="light"] .bg-dark-950 { background-color: #f8fafc !important; }
+        [data-theme="light"] .bg-dark-900 { background-color: #ffffff !important; }
+        [data-theme="light"] .bg-dark-850 { background-color: #f1f5f9 !important; }
+        [data-theme="light"] .text-white { color: #0f172a !important; }
+        [data-theme="light"] .text-slate-100 { color: #0f172a !important; }
+        [data-theme="light"] .text-slate-200 { color: #1e293b !important; }
+        [data-theme="light"] .text-slate-300 { color: #334155 !important; }
+        [data-theme="light"] .text-slate-400 { color: #475569 !important; }
+        [data-theme="light"] .border-white\/5, [data-theme="light"] .border-white\/10 { border-color: #e2e8f0 !important; }
+        [data-theme="light"] .code-box, [data-theme="light"] .code-block { background-color: #ffffff !important; border-color: #e2e8f0 !important; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        [data-theme="light"] header { background-color: rgba(255, 255, 255, 0.92) !important; border-color: #e2e8f0 !important; }
+        [data-theme="light"] footer { background-color: #ffffff !important; border-color: #e2e8f0 !important; }
+        [data-theme="light"] .text-brand { color: #008775 !important; }
+
+        .btn-utility {
+            background: var(--btn-utility-bg);
+            color: inherit;
+            border: 1px solid var(--btn-utility-border);
+            padding: 0.45rem 0.65rem;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            transition: all 0.2s ease;
+            line-height: 1;
+            text-decoration: none;
+        }
+        .btn-utility:hover {
+            border-color: #00D2B4;
+            color: #00D2B4;
+            text-decoration: none;
+        }
+        .header-author-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            border-radius: 50%;
+            line-height: 1;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .header-author-link:hover {
+            transform: scale(1.08);
+            box-shadow: 0 0 0 2px #00D2B4;
+            text-decoration: none;
+        }
+        .header-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid var(--btn-utility-border);
+            object-fit: cover;
+            display: block;
+            transition: border-color 0.2s ease;
+        }
+        .header-author-link:hover .header-avatar {
+            border-color: #00D2B4;
+        }
+        [data-theme="light"] .hero-bg { background-image: var(--hero-gradient), url('../img/bg.jpeg') !important; }
+    </style>
+    <script>
+        (function() {
+            const saved = localStorage.getItem('localpilot-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'dark');
+            document.documentElement.setAttribute('data-theme', saved);
+        })();
+    </script>
+</head>
+<body class="bg-dark-950 text-slate-100 font-sans antialiased selection:bg-brand selection:text-dark-900 min-h-screen flex flex-col">
+
+    <!-- Header Navigation -->
+    <header class="sticky top-0 z-50 backdrop-blur-md bg-dark-900/85 border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-3 group">
+                <img src="../img/logo.png" alt="LocalPilot Logo" class="w-10 h-10 rounded-xl object-contain border border-white/10 group-hover:scale-105 transition-transform duration-300">
+                <span class="font-bold text-xl tracking-tight text-white flex items-center gap-2">
+                    LocalPilot
+                    <span class="text-xs bg-brand/10 text-brand px-2 py-0.5 rounded-full border border-brand/20 font-mono font-medium">v0.2.5</span>
+                </span>
+            </a>
+
+            <nav class="hidden md:flex items-center gap-7 text-sm font-medium text-slate-300">
+                <a href="index.html" class="text-brand font-semibold">الرئيسية</a>
+                <a href="guide.html" class="hover:text-brand transition-colors">دليل المبتدئين</a>
+                <a href="install.html" class="hover:text-brand transition-colors">دليل التثبيت</a>
+                <a href="models.html" class="hover:text-brand transition-colors">دليل النماذج</a>
+                <a href="faq.html" class="hover:text-brand transition-colors">الأسئلة الشائعة</a>
+                <a href="architecture.html" class="hover:text-brand transition-colors">المعمارية التقنية</a>
+            </nav>
+
+            <div class="nav-actions flex items-center gap-2.5">
+                <a href="../index.html" class="btn-utility" aria-label="تغيير اللغة إلى الإنجليزية" title="Switch Language to English">🌐 English</a>
+                <button id="theme-toggle" class="btn-utility" aria-label="تبديل الوضع الليلي / النهاري" title="تبديل الوضع الليلي / النهاري">🌓</button>
+                <a href="https://github.com/fakhruldeen/LocalPilot" target="_blank" rel="noopener" class="btn-utility" aria-label="مستودع جيت هب" title="مستودع جيت هب" style="display:inline-flex;align-items:center;justify-content:center;padding:0.45rem 0.6rem;">
+                    <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.01 8.01 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27s-1.36.09-2 .27c-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9 1.48 1.35.39.24.96.2 1.44.15 0 .69.01 1.25.01 1.44 0 .21-.15.46-.55.38A8.01 8.01 0 0 1 0 8c0-4.42 3.58-8 8-8z"/></svg>
+                </a>
+                <a href="https://fakhr.me" target="_blank" rel="noopener" class="header-author-link" aria-label="موقع محمد فخرالدين" title="محمد فخرالدين (fakhr.me)">
+                    <img src="https://avatars.githubusercontent.com/u/1162549?v=4" alt="محمد فخرالدين" class="header-avatar" loading="lazy">
+                </a>
+                <button onclick="toggleMobileMenu()" class="md:hidden p-2 text-slate-400 hover:text-white rounded-lg" aria-label="تبديل القائمة">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+            </div>
+        </div>
+        <!-- Mobile Dropdown Menu -->
+        <div id="mobile-menu" class="hidden md:hidden px-6 pt-3 pb-6 border-t border-white/5 bg-dark-900/95 flex flex-col gap-3 text-sm font-medium text-slate-300">
+            <a href="index.html" class="text-brand font-semibold py-1">الرئيسية</a>
+            <a href="guide.html" class="hover:text-brand py-1">دليل المبتدئين</a>
+            <a href="install.html" class="hover:text-brand py-1">دليل التثبيت</a>
+            <a href="models.html" class="hover:text-brand py-1">دليل النماذج</a>
+            <a href="faq.html" class="hover:text-brand py-1">الأسئلة الشائعة</a>
+            <a href="architecture.html" class="hover:text-brand py-1">المعمارية التقنية</a>
+            <a href="../index.html" class="text-slate-400 hover:text-white py-1">English 🌐</a>
+        </div>
+    </header>
+
+    <!-- Hero Section -->
+    <section class="relative pt-16 pb-24 overflow-hidden hero-bg border-b border-white/5">
+        <div class="max-w-5xl mx-auto px-6 text-center relative z-10">
+            
+            <h1 class="text-4xl sm:text-6xl lg:text-7xl font-extrabold tracking-tight text-white mb-6 leading-tight">
+                شغّل الذكاء الاصطناعي على جهازك.
+            </h1>
+
+            <p class="text-lg sm:text-xl text-slate-300 max-w-2xl mx-auto mb-8 leading-relaxed font-normal">
+                يفحص LocalPilot مواصفات جهازك، ويساعدك على اختيار نموذج مناسب، ثم يرشدك خلال التثبيت.
+            </p>
+
+            <!-- Primary and Secondary Actions -->
+            <div class="flex flex-wrap items-center justify-center gap-4 mb-10">
+                <a href="#install-box" class="px-6 py-3.5 rounded-xl bg-brand text-dark-900 font-bold text-sm hover:bg-brand-400 transition-all shadow-lg shadow-brand/20">
+                    ابدأ الاستخدام
+                </a>
+                <a href="guide.html" class="px-6 py-3.5 rounded-xl bg-white/5 text-white border border-white/10 font-semibold text-sm hover:bg-white/10 transition-all">
+                    تعرّف على الخطوات
+                </a>
+            </div>
+
+            <!-- Prerequisite Note -->
+            <div class="text-xs text-slate-400 mb-8 max-w-xl mx-auto leading-relaxed">
+                <span>يدعم Linux و macOS (ونظام Windows عبر WSL2) &bull; يعمل عبر نافذة الطرفية &bull; يُستخدم الإنترنت أثناء التثبيت وتنزيل النموذج فقط &bull; استنتاج محلي بالكامل بعد الإعداد</span>
+            </div>
+
+            <!-- Install Box with Scopes / Tabs -->
+            <div id="install-box" class="max-w-2xl mx-auto bg-dark-900/90 rounded-2xl border border-white/10 shadow-2xl p-2 glow-effect">
+                <div class="flex items-center justify-between border-b border-white/5 px-4 py-2 text-xs font-mono text-slate-400">
+                    <div class="flex items-center gap-2">
+                        <button onclick="switchTab('curl')" id="tab-curl" class="px-3 py-1 rounded-lg bg-brand/10 text-brand font-semibold border border-brand/20 transition-all">curl (المثبت السريع)</button>
+                        <button onclick="switchTab('pipx')" id="tab-pipx" class="px-3 py-1 rounded-lg text-slate-400 hover:text-slate-200 transition-all">pipx</button>
+                        <button onclick="switchTab('pip')" id="tab-pip" class="px-3 py-1 rounded-lg text-slate-400 hover:text-slate-200 transition-all">pip</button>
+                    </div>
+                    <span class="hidden sm:inline text-slate-400 text-[11px]">macOS و Linux</span>
+                </div>
+                
+                <div class="p-4 flex items-center justify-between gap-4 font-mono text-xs sm:text-sm text-right">
+                    <div class="overflow-x-auto text-slate-200 select-all py-1" dir="ltr">
+                        <span id="install-command" class="text-brand font-medium">curl -fsSL https://raw.githubusercontent.com/fakhruldeen/LocalPilot/main/install-localpilot.sh | bash</span>
+                    </div>
+                    <button onclick="copyInstall()" class="px-4 py-2 rounded-xl bg-brand text-dark-900 hover:bg-brand-400 font-sans text-xs font-bold transition-all shrink-0">
+                        <span id="copy-text">نسخ الأمر</span>
+                    </button>
+                </div>
+                <div class="px-4 pb-3 text-[11px] text-slate-400 text-right font-sans">
+                    الصق هذا الأمر في نافذة الطرفية (Terminal) لتثبيت LocalPilot في مجلد معزول بحساب المستخدم. لا يتطلب إدخال كلمة سر المدير (sudo).
+                </div>
+            </div>
+
+            <!-- Reassurance Badges -->
+            <div class="mt-8 flex flex-wrap items-center justify-center gap-3 sm:gap-6 text-xs text-slate-300 font-medium">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/5">
+                    🔒 معالجة واستنتاج محلي على حاسوبك
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/5">
+                    🛡️ حساب مسبق لميزانية الذاكرة لحماية النظام
+                </span>
+                <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/5 border border-white/5">
+                    🆓 مجاني ومفتوح المصدر بالكامل (GPLv3)
+                </span>
+            </div>
+
+            <!-- Crisp Interactive Terminal Preview -->
+            <div id="sim-preview" class="mt-14 max-w-4xl mx-auto rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-dark-900 text-right">
+                <!-- Mac/Linux window bar -->
+                <div class="bg-dark-850 px-4 py-3 border-b border-white/10 flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <span class="w-3 h-3 rounded-full bg-rose-500/80 inline-block"></span>
+                        <span class="w-3 h-3 rounded-full bg-amber-500/80 inline-block"></span>
+                        <span class="w-3 h-3 rounded-full bg-emerald-500/80 inline-block"></span>
+                        <span class="mr-2 font-mono text-xs text-slate-300 font-medium" dir="ltr">localpilot — interactive terminal</span>
+                    </div>
+                    <div class="flex items-center gap-1">
+                        <button onclick="switchSim('doc')" id="sim-btn-doc" class="text-[11px] font-sans px-2.5 py-1 rounded bg-brand/10 text-brand border border-brand/20">1. فحص العتاد</button>
+                        <button onclick="switchSim('rec')" id="sim-btn-rec" class="text-[11px] font-sans px-2.5 py-1 rounded text-slate-400 hover:text-slate-200">2. ترشيح النماذج</button>
+                        <button onclick="switchSim('chat')" id="sim-btn-chat" class="text-[11px] font-sans px-2.5 py-1 rounded text-slate-400 hover:text-slate-200">3. المحادثة المحلية</button>
+                    </div>
+                </div>
+
+                <div class="px-6 py-2 bg-dark-950/80 border-b border-white/5 text-[11px] text-slate-400 font-sans">
+                    معاينة توضيحية — ليست فحصاً حياً لجهازك الحالي. افتح LocalPilot في جهازك لفحص عتادك الفعلي.
+                </div>
+
+                <!-- Sim Screen 1: Doctor -->
+                <div id="sim-screen-doc" class="p-6 font-mono text-xs sm:text-sm text-slate-300 space-y-2 bg-dark-900/95 leading-relaxed text-right">
+                    <div class="text-slate-300 font-mono" dir="ltr">$ localpilot doctor</div>
+                    <div class="text-brand font-bold mt-2 font-sans">🔍 فحص العتاد ومطابقة الإمكانيات عبر LocalPilot</div>
+                    <div class="text-emerald-400 font-sans">✓ نظام التشغيل: Linux / macOS (تم التعرف على بيئة العمل)</div>
+                    <div class="text-emerald-400 font-sans">✓ المعالج: تم رصد نوى المعالجة • دعم تسريع العمليات الحسابية AVX2 / Apple Silicon</div>
+                    <div class="text-emerald-400 font-sans">✓ فحص الذاكرة: 16.0 جيجابايت إجمالي الذاكرة (RAM) • تم حساب الميزانية الآمنة للنموذج</div>
+                    <div class="text-emerald-400 font-sans">✓ الحد الآمن الموصى به: يُنصح بنماذج حتى 8 مليار معامل (ترميز 4-bit)</div>
+                    <div class="text-slate-300 mt-3 pt-3 border-t border-white/5 font-sans">
+                        <span class="text-brand font-bold">النتيجة:</span> جهازك جاهز ومناسب. يرشح لك LocalPilot النماذج المتوافقة مع ميزانية الذاكرة الآمنة.
+                    </div>
+                </div>
+
+                <!-- Sim Screen 2: Recommender -->
+                <div id="sim-screen-rec" class="hidden p-6 font-mono text-xs sm:text-sm text-slate-300 space-y-2 bg-dark-900/95 leading-relaxed text-right">
+                    <div class="text-slate-300 font-mono" dir="ltr">$ localpilot discover</div>
+                    <div class="text-brand font-bold mt-2 font-sans">📦 ترشيحات النماذج المقيمة وفق إمكانيات جهازك:</div>
+                    <div class="p-2.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 flex justify-between items-center font-sans">
+                        <span>[★] llama3.2:3b (Meta)</span>
+                        <span class="font-bold">متوافق وموصى به • ذاكرة ~2.0 جيجابايت • سريع على المعالج</span>
+                    </div>
+                    <div class="p-2.5 rounded bg-emerald-500/10 border border-emerald-500/20 text-emerald-300 flex justify-between items-center font-sans">
+                        <span>[ ] mistral:7b (Mistral AI)</span>
+                        <span class="font-bold">متوافق • ذاكرة ~4.5 جيجابايت • قدرات استنتاج أعمق</span>
+                    </div>
+                    <div class="p-2.5 rounded bg-amber-500/10 border border-amber-500/20 text-amber-300 flex justify-between items-center font-sans">
+                        <span>[!] llama3.3:70b (Meta)</span>
+                        <span class="font-bold">يتجاوز ميزانية الذاكرة • يتطلب 42+ جيجابايت (مستبعد للسلامة)</span>
+                    </div>
+                    <div class="text-slate-400 text-xs mt-2 font-sans">
+                        يفحص LocalPilot ميزانية ذاكرة جهازك قبل التنزيل للحفاظ على استقرار واستجابة النظام.
+                    </div>
+                </div>
+
+                <!-- Sim Screen 3: Chat -->
+                <div id="sim-screen-chat" class="hidden p-6 font-mono text-xs sm:text-sm text-slate-300 space-y-3 bg-dark-900/95 leading-relaxed text-right">
+                    <div class="text-slate-300 font-mono" dir="ltr">$ localpilot chat llama3.2:3b</div>
+                    <div class="text-brand font-bold font-sans">💬 جلسة المحادثة المحلية (Llama 3.2 3B • استنتاج محلي)</div>
+                    <div class="text-slate-300 font-sans"><span class="text-white font-bold">أنت:</span> ساعدني في كتابة مسودة رسالة بريد إلكتروني لطيفة أشكر فيها زميلي على توجيهه لي.</div>
+                    <div class="text-teal-300 pr-3 border-r-2 border-brand/40 font-sans">
+                        <span class="text-brand font-bold">الذكاء الاصطناعي:</span> إليك مسودة مهنية ودافئة يمكنك استخدامها:<br>
+                        1. العنوان: شكر وتقدير خالص على دعمك وتوجيهك<br>
+                        2. التعبير عن الامتنان: اذكر نصيحة أو فكرة محددة أفادتك في العمل<br>
+                        3. أثر التوجيه: وضح كيف عزز ذلك من ثقتك في إنجاز المشروع<br>
+                        4. التواصل المستمر: أبدِ استعدادك للتعاون وتقديم الدعم في أي وقت
+                    </div>
+                    <div class="text-[11px] text-slate-300 flex items-center justify-between pt-2 border-t border-white/5 font-sans">
+                        <span>⚡ استجابة محلية فورية</span>
+                        <span class="text-emerald-400 font-semibold" dir="ltr">🔒 127.0.0.1</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Interactive Hardware Fit Estimator -->
+    <section class="py-20 border-b border-white/5 bg-dark-950 relative overflow-hidden">
+        <div class="max-w-5xl mx-auto px-6 relative z-10">
+            <div class="text-center max-w-2xl mx-auto mb-12">
+                <span class="text-brand font-mono text-xs uppercase tracking-wider font-semibold">توافق العتاد</span>
+                <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-white mt-2 mb-3">هل يستطيع جهازي تشغيل النماذج؟</h2>
+                <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+                    أمثلة تقديرية استرشادية. افتح LocalPilot في جهازك للحصول على توصية دقيقة وفق مواصفاتك الحقيقية والنموذج المحدد.
+                </p>
+            </div>
+
+            <!-- Hardware Selector Buttons -->
+            <div class="flex flex-wrap items-center justify-center gap-2 sm:gap-3 mb-8">
+                <button onclick="selectHardware('mac-8')" id="hw-btn-mac-8" class="hw-tab-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all border bg-brand/10 border-brand/30 text-brand">
+                    🍏 ماك (Apple Silicon • 8 جيجابايت)
+                </button>
+                <button onclick="selectHardware('mac-16')" id="hw-btn-mac-16" class="hw-tab-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all border bg-dark-900 border-white/10 text-slate-300 hover:text-white hover:border-white/20">
+                    🍏 ماك (Apple Silicon • 16+ جيجابايت)
+                </button>
+                <button onclick="selectHardware('pc-8')" id="hw-btn-pc-8" class="hw-tab-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all border bg-dark-900 border-white/10 text-slate-300 hover:text-white hover:border-white/20">
+                    💻 حاسوب محمول / مكتبي (8 جيجابايت RAM)
+                </button>
+                <button onclick="selectHardware('pc-16')" id="hw-btn-pc-16" class="hw-tab-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all border bg-dark-900 border-white/10 text-slate-300 hover:text-white hover:border-white/20">
+                    💼 حاسوب قوي (16 - 32 جيجابايت RAM)
+                </button>
+                <button onclick="selectHardware('gpu')" id="hw-btn-gpu" class="hw-tab-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all border bg-dark-900 border-white/10 text-slate-300 hover:text-white hover:border-white/20">
+                    🎮 حاسوب ببطاقة رسوميات منفصلة (GPU)
+                </button>
+            </div>
+
+            <!-- Interactive Result Display Card -->
+            <div class="bg-dark-900 rounded-3xl border border-white/10 p-6 sm:p-10 shadow-2xl space-y-6">
+                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-white/5 pb-6">
+                    <div>
+                        <span id="hw-badge" class="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 mb-2">
+                            تشغيل سلس عبر المعالج وتقنية Metal
+                        </span>
+                        <h3 id="hw-title" class="text-xl sm:text-2xl font-bold text-white">
+                            أجهزة Mac برقاقات M1/M2/M3/M4 (ذاكرة 8 جيجابايت)
+                        </h3>
+                    </div>
+                    <div class="text-right sm:text-left">
+                        <span class="text-xs text-slate-400 block font-mono">طبيعة العتاد</span>
+                        <span id="hw-speed" class="text-brand font-bold text-sm sm:text-base">
+                            معمارية ذاكرة موحدة (Unified Memory)
+                        </span>
+                    </div>
+                </div>
+
+                <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-1">
+                        <span class="text-xs font-mono text-slate-400 block">النموذج المبدئي الموصى به</span>
+                        <p id="hw-model" class="text-base font-bold text-white">Llama 3.2 (3B) أو Qwen 2.5 (3B)</p>
+                        <p class="text-xs text-slate-400 leading-relaxed pt-1">حجم التنزيل: حوالي 2.0 جيجابايت. يناسب ميزانية الذاكرة الآمنة.</p>
+                    </div>
+
+                    <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-1">
+                        <span class="text-xs font-mono text-slate-400 block">الاستهلاك التقديري للذاكرة</span>
+                        <p id="hw-ram" class="text-base font-bold text-emerald-400">يستهلك حوالي 2.2 جيجابايت</p>
+                        <p id="hw-headroom" class="text-xs text-slate-400 leading-relaxed pt-1">يترك هامش ذاكرة كافٍ لنظام macOS والتطبيقات والمتصفح.</p>
+                    </div>
+
+                    <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-1 sm:col-span-2 lg:col-span-1">
+                        <span class="text-xs font-mono text-slate-400 block">أبرز الاستخدامات اليومية</span>
+                        <p id="hw-tasks" class="text-base font-bold text-white">الصياغة، التلخيص والأسئلة اليومية</p>
+                        <p class="text-xs text-slate-400 leading-relaxed pt-1">كتابة المسودات، إعادة الصياغة، وتلخيص الملاحظات.</p>
+                    </div>
+                </div>
+
+                <div class="pt-4 border-t border-white/5 flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div class="font-mono text-xs text-slate-300 w-full sm:w-auto text-right">
+                        <span class="text-slate-400 ml-2 font-sans">أمر التشغيل المباشر:</span>
+                        <code id="hw-cmd" class="text-brand bg-dark-950 px-3 py-1.5 rounded-lg border border-white/10 select-all inline-block mt-1 sm:mt-0 font-mono" dir="ltr">localpilot chat llama3.2:3b</code>
+                    </div>
+                    <a href="models.html" class="text-xs font-semibold text-brand hover:text-brand-300 inline-flex items-center gap-1.5 transition-colors shrink-0">
+                        استعرض جميع النماذج في الدليل &larr;
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Why Everyday Users Choose LocalPilot -->
+    <section class="py-20 border-b border-white/5 bg-dark-900">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center max-w-2xl mx-auto mb-16">
+                <span class="text-brand font-mono text-xs uppercase tracking-wider font-semibold">بساطة الاستخدام</span>
+                <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-white mt-2 mb-4">لماذا يفضل المستخدمون LocalPilot؟</h2>
+                <p class="text-slate-400 text-base">لا يتطلب تشغيل الذكاء الاصطناعي خبرة في إدارة الخوادم أو الأكواد المعقدة. يتولى البرنامج فحص العتاد والضبط الآمن نيابة عنك.</p>
+            </div>
+
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Pillar 1 -->
+                <div class="bg-dark-850 p-8 rounded-2xl border border-white/5 hover:border-brand/30 transition-all">
+                    <div class="w-12 h-12 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center text-2xl mb-6">
+                        🔒
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">استنتاج محلي خاص</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed mb-4">
+                        تتم معالجة المحادثات المدعومة بالكامل داخل جهازك عبر منفذ محلي (127.0.0.1). لا حاجة لحسابات سحابية خارجية للنماذج المفتوحة.
+                    </p>
+                    <a href="guide.html" class="text-brand text-xs font-semibold inline-flex items-center gap-1 hover:underline">
+                        تعرّف على حدود الخصوصية &larr;
+                    </a>
+                </div>
+
+                <!-- Pillar 2 -->
+                <div class="bg-dark-850 p-8 rounded-2xl border border-white/5 hover:border-brand/30 transition-all">
+                    <div class="w-12 h-12 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center text-2xl mb-6">
+                        🛡️
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">فحص مسبق للذاكرة</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed mb-4">
+                        يقيس LocalPilot الذاكرة المتاحة في حاسوبك ويحجز هامش أمان كافياً لنظام التشغيل قبل أن يبدأ في تنزيل أي نموذج.
+                    </p>
+                    <a href="models.html" class="text-brand text-xs font-semibold inline-flex items-center gap-1 hover:underline">
+                        استعرض دليل أحجام النماذج &larr;
+                    </a>
+                </div>
+
+                <!-- Pillar 3 -->
+                <div class="bg-dark-850 p-8 rounded-2xl border border-white/5 hover:border-brand/30 transition-all">
+                    <div class="w-12 h-12 rounded-xl bg-brand/10 border border-brand/20 flex items-center justify-center text-2xl mb-6">
+                        🧹
+                    </div>
+                    <h3 class="text-xl font-bold text-white mb-3">تثبيت معزول وإزالة نظيفة</h3>
+                    <p class="text-slate-400 text-sm leading-relaxed mb-4">
+                        يتم التثبيت في مجلد معزول بحساب المستخدم دون تعديل حزم النظام. وعند الإلغاء، يتم الاحتفاظ بملفات النماذج افتراضياً مع خيار لحذفها.
+                    </p>
+                    <a href="install.html" class="text-brand text-xs font-semibold inline-flex items-center gap-1 hover:underline">
+                        خطوات الإلغاء وحذف الملفات &larr;
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Practical Everyday Tasks -->
+    <section class="py-20 border-b border-white/5 bg-dark-850">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center max-w-2xl mx-auto mb-16">
+                <span class="text-brand font-mono text-xs uppercase tracking-wider font-semibold">استخدامات واقعية</span>
+                <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-white mt-2 mb-4">ما الذي يمكنك فعله بنموذجك المحلي؟</h2>
+                <p class="text-slate-300 text-sm sm:text-base leading-relaxed">
+                    طرق عملية للاستفادة من الذكاء الاصطناعي على جهازك في مهامك اليومية:
+                </p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Use Case 1 -->
+                <div class="bg-dark-900 p-8 rounded-3xl border border-white/10 hover:border-brand/30 transition-all flex flex-col justify-between space-y-6">
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-3">
+                            <span class="w-10 h-10 rounded-2xl bg-teal-500/10 text-teal-300 flex items-center justify-center text-xl">✍️</span>
+                            <div>
+                                <h3 class="text-lg font-bold text-white">صياغة وتدقيق النصوص</h3>
+                                <span class="text-xs text-brand font-mono">الكتابة وإعادة الصياغة</span>
+                            </div>
+                        </div>
+                        <p class="text-slate-300 text-sm leading-relaxed">
+                            صياغة رسائل البريد الإلكتروني، تحسين خطابات التقديم، تعديل الجمل المعقدة، وإعادة صياغة الفقرات بأسلوب احترافي.
+                        </p>
+                        <div class="p-4 rounded-xl bg-dark-950 border border-white/5 font-mono text-xs text-slate-300 space-y-1 text-right">
+                            <span class="text-slate-400 text-[11px] block font-sans">مثال لأمر المحادثة:</span>
+                            <span class="text-teal-300 font-sans">"أعد صياغة هذه المسودة لتكون مهنية وودية في حدود 100 كلمة."</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Use Case 2 -->
+                <div class="bg-dark-900 p-8 rounded-3xl border border-white/10 hover:border-brand/30 transition-all flex flex-col justify-between space-y-6">
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-3">
+                            <span class="w-10 h-10 rounded-2xl bg-cyan-500/10 text-cyan-300 flex items-center justify-center text-xl">📄</span>
+                            <div>
+                                <h3 class="text-lg font-bold text-white">تلخيص النصوص الملصقة</h3>
+                                <span class="text-xs text-brand font-mono">الملاحظات والمقالات</span>
+                            </div>
+                        </div>
+                        <p class="text-slate-300 text-sm leading-relaxed">
+                            انسخ نصوص مذكرات الاجتماعات أو المقالات الطويلة والصقها في المحادثة لاستخراج أبرز النقاط والمهام المطلوبة.
+                        </p>
+                        <div class="p-4 rounded-xl bg-dark-950 border border-white/5 font-mono text-xs text-slate-300 space-y-1 text-right">
+                            <span class="text-slate-400 text-[11px] block font-sans">مثال لأمر المحادثة:</span>
+                            <span class="text-cyan-300 font-sans">"إليك مذكرات الاجتماع: [الصق النص]. استخرج أبرز 3 قرارات تم اتخاذها."</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Use Case 3 -->
+                <div class="bg-dark-900 p-8 rounded-3xl border border-white/10 hover:border-brand/30 transition-all flex flex-col justify-between space-y-6">
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-3">
+                            <span class="w-10 h-10 rounded-2xl bg-indigo-500/10 text-indigo-300 flex items-center justify-center text-xl">🎓</span>
+                            <div>
+                                <h3 class="text-lg font-bold text-white">الأسئلة اليومية والتعلم الذاتي</h3>
+                                <span class="text-xs text-brand font-mono">المفاهيم والأفكار الجديدة</span>
+                            </div>
+                        </div>
+                        <p class="text-slate-300 text-sm leading-relaxed">
+                            اطرح أسئلة لفهم مواضيع علمية جديدة، أو العصف الذهني لأفكار المشاريع، أو تبسيط المصطلحات المعقدة بتشبيهات مألوفة.
+                        </p>
+                        <div class="p-4 rounded-xl bg-dark-950 border border-white/5 font-mono text-xs text-slate-300 space-y-1 text-right">
+                            <span class="text-slate-400 text-[11px] block font-sans">مثال لأمر المحادثة:</span>
+                            <span class="text-indigo-300 font-sans">"اشرح كيف يعمل معالج الحاسوب بتشبيه يومي مبسط كطاهٍ داخل مطبخ."</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Use Case 4 -->
+                <div class="bg-dark-900 p-8 rounded-3xl border border-white/10 hover:border-brand/30 transition-all flex flex-col justify-between space-y-6">
+                    <div class="space-y-4">
+                        <div class="flex items-center gap-3">
+                            <span class="w-10 h-10 rounded-2xl bg-emerald-500/10 text-emerald-300 flex items-center justify-center text-xl">💻</span>
+                            <div>
+                                <h3 class="text-lg font-bold text-white">شرح الأكواد والبرمجة</h3>
+                                <span class="text-xs text-brand font-mono">مساعدة برمجية مبسطة</span>
+                            </div>
+                        </div>
+                        <p class="text-slate-300 text-sm leading-relaxed">
+                            الصق أسطر كود برمجية أو رسائل خطأ لفهم ما تعنيه، وكتابة دوال مساعدة، وحل المشكلات البرمجية البسيطة.
+                        </p>
+                        <div class="p-4 rounded-xl bg-dark-950 border border-white/5 font-mono text-xs text-slate-300 space-y-1 text-right">
+                            <span class="text-slate-400 text-[11px] block font-sans">مثال لأمر المحادثة:</span>
+                            <span class="text-emerald-300 font-sans">"ماذا يفعل هذا الأمر وما هي وظيفته: 'find . -name \"*.log\" -size +10M'؟"</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Safety & Operational Principles -->
+    <section class="py-20 border-b border-white/5 bg-dark-900">
+        <div class="max-w-5xl mx-auto px-6">
+            <div class="text-center max-w-2xl mx-auto mb-14">
+                <span class="text-brand font-mono text-xs uppercase tracking-wider font-semibold">سلامة النظام</span>
+                <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-white mt-2 mb-3">مبادئ السلامة والتشغيل</h2>
+                <p class="text-slate-300 text-sm sm:text-base">مصمم لحماية عتاد حاسوبك والحفاظ على استقرار النظام.</p>
+            </div>
+
+            <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <div class="text-2xl text-emerald-400 font-bold">1</div>
+                    <h3 class="text-base font-bold text-white">ميزانية ذاكرة آمنة</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">يحسب الحجم الآمن للذاكرة قبل التنزيل ليترك مساحة كافية لنظام التشغيل والتطبيقات المفتوحة.</p>
+                </div>
+
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <div class="text-2xl text-emerald-400 font-bold">2</div>
+                    <h3 class="text-base font-bold text-white">ربط محلي حصري (127.0.0.1)</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">ترتبط نقاط الاتصال فقط بعنوان الاسترجاع الداخلي (Loopback). لا فتح لمنافذ خارجية ولا رفع بيانات إلى السحابة.</p>
+                </div>
+
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <div class="text-2xl text-emerald-400 font-bold">3</div>
+                    <h3 class="text-base font-bold text-white">بدون صلاحيات المدير (sudo)</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">يعمل بالكامل في مساحة المستخدم العادية. لا يمس ملفات النظام الأساسية ولا يطلب رفع الصلاحيات.</p>
+                </div>
+
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <div class="text-2xl text-emerald-400 font-bold">4</div>
+                    <h3 class="text-base font-bold text-white">احترام الخدمات الخارجية</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">يتكامل مع خدمات مثل Ollama أو LM Studio إن وجدت، ولا يقوم بإنهاء العمليات المشتركة عند إيقاف النموذج.</p>
+                </div>
+
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <div class="text-2xl text-emerald-400 font-bold">5</div>
+                    <h3 class="text-base font-bold text-white">الاحتفاظ بالنماذج عند الإلغاء</h3>
+                    <p class="text-xs text-slate-400 leading-relaxed">يحافظ أمر إلغاء التثبيت على ملفات النماذج المحملة افتراضياً، مع توفير خيار إضافي لمسحها لمن يرغب.</p>
+                </div>
+
+                <div class="p-6 rounded-2xl bg-brand/10 border border-brand/20 space-y-2 flex flex-col justify-between">
+                    <div>
+                        <div class="text-2xl text-brand font-bold">★</div>
+                        <h3 class="text-base font-bold text-white">مجاني ومفتوح المصدر</h3>
+                        <p class="text-xs text-slate-300 leading-relaxed">مرخص تحت رخصة GNU GPLv3 البرمجية. شيفرة برمجية عامة وشفافة بالكامل.</p>
+                    </div>
+                    <a href="architecture.html" class="text-xs font-bold text-brand hover:underline inline-flex items-center gap-1">
+                        تعرّف على المعمارية التقنية &larr;
+                    </a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Explore the Guides -->
+    <section class="py-20 border-b border-white/5 bg-dark-950">
+        <div class="max-w-7xl mx-auto px-6">
+            <div class="text-center max-w-2xl mx-auto mb-16">
+                <span class="text-brand font-mono text-xs uppercase tracking-wider font-semibold">التوثيق والأدلة</span>
+                <h2 class="text-3xl sm:text-4xl font-bold tracking-tight text-white mt-2 mb-4">استكشف أدلة الاستخدام</h2>
+                <p class="text-slate-400 text-base">أدلة سهلة للمبتدئين ومراجع تقنية متقدمة للمطورين والخبراء.</p>
+            </div>
+
+            <div class="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Card 1 -->
+                <a href="guide.html" class="group bg-dark-900 p-6 rounded-2xl border border-white/5 hover:border-brand/40 transition-all flex flex-col justify-between">
+                    <div>
+                        <div class="text-3xl mb-4">📖</div>
+                        <h3 class="text-lg font-bold text-white group-hover:text-brand transition-colors mb-2">دليل المبتدئين</h3>
+                        <p class="text-slate-400 text-xs leading-relaxed">
+                            دليل شامل يشرح خطوات المعالج الإرشادي، أوامر المحادثة، وإدارة النماذج خطوة بخطوة.
+                        </p>
+                    </div>
+                    <span class="text-brand text-xs font-semibold mt-4 inline-flex items-center gap-1">قراءة الدليل &larr;</span>
+                </a>
+
+                <!-- Card 2 -->
+                <a href="install.html" class="group bg-dark-900 p-6 rounded-2xl border border-white/5 hover:border-brand/40 transition-all flex flex-col justify-between">
+                    <div>
+                        <div class="text-3xl mb-4">🚀</div>
+                        <h3 class="text-lg font-bold text-white group-hover:text-brand transition-colors mb-2">دليل التثبيت</h3>
+                        <p class="text-slate-400 text-xs leading-relaxed">
+                            طرق التثبيت عبر curl و pipx و pip على macOS و Linux، مع تعليمات إلغاء التثبيت الآمن.
+                        </p>
+                    </div>
+                    <span class="text-brand text-xs font-semibold mt-4 inline-flex items-center gap-1">تعليمات التثبيت &larr;</span>
+                </a>
+
+                <!-- Card 3 -->
+                <a href="models.html" class="group bg-dark-900 p-6 rounded-2xl border border-white/5 hover:border-brand/40 transition-all flex flex-col justify-between">
+                    <div>
+                        <div class="text-3xl mb-4">🦙</div>
+                        <h3 class="text-lg font-bold text-white group-hover:text-brand transition-colors mb-2">دليل النماذج</h3>
+                        <p class="text-slate-400 text-xs leading-relaxed">
+                            مقارنة بين أشهر النماذج (Llama 3.2 و Qwen 2.5 و Gemma 2 و Mistral) واحتياجات الذاكرة التقديرية.
+                        </p>
+                    </div>
+                    <span class="text-brand text-xs font-semibold mt-4 inline-flex items-center gap-1">تصفح النماذج &larr;</span>
+                </a>
+
+                <!-- Card 4 -->
+                <a href="architecture.html" class="group bg-dark-900 p-6 rounded-2xl border border-white/5 hover:border-brand/40 transition-all flex flex-col justify-between">
+                    <div>
+                        <div class="text-3xl mb-4">⚙️</div>
+                        <h3 class="text-lg font-bold text-white group-hover:text-brand transition-colors mb-2">المعمارية التقنية</h3>
+                        <p class="text-slate-400 text-xs leading-relaxed">
+                            تفاصيل محرك التنفيذ ثلاثي المحاور، معادلات ميزانية الذاكرة، وواجهات برمجة التطبيقات (OpenAPI).
+                        </p>
+                    </div>
+                    <span class="text-brand text-xs font-semibold mt-4 inline-flex items-center gap-1">التفاصيل التقنية &larr;</span>
+                </a>
+            </div>
+        </div>
+    </section>
+
+    <!-- Maintainer Profile Section -->
+    <section id="author" class="py-20 border-b border-white/5 bg-dark-900">
+        <div class="max-w-4xl mx-auto px-6">
+            <div class="bg-gradient-to-br from-dark-850 to-dark-900 rounded-3xl p-8 sm:p-10 border border-white/10 shadow-xl flex flex-col sm:flex-row items-center sm:items-start gap-8">
+                <img src="https://avatars.githubusercontent.com/u/1162549?v=4" alt="محمد فؤاد فخرالدين" class="w-28 h-28 sm:w-32 sm:h-32 rounded-2xl object-cover border-2 border-brand/30 shadow-lg shrink-0">
+                <div class="text-center sm:text-right flex-1">
+                    <span class="text-brand font-mono text-xs uppercase tracking-wider font-semibold">المطور والمشرف على المشروع</span>
+                    <h3 class="text-2xl font-bold text-white mt-1 mb-2">محمد فؤاد فخرالدين</h3>
+                    <p class="text-slate-300 text-sm leading-relaxed mb-6">
+                        يعمل في مجالات حوكمة مكاتب المشاريع (PMO)، أنظمة الذكاء الاصطناعي، وأطر العمل الرشيقة للمؤسسات. يطور LocalPilot لإتاحة نماذج الذكاء الاصطناعي المحلية الخاصة والآمنة لجميع المستخدمين بشفافية وسهولة تامة.
+                    </p>
+                    <div class="flex flex-wrap items-center justify-center sm:justify-start gap-3 text-xs">
+                        <a href="https://fakhr.me/" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-brand font-medium transition-colors">
+                            🌐 fakhr.me
+                        </a>
+                        <a href="https://www.linkedin.com/in/fakhruldeen" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 font-medium transition-colors">
+                            LinkedIn
+                        </a>
+                        <a href="https://github.com/fakhruldeen" target="_blank" class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 font-medium transition-colors">
+                            GitHub
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Prominent Disclaimer Banner -->
+    <aside class="py-12 bg-dark-950 border-b border-white/5">
+        <div class="max-w-4xl mx-auto px-6">
+            <div class="rounded-2xl bg-amber-500/10 border border-amber-500/20 p-6 flex flex-col sm:flex-row items-start gap-4">
+                <span class="text-2xl">⚠️</span>
+                <div class="text-xs text-amber-200/90 leading-relaxed text-right">
+                    <strong class="text-amber-100 font-semibold block mb-1">إخلاء مسؤولية وتنبيه هام:</strong>
+                    تطبيق LocalPilot مخصص للاستخدام الشخصي، والتعلم، والتجربة. تشغيل نماذج الذكاء الاصطناعي محلياً يستهلك طاقة معالجة وذاكرة من حاسوبك. يتم توفير هذا البرنامج "كما هو" دون أي ضمانات من أي نوع. لا يتحمل المؤلف أي مسؤولية عن استقرار النظام أو فقدان البيانات. يُرجى مراجعة مخرجات النماذج والاحتفاظ بنسخ احتياطية لملفاتك الهامة دائماً.
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Footer -->
+    <footer class="mt-auto border-t border-white/5 py-10 bg-dark-900">
+        <div class="max-w-7xl mx-auto px-6 space-y-6">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-300">
+                <div class="flex items-center gap-3">
+                    <img src="../img/logo.png" alt="LocalPilot" class="w-6 h-6 rounded-md object-contain opacity-75">
+                    <span>&copy; 2026 LocalPilot &bull; مرخص تحت رخصة GNU GPLv3 مفتوحة المصدر</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-6">
+                    <a href="index.html" class="hover:text-brand transition-colors">الرئيسية</a>
+                    <a href="guide.html" class="hover:text-brand transition-colors">دليل المبتدئين</a>
+                    <a href="install.html" class="hover:text-brand transition-colors">دليل التثبيت</a>
+                    <a href="models.html" class="hover:text-brand transition-colors">دليل النماذج</a>
+                    <a href="faq.html" class="hover:text-brand transition-colors">الأسئلة الشائعة</a>
+                    <a href="architecture.html" class="hover:text-brand transition-colors">المعمارية التقنية</a>
+                    <a href="../index.html" class="hover:text-brand transition-colors font-medium text-brand">English 🌐</a>
+                    <a href="https://github.com/fakhruldeen/LocalPilot" target="_blank" class="hover:text-brand transition-colors">GitHub</a>
+                </div>
+            </div>
+            <div class="pt-4 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-3 text-[11px] text-slate-400">
+                <div class="flex items-center gap-2">
+                    <span class="px-2 py-0.5 rounded bg-white/5 border border-white/10 font-mono text-[10px] text-brand">DOI</span>
+                    <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="hover:text-brand transition-colors underline font-mono text-slate-300">10.5281/zenodo.23424540</a>
+                </div>
+                <div class="text-center md:text-left leading-relaxed" dir="ltr">
+                    Mohamed (Fouad) Fakhruldeen. (2026). <em class="text-slate-300">fakhruldeen/LocalPilot: v0.2.5</em> (Version v0.2.5) [Computer software]. Zenodo. <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="text-brand hover:underline font-mono">https://doi.org/10.5281/zenodo.23424540</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Interactive Scripts -->
+    <script>
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        }
+
+        const installCommands = {
+            'curl': 'curl -fsSL https://raw.githubusercontent.com/fakhruldeen/LocalPilot/main/install-localpilot.sh | bash',
+            'pipx': 'pipx install localpilot',
+            'pip': 'pip install localpilot'
+        };
+
+        function switchTab(tab) {
+            document.getElementById('install-command').innerText = installCommands[tab];
+            ['curl', 'pipx', 'pip'].forEach(t => {
+                const el = document.getElementById('tab-' + t);
+                if (t === tab) {
+                    el.className = 'px-3 py-1 rounded-lg bg-brand/10 text-brand font-semibold border border-brand/20 transition-all';
+                } else {
+                    el.className = 'px-3 py-1 rounded-lg text-slate-400 hover:text-slate-200 transition-all';
+                }
+            });
+        }
+
+        function copyInstall() {
+            const cmd = document.getElementById('install-command').innerText;
+            navigator.clipboard.writeText(cmd).then(() => {
+                const btnText = document.getElementById('copy-text');
+                btnText.innerText = 'تم النسخ! ✓';
+                setTimeout(() => { btnText.innerText = 'نسخ الأمر'; }, 2000);
+            });
+        }
+
+        function switchSim(tab) {
+            ['doc', 'rec', 'chat'].forEach(t => {
+                const screen = document.getElementById('sim-screen-' + t);
+                const btn = document.getElementById('sim-btn-' + t);
+                if (t === tab) {
+                    screen.classList.remove('hidden');
+                    btn.className = 'text-[11px] font-sans px-2.5 py-1 rounded bg-brand/10 text-brand border border-brand/20';
+                } else {
+                    screen.classList.add('hidden');
+                    btn.className = 'text-[11px] font-sans px-2.5 py-1 rounded text-slate-400 hover:text-slate-200';
+                }
+            });
+        }
+
+        const hardwareProfiles = {
+            'mac-8': {
+                title: 'أجهزة Mac برقاقات Apple Silicon (ذاكرة 8 جيجابايت)',
+                badge: 'تشغيل سلس عبر المعالج وتقنية Metal',
+                speed: 'معمارية ذاكرة موحدة (Unified Memory)',
+                model: 'Llama 3.2 (3B) أو Qwen 2.5 (3B)',
+                ram: 'يستهلك حوالي 2.2 جيجابايت',
+                headroom: 'يترك هامش ذاكرة آمن لنظام macOS والتطبيقات والمتصفح.',
+                tasks: 'الصياغة، التلخيص والأسئلة اليومية',
+                cmd: 'localpilot chat llama3.2:3b'
+            },
+            'mac-16': {
+                title: 'أجهزة Mac برقاقات Apple Silicon (ذاكرة 16 إلى 36+ جيجابايت)',
+                badge: 'تشغيل سريع مع تسريع رسومي متقدم',
+                speed: 'نطاق ترددي فائق للذاكرة الموحدة',
+                model: 'Qwen 2.5 (7B) أو Llama 3.1 (8B) أو Mistral (7B)',
+                ram: 'يستهلك حوالي 4.8 جيجابايت',
+                headroom: 'يترك 11+ جيجابايت لتعدد المهام والتطبيقات الإبداعية.',
+                tasks: 'التحليل المتعمق، النصوص الطويلة والبرمجة',
+                cmd: 'localpilot chat qwen2.5:7b'
+            },
+            'pc-8': {
+                title: 'حاسوب محمول أو مكتبي بنظام Linux (معالج Intel أو AMD مع 8 جيجابايت RAM)',
+                badge: 'تشغيل عبر المعالج الرئيسي (CPU)',
+                speed: 'معالجة متعددة الأنوية',
+                model: 'Llama 3.2 (3B) أو SmolLM2 (1.7B)',
+                ram: 'يستهلك حوالي 2.2 جيجابايت',
+                headroom: 'يترك 5.8 جيجابايت للمتصفح والمهام الخلفية.',
+                tasks: 'التدقيق، العصف الذهني والأسئلة السريعة',
+                cmd: 'localpilot chat llama3.2:3b'
+            },
+            'pc-16': {
+                title: 'حاسوب محمول قوي أو محطة عمل (16 إلى 32 جيجابايت RAM)',
+                badge: 'جاهز لتعدد المهام الثقيلة',
+                speed: 'معالجة قوية متعددة الأنوية',
+                model: 'Mistral (7B) أو Qwen 2.5 (7B) أو Llama 3.1 (8B)',
+                ram: 'يستهلك حوالي 5.1 جيجابايت',
+                headroom: 'يترك 10+ جيجابايت فارغة للمطورين والمهام اليومية.',
+                tasks: 'الاستنباط، التقارير والأسئلة التقنية',
+                cmd: 'localpilot chat mistral:7b'
+            },
+            'gpu': {
+                title: 'حاسوب مزود ببطاقة رسوميات منفصلة (NVIDIA CUDA أو AMD ROCm)',
+                badge: 'تسريع مباشر عبر ذاكرة الفيديو (VRAM)',
+                speed: 'استجابة فائقة السرعة عبر كرت الشاشة',
+                model: 'Llama 3.1 (8B) أو Qwen 2.5 Coder (7B) أو Gemma 2 (9B)',
+                ram: 'يستهلك حوالي 5.5 جيجابايت من ذاكرة VRAM',
+                headroom: 'تبقى ذاكرة النظام الرئيسية (RAM) حرة تماماً لتطبيقاتك.',
+                tasks: 'البرمجة وتوليد النصوص والردود الفورية',
+                cmd: 'localpilot chat llama3.1:8b'
+            }
+        };
+
+        function selectHardware(key) {
+            const p = hardwareProfiles[key];
+            if (!p) return;
+
+            document.getElementById('hw-title').innerText = p.title;
+            document.getElementById('hw-badge').innerText = p.badge;
+            document.getElementById('hw-speed').innerText = p.speed;
+            document.getElementById('hw-model').innerText = p.model;
+            document.getElementById('hw-ram').innerText = p.ram;
+            document.getElementById('hw-headroom').innerText = p.headroom;
+            document.getElementById('hw-tasks').innerText = p.tasks;
+            document.getElementById('hw-cmd').innerText = p.cmd;
+
+            ['mac-8', 'mac-16', 'pc-8', 'pc-16', 'gpu'].forEach(k => {
+                const btn = document.getElementById('hw-btn-' + k);
+                if (k === key) {
+                    btn.className = 'hw-tab-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all border bg-brand/10 border-brand/30 text-brand';
+                } else {
+                    btn.className = 'hw-tab-btn px-4 py-2.5 rounded-xl text-xs sm:text-sm font-semibold transition-all border bg-dark-900 border-white/10 text-slate-300 hover:text-white hover:border-white/20';
+                }
+            });
+        }
+    </script>
+    <script>
+        const themeToggle = document.getElementById('theme-toggle');
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => {
+                const current = document.documentElement.getAttribute('data-theme') || 'dark';
+                const next = current === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', next);
+                localStorage.setItem('localpilot-theme', next);
+            });
+        }
+    </script>
+
+</body>
+</html>

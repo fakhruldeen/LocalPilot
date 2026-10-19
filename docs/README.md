@@ -1,40 +1,44 @@
-# LocalPilot Documentation
+# LocalPilot Documentation Hub
 
-Welcome to the **LocalPilot** documentation hub. This directory contains detailed architectural specifications, hardware compatibility matrices, installation guides, API references, and internationalization resources.
-
----
-
-## 📚 Table of Contents
-
-### 1. Guides & Conceptual Architecture
-* **[Conceptual Guide](CONCEPTUAL_GUIDE.md)**: Deep dive into LocalPilot's architecture, memory budgeting model, runtimes (llama.cpp & Ollama), and local-first offline safety guarantees.
-* **[Installation Guide](INSTALLATION.md)**: Manual and script-based installation instructions across Linux, macOS, and Windows.
-* **[API Reference (OpenAPI)](openapi.json)**: Complete OpenAPI 3.1 schema specification for LocalPilot's local OpenAI-compatible inference and telemetry endpoints.
-
-### 2. Compatibility & Hardware Matrices
-* **[Hardware Support Matrix](SUPPORT_MATRIX.md)**: Operating systems, architectures (x86_64, ARM64), Apple Silicon (M1–M4), NVIDIA CUDA, AMD ROCm, and Intel Arc matrix.
-* **[Verified Support Matrix](VERIFIED_SUPPORT_MATRIX.md)**: Rigorous matrix documenting verified tiers, partially supported setups, and unsupported platforms (including pure native Windows console limitations vs. WSL2).
-* **[Known Limitations](KNOWN_LIMITATIONS.md)**: Known platform limits, memory budgeting constraints, sandbox restrictions, and workarounds.
-
-### 3. Internationalization (العربية / Arabic)
-* **[دليل التوثيق باللغة العربية (Arabic Docs Hub)](ar/README.md)**: الدليل الشامل والمترجم بالكامل للغة العربية.
-  * [الدليل المفاهيمي (Conceptual Guide)](ar/CONCEPTUAL_GUIDE.md)
-  * [دليل التثبيت (Installation)](ar/INSTALLATION.md)
-  * [دليل البدء السريع (Quickstart)](ar/QUICKSTART.md)
-  * [مصفوفة دعم العتاد (Support Matrix)](ar/SUPPORT_MATRIX.md)
-  * [الأسئلة الشائعة (FAQ)](ar/FAQ.md)
-  * [معمارية النظام (Architecture)](ar/ARCHITECTURE.md)
-
-### 4. Interactive Documentation & Web Pages
-LocalPilot provides a clean static documentation site deployed with GitHub Pages:
-* **[index.html](index.html)**: Interactive landing page and feature overview.
-* **[guide.html](guide.html)**: Interactive quickstart and workflow walkthrough.
-* **[install.html](install.html)**: Guided interactive installation selector.
-* **[models.html](models.html)**: Interactive model catalog and hardware fit calculator.
-* **[architecture.html](architecture.html)**: Interactive subsystem diagram and dataflow viewer.
-* **[faq.html](faq.html)**: Comprehensive searchable troubleshooting and FAQ.
+Welcome to the **LocalPilot** documentation hub. This directory organizes all user guides, hardware compatibility specifications, and technical architecture references.
 
 ---
 
-## 🛡️ Audits & Quality Assurance
-For complete test audits, failure recovery validations, performance baselines, and security reviews, refer to the [LocalPilot Audit Directory](../audit/README.md).
+## 🟢 Beginner Documentation (Start Here)
+
+Designed for users who want to run AI models on their computer without prior machine learning or systems engineering experience:
+
+1. **[Quick Overview & Purpose](../README.md)**: What LocalPilot does, what you can do with it, and who it is for.
+2. **[Your First Conversation Guide](FIRST_CONVERSATION.md)**: Step-by-step walkthrough covering terminal opening, installation, first-run wizard, first prompt, and everyday commands.
+3. **[Interactive Website Guide (guide.html)](guide.html)**: Visual, jargon-free guide with plain-English AI glossary and example prompts.
+4. **[Choosing Models & Hardware Fit (models.html)](models.html)**: How memory budgeting works and how to pick models suited for your RAM.
+5. **[Stopping & Removing Models](FIRST_CONVERSATION.md#section-11--finishing-or-stopping)**: Understanding the difference between leaving chat, stopping a model to free RAM, and removing weights to free disk space.
+6. **[Privacy & Internet Access](FIRST_CONVERSATION.md#section-1--before-you-begin)**: Clear boundary explanations: internet for setup/downloads, private local loopback for inference.
+7. **[Common Problems & FAQ (faq.html)](faq.html)**: Searchable answers to connection, download, memory, and permissions questions.
+
+---
+
+## 🔵 Advanced & Developer Documentation
+
+For system administrators, software developers, and users configuring automated local pipelines:
+
+1. **[Conceptual Guide & Memory Architecture](CONCEPTUAL_GUIDE.md)**: Deep dive into LocalPilot's 3-axis execution model, memory budgeting formulas, inference runtimes (llama.cpp and Ollama), and local loopback isolation.
+2. **[Advanced Installation Alternatives](INSTALLATION.md)**: Scope management (isolated, user, system-wide), custom installation prefixes, `pipx`, `uv`, and manual uninstallation.
+3. **[Hardware Support Matrix](SUPPORT_MATRIX.md)**: Operating systems, architectures (x86_64, ARM64), Apple Silicon (M1–M4), NVIDIA CUDA, AMD ROCm, and Intel Arc.
+4. **[Verified Support Matrix](VERIFIED_SUPPORT_MATRIX.md)**: Verified platform tiers, test evidence, runtime guarantees, and application connector specifications (OpenCode, VS Code Continue, Cursor).
+5. **[Known Limitations & Operational Boundaries](KNOWN_LIMITATIONS.md)**: Explicit boundaries covering loopback interface constraints, context scaling, and unprivileged user init services.
+6. **[Local API Reference (OpenAPI 3.1)](openapi.json)**: Complete OpenAPI schema for the local OpenAI-compatible inference gateway and telemetry endpoints.
+7. **[Technical Architecture Manual (architecture.html)](architecture.html)**: Interactive subsystem dataflow diagram and lifecycle state machine.
+8. **[Audit & Assurance Trail (`../audit/`)](../audit/README.md)**: Independent testing logs, security scans, failure recovery verification, and release readiness matrices.
+
+---
+
+## 🌐 التوثيق باللغة العربية (Arabic Documentation)
+
+* **[مركز التوثيق العربي (ar/README.md)](ar/README.md)**: الفهرس الشامل والمترجم لكافة الأدلة والوثائق.
+  * [محادثتك الأولى مع LocalPilot (دليل المبتدئين)](ar/FIRST_CONVERSATION.md)
+  * [الدليل المفاهيمي وإدارة الذاكرة](ar/CONCEPTUAL_GUIDE.md)
+  * [دليل التثبيت وخيارات الحزم](ar/INSTALLATION.md)
+  * [مصفوفة دعم العتاد](ar/SUPPORT_MATRIX.md)
+  * [الأسئلة الشائعة وحل المشكلات](ar/FAQ.md)
+  * [معمارية النظام الفنية](ar/ARCHITECTURE.md)

@@ -41,6 +41,11 @@ from localpilot.application.accounting_service import ApiAccountingService
 from localpilot.application.api_key_service import ApiKeyService
 from localpilot.application.integration_service import ConnectionManager, IntegrationTemplateService
 from localpilot.application.startup_service import StartupService
+from localpilot.application.diagnostic_service import DiagnosticService
+from localpilot.application.benchmark_service import BenchmarkService
+from localpilot.application.task_service import TaskService
+from localpilot.application.search_service import SearchService
+from localpilot.application.voice_service import VoiceService
 from localpilot.application.hook_service import LifecycleHookService
 from localpilot.application.version_service import ModelVersionService
 from localpilot.domain.api_contract import HookEvent
@@ -88,6 +93,22 @@ app.add_typer(hooks_app, name="hooks")
 favorite_app = typer.Typer(help="Manage favorite models for quick discovery and access.")
 app.add_typer(favorite_app, name="favorite")
 app.add_typer(favorite_app, name="fav")
+
+bench_app = typer.Typer(help="Benchmark and compare local model latency, throughput, and memory.")
+app.add_typer(bench_app, name="bench")
+
+tools_app = typer.Typer(help="Discover and execute task-specific local AI tools.")
+app.add_typer(tools_app, name="tools")
+
+search_app = typer.Typer(help="Index local documents and answer questions with citations (offline RAG).")
+app.add_typer(search_app, name="search")
+
+voice_app = typer.Typer(help="Speech-to-text, text-to-speech, and voice interaction.")
+app.add_typer(voice_app, name="voice")
+
+catalog_app = typer.Typer(help="Manage and inspect initial model databases, sources, providers, and developers.")
+app.add_typer(catalog_app, name="catalog")
+app.add_typer(catalog_app, name="db")
 
 
 
@@ -152,6 +173,9 @@ def _do_discover(
     favorites: bool = False,
     plain: bool = False,
     json_output: bool = False,
+    capability: Optional[str] = None,
+    provider: Optional[str] = None,
+    source: Optional[str] = None,
 ) -> None:
     task_val = _val(task, None)
     query_val = str(_val(query, ""))
@@ -160,6 +184,9 @@ def _do_discover(
     fav_val = bool(_val(favorites, False))
     plain_val = bool(_val(plain, False))
     json_val = bool(_val(json_output, False))
+    cap_val = _val(capability, None)
+    prov_val = _val(provider, None)
+    src_val = _val(source, None)
 
     cat_svc = CatalogService()
     if refresh_val or cat_svc.is_first_run():
@@ -180,7 +207,16 @@ def _do_discover(
                 console.print(f"[yellow]⚠ Notice: Catalog refresh encountered an issue: {ex}. Using existing cached models.[/yellow]\n")
 
     task_cat = TaskCategory(task_val.lower()) if task_val and isinstance(task_val, str) else None
-    results = cat_svc.discover(task=task_cat, query=query_val, only_compatible=not all_val, only_favorites=fav_val)
+    caps_list = [cap_val.lower().strip()] if cap_val else None
+    results = cat_svc.discover(
+        task=task_cat,
+        query=query_val,
+        only_compatible=not all_val,
+        only_favorites=fav_val,
+        capabilities=caps_list,
+        provider=prov_val,
+        source=src_val,
+    )
 
     if not results and not json_val:
         if fav_val:
@@ -202,8 +238,11 @@ def _do_discover(
             compat_str = "Compatible" if r.compatibility.is_compatible else "Exceeds RAM"
             fav_str = " ★" if r.is_favorite else ""
             alias_str = cand.short_alias or cand.display_alias
-            off_str = f"Official ({cand.provenance.get('publisher', 'Lab')})" if cand.is_official else f"Community ({cand.provenance.get('publisher', 'Contrib')})"
-            print(f"{cand.name}{fav_str} | Alias: {alias_str} | Resource: {off_str} | Source: {cand.source} | Size: {sz_mb:.0f}MB | Score: {r.score.total_score} | Fit: {compat_str} | ID: {cand.candidate_id}")
+            caps_str = getattr(cand, "capabilities_table_badge", "General")
+            prov_str = cand.publisher_display
+            off_str = f"Official ({prov_str})" if cand.is_official else f"Community ({prov_str})"
+            rel_str = cand.release_date_display
+            print(f"{cand.name}{fav_str} | Alias: {alias_str} | Caps: {caps_str} | Provider: {prov_str} | Released: {rel_str} | Resource: {off_str} | Source: {cand.source} | Size: {sz_mb:.0f}MB | Score: {r.score.total_score} | Fit: {compat_str} | ID: {cand.candidate_id}")
         return
 
     title = "Favorite Models" if fav_val else ("All Catalog Models" if all_val else "Compatible Models for Your Computer")
@@ -211,8 +250,10 @@ def _do_discover(
     table.add_column("Score", style="bold green", justify="right")
     table.add_column("Model Name", style="bold")
     table.add_column("Short Alias", style="bold cyan")
-    table.add_column("Resource", style="bold")
+    table.add_column("Capabilities", style="bold magenta")
+    table.add_column("Provider", style="bold")
     table.add_column("Source")
+    table.add_column("Released", style="dim")
     table.add_column("Size", justify="right")
     table.add_column("Context", justify="right")
     table.add_column("Fit Status")
@@ -224,18 +265,21 @@ def _do_discover(
         score_styled = f"{r.score.total_score:.0f}" if r.compatibility.is_compatible else f"[dim yellow]{r.score.total_score:.0f}[/dim yellow]"
         name_styled = f"[yellow]★[/yellow] {cand.name}" if r.is_favorite else cand.name
         alias_str = cand.short_alias or cand.display_alias
+        caps_str = getattr(cand, "capabilities_table_badge", "General")
+        prov_name = cand.publisher_display
         if cand.is_official:
-            pub = cand.provenance.get("publisher", "Official")
-            resource_styled = f"[bold green]✓ Official ({pub})[/bold green]"
+            prov_styled = f"[bold green]✓ {prov_name}[/bold green]"
         else:
-            pub = cand.provenance.get("publisher", "Community")
-            resource_styled = f"[dim]Community ({pub})[/dim]"
+            prov_styled = f"[dim]Community ({prov_name})[/dim]"
+        rel_str = cand.release_date_display
         table.add_row(
             score_styled,
             name_styled,
             alias_str,
-            resource_styled,
+            caps_str,
+            prov_styled,
             cand.source.title(),
+            rel_str,
             f"{sz_mb:.0f} MB",
             str(cand.usable_context),
             r.compatibility.friendly_explanation,
@@ -681,25 +725,123 @@ def launch_tui() -> None:
 
 @app.command("doctor")
 def run_doctor(
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Target model alias to diagnose"),
+    connection: Optional[str] = typer.Option(None, "--connection", "-c", help="Target connection ID to diagnose"),
+    tool: Optional[str] = typer.Option(None, "--tool", "-t", help="Target tool ID to diagnose"),
+    repair: bool = typer.Option(False, "--repair", help="Review and apply recommended repairs"),
+    yes: bool = typer.Option(False, "--yes", "-y", help="Automatically accept non-destructive repairs"),
     plain: bool = typer.Option(False, "--plain", help="Print in plain text format without colors or borders"),
     json_output: bool = typer.Option(False, "--json", help="Output machine-readable JSON diagnostic data"),
 ) -> None:
-    """Check computer hardware, available memory budget, GPUs, and runtimes.
+    """Check computer hardware, available memory budget, GPUs, runtimes, models, and apply repairs.
 
     Non-technical: Tells you immediately what your computer is capable of running safely without freezing or crashing.
     Technical: Probes OS, CPU architectures/AVX flags, physical/logical cores, unified vs discrete RAM budgets, CUDA/Metal GPUs, and existing runtime processes/binaries.
 
     Examples:
       localpilot doctor
+      localpilot doctor --model llama3
+      localpilot doctor --repair
       localpilot doctor --plain
       localpilot doctor --json
     """
-    _do_doctor(plain=plain, json_output=json_output)
+    model_alias = _val(model, None)
+    conn_id = _val(connection, None)
+    tool_id = _val(tool, None)
+    repair_flag = bool(_val(repair, False))
+    auto_yes = bool(_val(yes, False))
+    plain_val = bool(_val(plain, False))
+    json_val = bool(_val(json_output, False))
+
+    diag_svc = DiagnosticService()
+    findings = []
+    category_title = "System & Hardware Health"
+
+    if model_alias:
+        category_title = f"Model Diagnostics: {model_alias}"
+        findings = diag_svc.check_model_diagnostics(model_alias)
+    elif conn_id:
+        category_title = f"Connection Diagnostics: {conn_id}"
+        findings = diag_svc.check_connection_diagnostics(conn_id)
+    elif tool_id:
+        category_title = f"Tool Diagnostics: {tool_id}"
+        findings = diag_svc.check_tool_diagnostics(tool_id)
+    else:
+        if not json_val:
+            _do_doctor(plain=plain_val, json_output=False)
+        findings = diag_svc.run_general_diagnostics()
+
+    repairs_executed = []
+    if repair_flag:
+        for f in findings:
+            if f.can_repair:
+                plan = diag_svc.get_repair_plan(f)
+                if plan:
+                    should_apply = auto_yes
+                    if not should_apply and not json_val and not plain_val:
+                        should_apply = typer.confirm(f"Apply repair: {plan.description}?", default=True)
+                    elif not should_apply:
+                        should_apply = True  # In plain/json non-interactive mode with --repair, proceed
+                    if should_apply:
+                        res = diag_svc.execute_repair(plan)
+                        repairs_executed.append(res.model_dump())
+
+    if json_val:
+        output_payload = {
+            "category": category_title,
+            "findings": [f.model_dump() for f in findings],
+            "repairs_executed": repairs_executed,
+        }
+        if not (model_alias or conn_id or tool_id):
+            report = SystemInspector().inspect()
+            output_payload["hardware"] = json.loads(report.hardware.model_dump_json())
+            output_payload["discovered_runtimes"] = [json.loads(r.model_dump_json()) for r in report.discovered_runtimes]
+        typer.echo(json.dumps(output_payload, indent=2))
+        return
+
+    if plain_val:
+        print(f"\n=== {category_title} ===")
+        for f in findings:
+            print(f"[{f.severity.value.upper()}] {f.title}: {f.message}")
+            if f.remediation_suggestion:
+                print(f"  Suggestion: {f.remediation_suggestion}")
+        if repairs_executed:
+            print("\n=== Repairs Applied ===")
+            for r in repairs_executed:
+                print(f"- {r['message']} (Success: {r['success']})")
+        return
+
+    table = Table(title=f"Diagnostic Findings: {category_title}", border_style="cyan")
+    table.add_column("Severity", style="bold")
+    table.add_column("Finding")
+    table.add_column("Details")
+    table.add_column("Action / Repair")
+
+    for f in findings:
+        sev_style = "green" if f.severity.value == "info" else ("yellow" if f.severity.value == "warning" else "red")
+        repair_text = f"[bold green]Available[/bold green] ({f.repair_action})" if f.can_repair else "[dim]None[/dim]"
+        table.add_row(
+            f"[{sev_style}]{f.severity.value.upper()}[/{sev_style}]",
+            f.title,
+            f"{f.message}\n[dim]{f.remediation_suggestion or ''}[/dim]",
+            repair_text,
+        )
+    console.print(table)
+
+    if repairs_executed:
+        console.print("\n[bold green]Repairs Successfully Applied:[/bold green]")
+        for r in repairs_executed:
+            console.print(f"  ✓ {r['message']}")
+    elif any(f.can_repair for f in findings) and not repair_flag:
+        console.print("\n[yellow]💡 Potential repairs detected. Run with [bold cyan]--repair[/bold cyan] to review and apply.[/yellow]")
 
 
 @app.command("discover")
 def discover_models(
     task: Optional[str] = typer.Option(None, "--task", help="Filter by task category: chat, coding"),
+    capability: Optional[str] = typer.Option(None, "--capability", "-c", help="Filter by capability: coding, writing, image, audio, video, reasoning"),
+    provider: Optional[str] = typer.Option(None, "--provider", "-p", help="Filter by model creator / provider (e.g. nvidia, cohere, meta, google, deepseek, mistral, microsoft, allenai, etc.)"),
+    source: Optional[str] = typer.Option(None, "--source", "-s", help="Filter by model registry source: huggingface, ollama, modelscope"),
     query: str = typer.Option("", "--query", "-q", help="Search text matching name, family, or tags"),
     refresh: bool = typer.Option(False, "--refresh", "-r", help="Fetch latest models from active sources (Hugging Face Hub, Ollama)"),
     all_models: bool = typer.Option(False, "--all", "-a", help="Show all catalog models, including those requiring more RAM than currently available"),
@@ -714,6 +856,10 @@ def discover_models(
 
     Examples:
       localpilot discover
+      localpilot discover --provider nvidia
+      localpilot discover --provider cohere
+      localpilot discover --capability coding
+      localpilot discover --source ollama
       localpilot discover --favorites
       localpilot discover --refresh
       localpilot discover --all
@@ -722,7 +868,18 @@ def discover_models(
       localpilot discover -q "deepseek" --all
       localpilot discover --plain
     """
-    _do_discover(task=task, query=query, refresh=refresh, all_models=all_models, favorites=favorites, plain=plain, json_output=json_output)
+    _do_discover(
+        task=task,
+        query=query,
+        refresh=refresh,
+        all_models=all_models,
+        favorites=favorites,
+        plain=plain,
+        json_output=json_output,
+        capability=capability,
+        provider=provider,
+        source=source,
+    )
 
 
 @app.command("installed")
@@ -2052,11 +2209,12 @@ def app_stats(
 
 @app.command("connect")
 def app_connect(
-    target_app: str = typer.Argument("opencode", help="Application to connect: opencode, continue, cursor, or generic"),
+    target_app: Optional[str] = typer.Argument(None, help="Application to connect: opencode, continue, cursor, or generic"),
     port: int = typer.Option(8080, "--port", "-p", help="Gateway port"),
     model: str = typer.Option("coding", "--model", "-m", help="Target model alias to connect"),
     write: bool = typer.Option(False, "--write", "-w", help="Automatically write configuration file if supported"),
     dry_run: bool = typer.Option(False, "--dry-run", help="Preview configuration changes without writing to disk"),
+    preview: bool = typer.Option(False, "--preview", help="Preview configuration changes without writing to disk"),
     key: Optional[str] = typer.Option(None, "--key", "-k", help="Reuse existing API key ID instead of creating new key"),
     test: bool = typer.Option(False, "--test", "-t", help="Run 5-stage connection diagnostic test after creation"),
     json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
@@ -2065,17 +2223,27 @@ def app_connect(
     """Generate configuration and integration instructions for supported local apps."""
     write = bool(_val(write, False))
     dry_run = bool(_val(dry_run, False))
+    preview_val = bool(_val(preview, False))
     test = bool(_val(test, False))
     json_output = bool(_val(json_output, False))
     plain = bool(_val(plain, False))
-    target_app = str(_val(target_app, "opencode")).lower().strip()
     port = int(_val(port, 8080))
     model = str(_val(model, "coding"))
     key_id = _val(key, None)
 
+    target_app_raw = _val(target_app, None)
+    if not target_app_raw:
+        if not plain and not json_output:
+            console.print("\n[bold cyan]LocalPilot Application Connection Wizard[/bold cyan]")
+            console.print("Supported clients: [bold]opencode[/bold], [bold]continue[/bold], [bold]cursor[/bold], [bold]generic[/bold]")
+            target_app_raw = typer.prompt("Select application to connect", default="opencode")
+        else:
+            target_app_raw = "opencode"
+
+    target_app = str(target_app_raw).lower().strip()
     gateway_url = f"http://127.0.0.1:{port}/v1"
     mgr = ConnectionManager()
-    is_preview = dry_run or not write
+    is_preview = dry_run or preview_val or not write
 
     try:
         raw_token, profile, diff_text = mgr.create_connection(
@@ -2139,12 +2307,14 @@ def app_connect(
 
     if verification_data:
         console.print("\n[bold]Connection Diagnostic Verification:[/bold]")
-        console.print(f"  Config Syntax:      {'✓' if verification_data.get('config_valid') else '✗'}")
-        console.print(f"  Gateway Reachable:  {'✓' if verification_data.get('gateway_reachable') else '✗'}")
-        console.print(f"  API Key Valid:      {'✓' if verification_data.get('key_valid') else '✗'}")
-        console.print(f"  Model Authorized:   {'✓' if verification_data.get('model_authorized') else '✗'}")
-        console.print(f"  Diagnostic Probe:   {'✓' if verification_data.get('probe_passed') else '✗'}")
+        console.print(f"  Config Syntax:      {'[green]✓ Valid[/green]' if verification_data.get('config_valid') else '[red]✗ Failed[/red]'}")
+        console.print(f"  Gateway Reachable:  {'[green]✓ Reachable[/green]' if verification_data.get('gateway_reachable') else '[red]✗ Unreachable[/red]'}")
+        console.print(f"  API Key Valid:      {'[green]✓ Active[/green]' if verification_data.get('key_valid') else '[red]✗ Inactive/Revoked[/red]'}")
+        console.print(f"  Model Authorized:   {'[green]✓ Authorized[/green]' if verification_data.get('model_authorized') else '[red]✗ Unauthorized[/red]'}")
+        console.print(f"  Diagnostic Probe:   {'[green]✓ Passed[/green]' if verification_data.get('probe_passed') else '[red]✗ Incomplete[/red]'}")
         console.print(f"  [dim]Note: External client acceptance must be verified directly inside {target_app.title()}.[/dim]")
+    elif not is_preview:
+        console.print("\n[dim]Diagnostic verification was not run. Pass --test to execute verification now.[/dim]")
 
 
 # =============================================================================
@@ -2250,6 +2420,93 @@ def connections_disconnect(
             raise typer.Exit(code=1)
         render_error_box("Disconnect Failed", str(exc))
         raise typer.Exit(code=1)
+
+
+@connections_app.command("restore")
+def connections_restore(
+    connection_id: str = typer.Argument(..., help="Connection ID to restore"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Restore client configuration from original backup file."""
+    json_output = bool(_val(json_output, False))
+    mgr = ConnectionManager()
+    try:
+        res = mgr.restore_connection(connection_id)
+        if json_output:
+            typer.echo(json.dumps(res, indent=2))
+            return
+        render_message_box(
+            "Configuration Restored",
+            f"Connection '{connection_id}' was restored successfully.\nRestored from: {res.get('restored_from')}\nRestored to: {res.get('restored_to')}",
+        )
+    except Exception as exc:
+        if json_output:
+            typer.echo(json.dumps({"error": str(exc), "success": False}, indent=2))
+            raise typer.Exit(code=1)
+        render_error_box("Restore Failed", str(exc))
+        raise typer.Exit(code=1)
+
+
+@connections_app.command("remove")
+def connections_remove(
+    connection_id: str = typer.Argument(..., help="Connection ID to remove"),
+    revoke_key: bool = typer.Option(False, "--revoke-key", help="Also revoke associated API key"),
+    delete_backup: bool = typer.Option(False, "--delete-backup", help="Also delete configuration backup file"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Remove a connection record from LocalPilot."""
+    revoke_key = bool(_val(revoke_key, False))
+    delete_backup = bool(_val(delete_backup, False))
+    json_output = bool(_val(json_output, False))
+    mgr = ConnectionManager()
+    try:
+        res = mgr.remove_connection(connection_id, revoke_key=revoke_key, delete_backup=delete_backup)
+        if json_output:
+            typer.echo(json.dumps(res, indent=2))
+            return
+        render_message_box(
+            "Connection Removed",
+            f"Connection profile '{connection_id}' removed.\nKey revoked: {res['key_revoked']}\nBackup deleted: {res['backup_deleted']}",
+        )
+    except Exception as exc:
+        if json_output:
+            typer.echo(json.dumps({"error": str(exc), "success": False}, indent=2))
+            raise typer.Exit(code=1)
+        render_error_box("Remove Failed", str(exc))
+        raise typer.Exit(code=1)
+
+
+@connections_app.command("inspect")
+def connections_inspect(
+    connection_id: str = typer.Argument(..., help="Connection ID to inspect"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Inspect detailed configuration and status of a connection."""
+    json_output = bool(_val(json_output, False))
+    mgr = ConnectionManager()
+    conn = mgr.get_connection(connection_id)
+    if not conn:
+        if json_output:
+            typer.echo(json.dumps({"error": f"Connection '{connection_id}' not found", "success": False}, indent=2))
+            raise typer.Exit(code=1)
+        render_error_box("Inspect Failed", f"Connection '{connection_id}' not found.")
+        raise typer.Exit(code=1)
+
+    if json_output:
+        typer.echo(json.dumps(conn.model_dump(), indent=2))
+        return
+
+    console.print(f"\n[bold cyan]Connection Profile: {conn.connection_id}[/bold cyan]")
+    console.print(f"  [bold]Name:[/bold]         {conn.name}")
+    console.print(f"  [bold]Client Type:[/bold]  {conn.client_type}")
+    console.print(f"  [bold]Model Alias:[/bold]  {conn.model_alias}")
+    console.print(f"  [bold]Status:[/bold]       {conn.status.value}")
+    console.print(f"  [bold]Gateway URL:[/bold]  {conn.gateway_url}")
+    console.print(f"  [bold]Key ID:[/bold]       {conn.key_id}")
+    console.print(f"  [bold]Config Path:[/bold]  {conn.target_path or 'N/A'}")
+    console.print(f"  [bold]Backup Path:[/bold]  {conn.backup_path or 'N/A'}")
+    console.print(f"  [bold]Created At:[/bold]   {conn.created_at}")
+    console.print(f"  [bold]Updated At:[/bold]   {conn.updated_at}\n")
 
 
 # =============================================================================
@@ -2608,6 +2865,1416 @@ def favorite_toggle(
         render_message_box("Favorite Added", f"★ Added '[bold green]{ref}[/bold green]' to your favorites.")
     else:
         render_message_box("Favorite Removed", f"Removed '[yellow]{ref}[/yellow]' from your favorites.")
+
+
+# =============================================================================
+# Benchmarking CLI
+# =============================================================================
+
+@bench_app.command("run")
+def bench_run(
+    model: str = typer.Argument("default", help="Model alias to benchmark"),
+    suite: str = typer.Option("general", "--suite", "-s", help="Benchmark suite: general, coding, speed"),
+    rounds: int = typer.Option(1, "--rounds", "-r", help="Number of test rounds"),
+    port: int = typer.Option(8080, "--port", "-p", help="Gateway port"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Run standardized performance benchmarks measuring TTFT, TPS, and latency."""
+    model_alias = str(_val(model, "default"))
+    suite_name = str(_val(suite, "general"))
+    rounds_val = int(_val(rounds, 1))
+    port_val = int(_val(port, 8080))
+    plain_val = bool(_val(plain, False))
+    json_val = bool(_val(json_output, False))
+
+    gateway_url = f"http://127.0.0.1:{port_val}/v1"
+    bench_svc = BenchmarkService()
+
+    if not json_val and not plain_val:
+        console.print(f"\n[bold cyan]Starting Benchmark: '{model_alias}' (Suite: {suite_name}, Rounds: {rounds_val})[/bold cyan]")
+
+    try:
+        run = bench_svc.run_benchmark(
+            model_alias=model_alias,
+            suite_name=suite_name,
+            rounds=rounds_val,
+            gateway_url=gateway_url,
+        )
+    except Exception as exc:
+        if json_val:
+            typer.echo(json.dumps({"error": str(exc), "success": False}, indent=2))
+            raise typer.Exit(code=1)
+        render_error_box("Benchmark Failed", str(exc))
+        raise typer.Exit(code=1)
+
+    if json_val:
+        typer.echo(run.model_dump_json(indent=2))
+        return
+
+    if plain_val:
+        print(f"Run ID: {run.run_id}")
+        print(f"Model: {run.model_alias}")
+        print(f"Suite: {run.suite_name}")
+        print(f"Tokens: {run.completion_tokens} generated / {run.prompt_tokens} prompt")
+        print(f"TTFT: {run.ttft_ms:.1f} ms")
+        print(f"TPS: {run.tps:.2f} tokens/sec")
+        print(f"Total Duration: {run.total_duration_ms:.1f} ms")
+        return
+
+    table = Table(title=f"Benchmark Results: {run.model_alias}", border_style="cyan")
+    table.add_column("Metric", style="bold")
+    table.add_column("Measurement")
+
+    table.add_row("Run ID", run.run_id)
+    table.add_row("Suite Name", run.suite_name)
+    table.add_row("Throughput (TPS)", f"[bold green]{run.tps:.2f}[/bold green] tokens/sec")
+    table.add_row("Time to First Token (TTFT)", f"{run.ttft_ms:.1f} ms")
+    table.add_row("Total Generation Duration", f"{run.total_duration_ms:.1f} ms")
+    table.add_row("Prompt Tokens", str(run.prompt_tokens))
+    table.add_row("Completion Tokens", str(run.completion_tokens))
+    table.add_row("Recorded At", run.created_at)
+
+    console.print(table)
+
+
+@bench_app.command("compare")
+def bench_compare(
+    model1: str = typer.Argument(..., help="First model alias"),
+    model2: str = typer.Argument(..., help="Second model alias"),
+    suite: str = typer.Option("general", "--suite", "-s", help="Benchmark suite to compare"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Compare performance metrics between two models."""
+    m1 = str(_val(model1))
+    m2 = str(_val(model2))
+    suite_name = str(_val(suite, "general"))
+    plain_val = bool(_val(plain, False))
+    json_val = bool(_val(json_output, False))
+
+    bench_svc = BenchmarkService()
+    comp = bench_svc.compare_benchmarks(m1, m2, suite_name=suite_name)
+
+    if json_val:
+        typer.echo(comp.model_dump_json(indent=2))
+        return
+
+    if plain_val:
+        print(f"Comparison: {m1} vs {m2} (Suite: {suite_name})")
+        for r in comp.runs:
+            print(f"- {r.model_alias}: {r.tps:.2f} TPS | TTFT {r.ttft_ms:.1f} ms")
+        if comp.winner_alias:
+            print(f"Winner: {comp.winner_alias} ({comp.speedup_ratio:.2f}x faster)")
+        return
+
+    table = Table(title=f"Benchmark Comparison: {m1} vs {m2} ({suite_name})", border_style="cyan")
+    table.add_column("Model Alias", style="bold")
+    table.add_column("Throughput (TPS)", justify="right")
+    table.add_column("TTFT (Latency)", justify="right")
+    table.add_column("Prompt Tokens", justify="right")
+    table.add_column("Completion Tokens", justify="right")
+
+    for r in comp.runs:
+        is_winner = r.model_alias == comp.winner_alias
+        style = "bold green" if is_winner else ""
+        table.add_row(
+            f"[{style}]{r.model_alias}{' ★' if is_winner else ''}[/{style}]",
+            f"[{style}]{r.tps:.2f} tok/s[/{style}]",
+            f"{r.ttft_ms:.1f} ms",
+            str(r.prompt_tokens),
+            str(r.completion_tokens),
+        )
+
+    console.print(table)
+    if comp.winner_alias:
+        console.print(f"\n[bold green]★ {comp.winner_alias}[/bold green] is [bold cyan]{comp.speedup_ratio:.2f}x[/bold cyan] faster in throughput.\n")
+
+
+@bench_app.command("results")
+def bench_results(
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Filter results by model alias"),
+    limit: int = typer.Option(20, "--limit", "-n", help="Max results to display"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """List historical benchmark runs."""
+    m_val = _val(model, None)
+    lim_val = int(_val(limit, 20))
+    plain_val = bool(_val(plain, False))
+    json_val = bool(_val(json_output, False))
+
+    bench_svc = BenchmarkService()
+    runs = bench_svc.list_results(model_alias=m_val, limit=lim_val)
+
+    if json_val:
+        typer.echo(json.dumps([r.model_dump() for r in runs], indent=2))
+        return
+
+    if plain_val:
+        for r in runs:
+            print(f"{r.run_id}\t{r.model_alias}\t{r.suite_name}\t{r.tps:.2f} TPS\t{r.ttft_ms:.1f} ms\t{r.created_at}")
+        return
+
+    table = Table(title="Historical Benchmark Runs", border_style="cyan")
+    table.add_column("Run ID", style="dim")
+    table.add_column("Model Alias", style="bold")
+    table.add_column("Suite")
+    table.add_column("TPS", justify="right", style="green")
+    table.add_column("TTFT", justify="right")
+    table.add_column("Duration", justify="right")
+    table.add_column("Recorded At", style="dim")
+
+    for r in runs:
+        table.add_row(
+            r.run_id,
+            r.model_alias,
+            r.suite_name,
+            f"{r.tps:.2f} tok/s",
+            f"{r.ttft_ms:.1f} ms",
+            f"{r.total_duration_ms:.0f} ms",
+            r.created_at[:19].replace("T", " "),
+        )
+
+    console.print(table)
+
+
+@bench_app.command("show")
+def bench_show(
+    run_id: str = typer.Argument(..., help="Run ID to inspect"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Show detailed breakdown of a benchmark run."""
+    plain_val = bool(_val(plain, False))
+    json_val = bool(_val(json_output, False))
+
+    bench_svc = BenchmarkService()
+    run = bench_svc.get_run(run_id)
+
+    if not run:
+        if json_val:
+            typer.echo(json.dumps({"error": f"Run '{run_id}' not found", "success": False}, indent=2))
+            raise typer.Exit(code=1)
+        render_error_box("Not Found", f"Benchmark run '{run_id}' was not found.")
+        raise typer.Exit(code=1)
+
+    if json_val:
+        typer.echo(run.model_dump_json(indent=2))
+        return
+
+    if plain_val:
+        print(f"Run ID: {run.run_id}")
+        print(f"Model: {run.model_alias}")
+        print(f"Suite: {run.suite_name}")
+        print(f"TPS: {run.tps:.2f}")
+        print(f"TTFT: {run.ttft_ms:.1f} ms")
+        print(f"Raw Metrics: {run.raw_metrics}")
+        return
+
+    console.print(f"\n[bold cyan]Benchmark Run Details: {run.run_id}[/bold cyan]")
+    console.print(f"  [bold]Model Alias:[/bold]   {run.model_alias}")
+    console.print(f"  [bold]Suite:[/bold]         {run.suite_name}")
+    console.print(f"  [bold]Throughput:[/bold]    [bold green]{run.tps:.2f}[/bold green] tokens/sec")
+    console.print(f"  [bold]Latency (TTFT):[/bold] {run.ttft_ms:.1f} ms")
+    console.print(f"  [bold]Prompt Tokens:[/bold] {run.prompt_tokens}")
+    console.print(f"  [bold]Comp Tokens:[/bold]   {run.completion_tokens}")
+    console.print(f"  [bold]Duration:[/bold]      {run.total_duration_ms:.1f} ms")
+    console.print(f"  [bold]Recorded At:[/bold]   {run.created_at}")
+    console.print(f"  [bold]Raw Samples:[/bold]   {json.dumps(run.raw_metrics, indent=2)}\n")
+
+
+# =============================================================================
+# Tools & Task Execution CLI
+# =============================================================================
+
+def _read_tool_input(target: str) -> str:
+    p = Path(target)
+    if p.exists() and p.is_file():
+        try:
+            return p.read_text(encoding="utf-8", errors="replace")
+        except Exception as exc:
+            raise ValueError(f"Failed to read file '{p}': {exc}") from exc
+    return target
+
+
+@tools_app.command("list")
+def tools_list(
+    category: Optional[str] = typer.Option(None, "--category", "-c", help="Filter by category: text, code, structured, retrieval, audio, multimodal"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Discover all 18 supported local AI tool interfaces."""
+    cat_filter = _val(category, None)
+    plain_val = bool(_val(plain, False))
+    json_val = bool(_val(json_output, False))
+
+    task_svc = TaskService()
+    tasks = task_svc.list_tasks()
+
+    if cat_filter:
+        tasks = [t for t in tasks if t.category.value == cat_filter.lower()]
+
+    if json_val:
+        typer.echo(json.dumps([t.model_dump() for t in tasks], indent=2))
+        return
+
+    if plain_val:
+        for t in tasks:
+            print(f"{t.task_id}\t{t.name}\t{t.category.value}\t{t.description}")
+        return
+
+    table = Table(title="Available AI Tools & Tasks", border_style="cyan")
+    table.add_column("Tool ID", style="bold cyan")
+    table.add_column("Name")
+    table.add_column("Category", style="yellow")
+    table.add_column("Description")
+    table.add_column("Example Usage", style="dim")
+
+    for t in tasks:
+        table.add_row(t.task_id, t.name, t.category.value, t.description, t.example_usage)
+
+    console.print(table)
+
+
+@tools_app.command("run")
+def tools_run(
+    task_id: str = typer.Argument(..., help="Task ID: summarize, rewrite, translate, etc."),
+    input_val: str = typer.Argument(..., help="Text prompt or path to input file"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Target model alias"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Run an AI tool interface on text or an input file."""
+    t_id = str(_val(task_id))
+    raw_in = str(_val(input_val))
+    m_val = _val(model, None)
+    plain_val = bool(_val(plain, False))
+    json_val = bool(_val(json_output, False))
+
+    task_svc = TaskService()
+    text = _read_tool_input(raw_in)
+
+    try:
+        run = task_svc.execute_task(task_id=t_id, input_text=text, model_alias=m_val)
+    except Exception as exc:
+        if json_val:
+            typer.echo(json.dumps({"error": str(exc), "success": False}, indent=2))
+            raise typer.Exit(code=1)
+        render_error_box("Task Failed", str(exc))
+        raise typer.Exit(code=1)
+
+    if json_val:
+        typer.echo(run.model_dump_json(indent=2))
+        return
+
+    if plain_val:
+        if run.output_text:
+            print(run.output_text)
+        else:
+            print(f"Error: {run.error_message}")
+        return
+
+    if run.output_text:
+        console.print(f"\n[bold green]Output ({run.task_id} - {run.model_alias} - {run.duration_ms:.0f}ms):[/bold green]")
+        console.print(run.output_text)
+    else:
+        render_error_box("Execution Failed", run.error_message or "Unknown failure")
+
+
+@tools_app.command("summarize")
+def tools_summarize(
+    target: str = typer.Argument(..., help="File path or text to summarize"),
+    bullets: bool = typer.Option(False, "--bullets", "-b", help="Format as bullet points"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Target model alias"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Summarize a document or passage into key points or an executive summary."""
+    text = _read_tool_input(str(_val(target)))
+    task_svc = TaskService()
+    run = task_svc.execute_task(
+        task_id="summarize",
+        input_text=text,
+        parameters={"bullets": bool(_val(bullets, False))},
+        model_alias=_val(model, None),
+    )
+    if _val(json_output, False):
+        typer.echo(run.model_dump_json(indent=2))
+    elif _val(plain, False):
+        print(run.output_text or run.error_message)
+    else:
+        console.print(f"\n[bold green]Summary ({run.model_alias}):[/bold green]\n{run.output_text or run.error_message}")
+
+
+@tools_app.command("rewrite")
+def tools_rewrite(
+    target: str = typer.Argument(..., help="File path or text to rewrite"),
+    tone: str = typer.Option("clear and professional", "--tone", "-t", help="Target tone"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Target model alias"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Rewrite text improving tone, conciseness, and clarity."""
+    text = _read_tool_input(str(_val(target)))
+    task_svc = TaskService()
+    run = task_svc.execute_task(
+        task_id="rewrite",
+        input_text=text,
+        parameters={"tone": str(_val(tone))},
+        model_alias=_val(model, None),
+    )
+    if _val(json_output, False):
+        typer.echo(run.model_dump_json(indent=2))
+    elif _val(plain, False):
+        print(run.output_text or run.error_message)
+    else:
+        console.print(f"\n[bold green]Rewritten ({run.model_alias}):[/bold green]\n{run.output_text or run.error_message}")
+
+
+@tools_app.command("translate")
+def tools_translate(
+    target: str = typer.Argument(..., help="File path or text to translate"),
+    lang: str = typer.Option("English", "--target", "-l", help="Target language (e.g. Arabic, English, Spanish)"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Target model alias"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Translate text accurately into target language."""
+    text = _read_tool_input(str(_val(target)))
+    task_svc = TaskService()
+    run = task_svc.execute_task(
+        task_id="translate",
+        input_text=text,
+        parameters={"target_lang": str(_val(lang))},
+        model_alias=_val(model, None),
+    )
+    if _val(json_output, False):
+        typer.echo(run.model_dump_json(indent=2))
+    elif _val(plain, False):
+        print(run.output_text or run.error_message)
+    else:
+        console.print(f"\n[bold green]Translation ({lang}):[/bold green]\n{run.output_text or run.error_message}")
+
+
+@tools_app.command("explain-code")
+def tools_explain_code(
+    target: str = typer.Argument(..., help="Source file path or code snippet"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Target model alias"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Explain source code logic, architecture, and potential bugs."""
+    text = _read_tool_input(str(_val(target)))
+    task_svc = TaskService()
+    run = task_svc.execute_task(
+        task_id="explain-code",
+        input_text=text,
+        model_alias=_val(model, None),
+    )
+    if _val(json_output, False):
+        typer.echo(run.model_dump_json(indent=2))
+    elif _val(plain, False):
+        print(run.output_text or run.error_message)
+    else:
+        console.print(f"\n[bold green]Code Explanation ({run.model_alias}):[/bold green]\n{run.output_text or run.error_message}")
+
+
+@tools_app.command("generate-code")
+def tools_generate_code(
+    spec: str = typer.Argument(..., help="Specification or prompt for code generation"),
+    language: str = typer.Option("python", "--language", "-l", help="Target programming language"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Target coding model alias"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Generate source code, scripts, or functions from a specification."""
+    text = _read_tool_input(str(_val(spec)))
+    task_svc = TaskService()
+    run = task_svc.execute_task(
+        task_id="generate-code",
+        input_text=text,
+        parameters={"language": str(_val(language))},
+        model_alias=_val(model, None),
+    )
+    if _val(json_output, False):
+        typer.echo(run.model_dump_json(indent=2))
+    elif _val(plain, False):
+        print(run.output_text or run.error_message)
+    else:
+        console.print(f"\n[bold green]Generated Code ({run.model_alias}):[/bold green]\n{run.output_text or run.error_message}")
+
+
+@tools_app.command("refactor-code")
+def tools_refactor_code(
+    target: str = typer.Argument(..., help="Source code file or snippet to refactor"),
+    issue: str = typer.Option("optimize and clean up bugs", "--issue", "-i", help="Goal, bug description, or refactoring guideline"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Target coding model alias"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Refactor code, fix bugs, and optimize performance."""
+    text = _read_tool_input(str(_val(target)))
+    task_svc = TaskService()
+    run = task_svc.execute_task(
+        task_id="refactor-code",
+        input_text=text,
+        parameters={"issue": str(_val(issue))},
+        model_alias=_val(model, None),
+    )
+    if _val(json_output, False):
+        typer.echo(run.model_dump_json(indent=2))
+    elif _val(plain, False):
+        print(run.output_text or run.error_message)
+    else:
+        console.print(f"\n[bold green]Refactored Code ({run.model_alias}):[/bold green]\n{run.output_text or run.error_message}")
+
+
+@tools_app.command("compare")
+def tools_compare(
+    target1: str = typer.Argument(..., help="First file or text"),
+    target2: str = typer.Argument(..., help="Second file or text"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Target model alias"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Compare two documents, configurations, or texts."""
+    t1 = _read_tool_input(str(_val(target1)))
+    t2 = _read_tool_input(str(_val(target2)))
+    combined = f"--- Item 1 ---\n{t1}\n\n--- Item 2 ---\n{t2}"
+    task_svc = TaskService()
+    run = task_svc.execute_task(
+        task_id="compare",
+        input_text=combined,
+        model_alias=_val(model, None),
+    )
+    if _val(json_output, False):
+        typer.echo(run.model_dump_json(indent=2))
+    elif _val(plain, False):
+        print(run.output_text or run.error_message)
+    else:
+        console.print(f"\n[bold green]Comparison ({run.model_alias}):[/bold green]\n{run.output_text or run.error_message}")
+
+
+@tools_app.command("draft")
+def tools_draft(
+    outline: str = typer.Argument(..., help="Outline or prompt for draft"),
+    doc_type: str = typer.Option("document", "--type", "-t", help="Type: email, memo, readme, announcement"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Target model alias"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Draft emails, READMEs, announcements, or memos."""
+    text = _read_tool_input(str(_val(outline)))
+    task_svc = TaskService()
+    run = task_svc.execute_task(
+        task_id="draft",
+        input_text=text,
+        parameters={"type": str(_val(doc_type))},
+        model_alias=_val(model, None),
+    )
+    if _val(json_output, False):
+        typer.echo(run.model_dump_json(indent=2))
+    elif _val(plain, False):
+        print(run.output_text or run.error_message)
+    else:
+        console.print(f"\n[bold green]Drafted {doc_type.title()} ({run.model_alias}):[/bold green]\n{run.output_text or run.error_message}")
+
+
+@tools_app.command("extract")
+def tools_extract(
+    target: str = typer.Argument(..., help="File path or text to extract from"),
+    schema: str = typer.Option("JSON object", "--schema", "-s", help="Fields or JSON schema to extract"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Target model alias"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Extract structured data or JSON fields from unstructured text."""
+    text = _read_tool_input(str(_val(target)))
+    task_svc = TaskService()
+    run = task_svc.execute_task(
+        task_id="extract",
+        input_text=text,
+        parameters={"schema": str(_val(schema))},
+        model_alias=_val(model, None),
+    )
+    if _val(json_output, False):
+        typer.echo(run.model_dump_json(indent=2))
+    elif _val(plain, False):
+        print(run.output_text or run.error_message)
+    else:
+        console.print(f"\n[bold green]Extracted Data ({run.model_alias}):[/bold green]\n{run.output_text or run.error_message}")
+
+
+@tools_app.command("classify")
+def tools_classify(
+    target: str = typer.Argument(..., help="File path or text to classify"),
+    labels: str = typer.Option("positive,negative,neutral", "--labels", "-l", help="Comma-separated candidate labels"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Target model alias"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Classify text according to user-defined categories."""
+    text = _read_tool_input(str(_val(target)))
+    task_svc = TaskService()
+    run = task_svc.execute_task(
+        task_id="classify",
+        input_text=text,
+        parameters={"labels": str(_val(labels))},
+        model_alias=_val(model, None),
+    )
+    if _val(json_output, False):
+        typer.echo(run.model_dump_json(indent=2))
+    elif _val(plain, False):
+        print(run.output_text or run.error_message)
+    else:
+        console.print(f"\n[bold green]Classification ({run.model_alias}):[/bold green]\n{run.output_text or run.error_message}")
+
+
+@tools_app.command("review-table")
+def tools_review_table(
+    target: str = typer.Argument(..., help="CSV or Markdown table file"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Target model alias"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Review tabular data and generate summary insights."""
+    text = _read_tool_input(str(_val(target)))
+    task_svc = TaskService()
+    run = task_svc.execute_task(
+        task_id="review-table",
+        input_text=text,
+        model_alias=_val(model, None),
+    )
+    if _val(json_output, False):
+        typer.echo(run.model_dump_json(indent=2))
+    elif _val(plain, False):
+        print(run.output_text or run.error_message)
+    else:
+        console.print(f"\n[bold green]Table Review ({run.model_alias}):[/bold green]\n{run.output_text or run.error_message}")
+
+
+@tools_app.command("meeting-notes")
+def tools_meeting_notes(
+    target: str = typer.Argument(..., help="Transcript text file"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Target model alias"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Extract action items, decisions, and summaries from meeting transcripts."""
+    text = _read_tool_input(str(_val(target)))
+    task_svc = TaskService()
+    run = task_svc.execute_task(
+        task_id="meeting-notes",
+        input_text=text,
+        model_alias=_val(model, None),
+    )
+    if _val(json_output, False):
+        typer.echo(run.model_dump_json(indent=2))
+    elif _val(plain, False):
+        print(run.output_text or run.error_message)
+    else:
+        console.print(f"\n[bold green]Meeting Notes ({run.model_alias}):[/bold green]\n{run.output_text or run.error_message}")
+
+
+@tools_app.command("describe-image")
+def tools_describe_image(
+    image_path: str = typer.Argument(..., help="Path to image file (.png, .jpg, etc.)"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Target vision model alias"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Analyze and describe the contents of an image using a multimodal model."""
+    img_str = str(_val(image_path))
+    task_svc = TaskService()
+    try:
+        run = task_svc.execute_task(
+            task_id="describe-image",
+            input_text=img_str,
+            model_alias=_val(model, None),
+        )
+    except Exception as exc:
+        if _val(json_output, False):
+            typer.echo(json.dumps({"error": str(exc), "success": False}, indent=2))
+            raise typer.Exit(code=1)
+        render_error_box("Vision Processing Failed", str(exc))
+        raise typer.Exit(code=1)
+
+    if _val(json_output, False):
+        typer.echo(run.model_dump_json(indent=2))
+    elif _val(plain, False):
+        print(run.output_text or run.error_message)
+    else:
+        console.print(f"\n[bold green]Image Description ({run.model_alias}):[/bold green]\n{run.output_text or run.error_message}")
+
+
+@tools_app.command("read-image")
+def tools_read_image(
+    image_path: str = typer.Argument(..., help="Path to image file containing text or diagrams"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Target vision model alias"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Extract visible text and diagram labels from an image (visual OCR)."""
+    img_str = str(_val(image_path))
+    task_svc = TaskService()
+    try:
+        run = task_svc.execute_task(
+            task_id="read-image",
+            input_text=img_str,
+            model_alias=_val(model, None),
+        )
+    except Exception as exc:
+        if _val(json_output, False):
+            typer.echo(json.dumps({"error": str(exc), "success": False}, indent=2))
+            raise typer.Exit(code=1)
+        render_error_box("Vision OCR Failed", str(exc))
+        raise typer.Exit(code=1)
+
+    if _val(json_output, False):
+        typer.echo(run.model_dump_json(indent=2))
+    elif _val(plain, False):
+        print(run.output_text or run.error_message)
+    else:
+        console.print(f"\n[bold green]Extracted Text ({run.model_alias}):[/bold green]\n{run.output_text or run.error_message}")
+
+
+@tools_app.command("generate-image")
+def tools_generate_image(
+    prompt: str = typer.Argument(..., help="Visual scene description or prompt for image generation"),
+    style: str = typer.Option("photorealistic", "--style", "-s", help="Visual style (e.g. cinematic, anime, oil painting)"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Target model alias"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Generate local diffusion prompts, camera lighting, and negative prompts for image synthesis."""
+    text = str(_val(prompt))
+    task_svc = TaskService()
+    run = task_svc.execute_task(
+        task_id="generate-image",
+        input_text=text,
+        parameters={"style": str(_val(style))},
+        model_alias=_val(model, None),
+    )
+    if _val(json_output, False):
+        typer.echo(run.model_dump_json(indent=2))
+    elif _val(plain, False):
+        print(run.output_text or run.error_message)
+    else:
+        console.print(f"\n[bold green]Image Synthesis Specification ({run.model_alias}):[/bold green]\n{run.output_text or run.error_message}")
+
+
+@tools_app.command("generate-video")
+def tools_generate_video(
+    prompt: str = typer.Argument(..., help="Scene description and motion narrative for video generation"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Target model alias"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Generate shot progressions, camera motion vectors, and direction for video diffusion."""
+    text = str(_val(prompt))
+    task_svc = TaskService()
+    run = task_svc.execute_task(
+        task_id="generate-video",
+        input_text=text,
+        model_alias=_val(model, None),
+    )
+    if _val(json_output, False):
+        typer.echo(run.model_dump_json(indent=2))
+    elif _val(plain, False):
+        print(run.output_text or run.error_message)
+    else:
+        console.print(f"\n[bold green]Video Direction Specification ({run.model_alias}):[/bold green]\n{run.output_text or run.error_message}")
+
+
+@tools_app.command("history")
+def tools_history(
+    task: Optional[str] = typer.Option(None, "--task", "-t", help="Filter by task ID"),
+    limit: int = typer.Option(20, "--limit", "-n", help="Max records to display"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """List historical tool executions."""
+    t_val = _val(task, None)
+    lim_val = int(_val(limit, 20))
+    plain_val = bool(_val(plain, False))
+    json_val = bool(_val(json_output, False))
+
+    db = get_db()
+    runs = db.list_task_runs(task_id=t_val, limit=lim_val)
+
+    if json_val:
+        typer.echo(json.dumps(runs, indent=2))
+        return
+
+    if plain_val:
+        for r in runs:
+            print(f"{r['run_id']}\t{r['task_id']}\t{r['model_alias']}\t{r['status']}\t{r['duration_ms']:.0f}ms\t{r['created_at']}")
+        return
+
+    table = Table(title="Tool Execution History", border_style="cyan")
+    table.add_column("Run ID", style="dim")
+    table.add_column("Task ID", style="bold cyan")
+    table.add_column("Model Alias")
+    table.add_column("Status")
+    table.add_column("Duration", justify="right")
+    table.add_column("Input Summary")
+    table.add_column("Executed At", style="dim")
+
+    for r in runs:
+        status_style = "green" if r["status"] == "success" else "red"
+        table.add_row(
+            r["run_id"],
+            r["task_id"],
+            r["model_alias"],
+            f"[{status_style}]{r['status']}[/{status_style}]",
+            f"{r['duration_ms']:.0f} ms",
+            r["input_summary"][:40] + ("..." if len(r["input_summary"]) > 40 else ""),
+            r["created_at"][:19].replace("T", " "),
+        )
+
+    console.print(table)
+
+
+@tools_app.command("ask-files")
+def tools_ask_files(
+    query: str = typer.Argument(..., help="Question to ask over local indexed files"),
+    collection: Optional[str] = typer.Option(None, "--collection", "-c", help="Target collection name or ID"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Target model alias"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Answer questions grounded in local indexed files with source citations."""
+    q = str(_val(query))
+    col = _val(collection, None)
+    m = _val(model, None)
+    plain_val = bool(_val(plain, False))
+    json_val = bool(_val(json_output, False))
+
+    search_svc = SearchService()
+    res = search_svc.ask(query=q, collection_name_or_id=col, model_alias=m)
+
+    if json_val:
+        typer.echo(res.model_dump_json(indent=2))
+        return
+
+    if plain_val:
+        print(res.answer)
+        print("\nSources:")
+        for s in res.sources:
+            print(f"- {s.relative_path} (Lines {s.line_start}-{s.line_end})")
+        return
+
+    console.print(f"\n[bold green]Grounded Answer:[/bold green]\n{res.answer}\n")
+    if res.sources:
+        console.print("[bold cyan]Source Citations:[/bold cyan]")
+        for i, s in enumerate(res.sources, 1):
+            console.print(f"  [{i}] [bold]{s.relative_path}[/bold] (Lines {s.line_start}-{s.line_end}, Relevance: {s.score:.2f})")
+    console.print()
+
+
+@tools_app.command("find-passages")
+def tools_find_passages(
+    query: str = typer.Argument(..., help="Search query to find matching passages"),
+    collection: Optional[str] = typer.Option(None, "--collection", "-c", help="Target collection name or ID"),
+    top: int = typer.Option(5, "--top", "-k", help="Max passages to return"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Retrieve top-matching document passages from indexed collections."""
+    q = str(_val(query))
+    col = _val(collection, None)
+    k = int(_val(top, 5))
+    plain_val = bool(_val(plain, False))
+    json_val = bool(_val(json_output, False))
+
+    search_svc = SearchService()
+    passages = search_svc.find_passages(query=q, collection_name_or_id=col, top_k=k)
+
+    if json_val:
+        typer.echo(json.dumps([p.model_dump() for p in passages], indent=2))
+        return
+
+    if plain_val:
+        for p in passages:
+            print(f"{p.relative_path}:{p.line_start}-{p.line_end}\tScore: {p.score}\n{p.content}\n---")
+        return
+
+    table = Table(title=f"Retrieved Passages: '{q}'", border_style="cyan")
+    table.add_column("Score", justify="right", style="green")
+    table.add_column("Location", style="bold cyan")
+    table.add_column("Content Excerpt")
+
+    for p in passages:
+        excerpt = p.content[:150].replace("\n", " ") + ("..." if len(p.content) > 150 else "")
+        table.add_row(f"{p.score:.2f}", f"{p.relative_path}:{p.line_start}", excerpt)
+
+    console.print(table)
+
+
+# =============================================================================
+# Document Search & Offline RAG CLI
+# =============================================================================
+
+@search_app.command("add")
+def search_add(
+    path: str = typer.Argument(..., help="Path to file or directory to index"),
+    name: Optional[str] = typer.Option(None, "--name", "-n", help="Collection name"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Index a directory or document into a local searchable collection."""
+    p_val = str(_val(path))
+    n_val = _val(name, None)
+    plain_val = bool(_val(plain, False))
+    json_val = bool(_val(json_output, False))
+
+    search_svc = SearchService()
+    try:
+        col = search_svc.add_collection(path=p_val, name=n_val)
+    except Exception as exc:
+        if json_val:
+            typer.echo(json.dumps({"error": str(exc), "success": False}, indent=2))
+            raise typer.Exit(code=1)
+        render_error_box("Indexing Failed", str(exc))
+        raise typer.Exit(code=1)
+
+    if json_val:
+        typer.echo(col.model_dump_json(indent=2))
+        return
+
+    if plain_val:
+        print(f"Indexed collection '{col.name}': {col.file_count} files, {col.passage_count} passages.")
+        return
+
+    render_message_box(
+        "Collection Indexed",
+        f"Collection: [bold cyan]{col.name}[/bold cyan]\n"
+        f"Files: {col.file_count}\n"
+        f"Passages: {col.passage_count}\n"
+        f"Path: {col.path}",
+    )
+
+
+@search_app.command("list")
+def search_list(
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """List all indexed local document collections."""
+    plain_val = bool(_val(plain, False))
+    json_val = bool(_val(json_output, False))
+
+    search_svc = SearchService()
+    cols = search_svc.list_collections()
+
+    if json_val:
+        typer.echo(json.dumps([c.model_dump() for c in cols], indent=2))
+        return
+
+    if plain_val:
+        for c in cols:
+            print(f"{c.collection_id}\t{c.name}\t{c.file_count} files\t{c.passage_count} passages\t{c.path}")
+        return
+
+    table = Table(title="Indexed Document Collections", border_style="cyan")
+    table.add_column("Collection ID", style="dim")
+    table.add_column("Name", style="bold cyan")
+    table.add_column("Files", justify="right")
+    table.add_column("Passages", justify="right")
+    table.add_column("Source Path")
+    table.add_column("Last Indexed", style="dim")
+
+    for c in cols:
+        table.add_row(
+            c.collection_id,
+            c.name,
+            str(c.file_count),
+            str(c.passage_count),
+            c.path,
+            c.last_indexed_at[:19].replace("T", " "),
+        )
+
+    console.print(table)
+
+
+@search_app.command("status")
+def search_status(
+    name_or_id: str = typer.Argument(..., help="Collection name or ID"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Show details and indexing status of a collection."""
+    nid = str(_val(name_or_id))
+    plain_val = bool(_val(plain, False))
+    json_val = bool(_val(json_output, False))
+
+    search_svc = SearchService()
+    col = search_svc.get_collection(nid)
+
+    if not col:
+        if json_val:
+            typer.echo(json.dumps({"error": f"Collection '{nid}' not found", "success": False}, indent=2))
+            raise typer.Exit(code=1)
+        render_error_box("Not Found", f"Collection '{nid}' was not found.")
+        raise typer.Exit(code=1)
+
+    if json_val:
+        typer.echo(col.model_dump_json(indent=2))
+        return
+
+    if plain_val:
+        print(f"Collection: {col.name} ({col.collection_id})")
+        print(f"Files: {col.file_count} | Passages: {col.passage_count}")
+        print(f"Path: {col.path}")
+        print(f"Last Indexed: {col.last_indexed_at}")
+        return
+
+    console.print(f"\n[bold cyan]Collection Status: {col.name}[/bold cyan]")
+    console.print(f"  [bold]ID:[/bold]           {col.collection_id}")
+    console.print(f"  [bold]Path:[/bold]         {col.path}")
+    console.print(f"  [bold]Files:[/bold]        {col.file_count}")
+    console.print(f"  [bold]Passages:[/bold]     {col.passage_count}")
+    console.print(f"  [bold]Last Indexed:[/bold] {col.last_indexed_at}\n")
+
+
+@search_app.command("update")
+def search_update(
+    name_or_id: str = typer.Argument(..., help="Collection name or ID to re-index"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Re-index documents in a collection to pick up modified files."""
+    nid = str(_val(name_or_id))
+    plain_val = bool(_val(plain, False))
+    json_val = bool(_val(json_output, False))
+
+    search_svc = SearchService()
+    try:
+        col = search_svc.update_collection(nid)
+    except Exception as exc:
+        if json_val:
+            typer.echo(json.dumps({"error": str(exc), "success": False}, indent=2))
+            raise typer.Exit(code=1)
+        render_error_box("Update Failed", str(exc))
+        raise typer.Exit(code=1)
+
+    if json_val:
+        typer.echo(col.model_dump_json(indent=2))
+        return
+
+    render_message_box(
+        "Collection Updated",
+        f"Re-indexed '[bold cyan]{col.name}[/bold cyan]'.\nFiles: {col.file_count} | Passages: {col.passage_count}",
+    )
+
+
+@search_app.command("remove")
+def search_remove(
+    name_or_id: str = typer.Argument(..., help="Collection name or ID to remove"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Remove a collection and its indexed passages."""
+    nid = str(_val(name_or_id))
+    plain_val = bool(_val(plain, False))
+    json_val = bool(_val(json_output, False))
+
+    search_svc = SearchService()
+    removed = search_svc.remove_collection(nid)
+
+    if json_val:
+        typer.echo(json.dumps({"success": removed, "collection": nid}, indent=2))
+        return
+
+    if removed:
+        render_message_box("Collection Removed", f"Successfully removed collection '{nid}'.")
+    else:
+        render_error_box("Remove Failed", f"Collection '{nid}' was not found.")
+
+
+@search_app.command("find")
+def search_find(
+    query: str = typer.Argument(..., help="Search query"),
+    collection: Optional[str] = typer.Option(None, "--collection", "-c", help="Collection to search"),
+    top: int = typer.Option(5, "--top", "-k", help="Max results to return"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Find relevant passages across indexed collections."""
+    tools_find_passages(query=query, collection=collection, top=top, plain=plain, json_output=json_output)
+
+
+@search_app.command("ask")
+def search_ask(
+    query: str = typer.Argument(..., help="Question to ask over local files"),
+    collection: Optional[str] = typer.Option(None, "--collection", "-c", help="Target collection"),
+    model: Optional[str] = typer.Option(None, "--model", "-m", help="Target model alias"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Answer questions grounded in local documents with citations."""
+    tools_ask_files(query=query, collection=collection, model=model, plain=plain, json_output=json_output)
+
+
+# =============================================================================
+# Voice & Audio Interaction CLI
+# =============================================================================
+
+@voice_app.command("status")
+def voice_status(
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Check microphone, audio hardware, and speech engine availability."""
+    plain_val = bool(_val(plain, False))
+    json_val = bool(_val(json_output, False))
+
+    voice_svc = VoiceService()
+    deps = voice_svc.check_audio_dependencies()
+
+    if json_val:
+        typer.echo(json.dumps(deps, indent=2))
+        return
+
+    if plain_val:
+        print(f"Can Record: {deps['can_record']}")
+        print(f"sounddevice: {deps['has_sounddevice']} | numpy: {deps['has_numpy']}")
+        print(f"TTS Engine: {deps['tts_engine'] or 'None (console fallback)'}")
+        print(f"STT Engine: {deps['stt_engine'] or 'None'}")
+        return
+
+    table = Table(title="Audio & Voice Subsystem Status", border_style="cyan")
+    table.add_column("Component", style="bold")
+    table.add_column("Status / Engine")
+
+    table.add_row(
+        "Microphone Recording",
+        "[green]Ready[/green]" if deps["can_record"] else "[yellow]Missing libraries (pip install sounddevice numpy)[/yellow]",
+    )
+    table.add_row(
+        "Text-to-Speech (TTS)",
+        f"[green]{deps['tts_engine']}[/green]" if deps["tts_engine"] else "[yellow]Console simulation (install piper or espeak-ng)[/yellow]",
+    )
+    table.add_row(
+        "Speech-to-Text (STT)",
+        f"[green]{deps['stt_engine']}[/green]" if deps["stt_engine"] else "[yellow]Optional (install whisper for local STT)[/yellow]",
+    )
+
+    console.print(table)
+
+
+@voice_app.command("transcribe")
+def voice_transcribe(
+    audio_file: str = typer.Argument(..., help="Path to audio file (.wav, .mp3, etc.)"),
+    model: str = typer.Option("whisper-base", "--model", "-m", help="Target speech model"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Transcribe an audio file to text."""
+    af = str(_val(audio_file))
+    m = str(_val(model, "whisper-base"))
+    plain_val = bool(_val(plain, False))
+    json_val = bool(_val(json_output, False))
+
+    voice_svc = VoiceService()
+    try:
+        run = voice_svc.transcribe_audio_file(audio_path=af, model=m)
+    except Exception as exc:
+        if json_val:
+            typer.echo(json.dumps({"error": str(exc), "success": False}, indent=2))
+            raise typer.Exit(code=1)
+        render_error_box("Transcription Failed", str(exc))
+        raise typer.Exit(code=1)
+
+    if json_val:
+        typer.echo(run.model_dump_json(indent=2))
+        return
+
+    if plain_val:
+        print(run.transcript or run.error_message)
+        return
+
+    console.print(f"\n[bold green]Transcription ({run.audio_seconds:.1f}s):[/bold green]\n{run.transcript or run.error_message}\n")
+
+
+@voice_app.command("speak")
+def voice_speak(
+    text: str = typer.Argument(..., help="Text to speak out loud"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Speak text out loud using local text-to-speech engine."""
+    t_val = str(_val(text))
+    plain_val = bool(_val(plain, False))
+    json_val = bool(_val(json_output, False))
+
+    voice_svc = VoiceService()
+    run = voice_svc.speak_text(t_val)
+
+    if json_val:
+        typer.echo(run.model_dump_json(indent=2))
+        return
+
+    if plain_val:
+        print(f"Spoken: {t_val}")
+        return
+
+    console.print(f"\n[bold cyan]🗣 Spoken ({run.model}):[/bold cyan] {t_val}\n")
+
+
+@voice_app.command("chat")
+def voice_chat(
+    prompt: Optional[str] = typer.Option(None, "--message", "-m", help="Single message to voice chat"),
+    model: Optional[str] = typer.Option(None, "--model", help="Target model alias"),
+    plain: bool = typer.Option(False, "--plain", help="Output plain text"),
+    json_output: bool = typer.Option(False, "--json", help="Output structured JSON"),
+) -> None:
+    """Voice conversation turn: text/mic input -> LLM -> spoken audio response."""
+    msg = _val(prompt, None)
+    m = str(_val(model, "default"))
+    plain_val = bool(_val(plain, False))
+    json_val = bool(_val(json_output, False))
+
+    voice_svc = VoiceService()
+
+    if not msg:
+        if not plain_val and not json_val:
+            console.print("\n[bold cyan]LocalPilot Voice Chat (Type 'exit' to quit)[/bold cyan]")
+            msg = typer.prompt("You")
+        else:
+            msg = "Hello LocalPilot"
+
+    if msg.lower() in ("exit", "quit", "q"):
+        return
+
+    try:
+        reply, run = voice_svc.run_conversation_turn(user_input=msg, model_alias=m)
+    except Exception as exc:
+        if json_val:
+            typer.echo(json.dumps({"error": str(exc), "success": False}, indent=2))
+            raise typer.Exit(code=1)
+        render_error_box("Voice Chat Failed", str(exc))
+        raise typer.Exit(code=1)
+
+    if json_val:
+        typer.echo(json.dumps({"user": msg, "assistant": reply, "run": run.model_dump()}, indent=2))
+        return
+
+    if plain_val:
+        print(f"Assistant: {reply}")
+        return
+
+    console.print(f"\n[bold green]LocalPilot Voice ({m}):[/bold green] {reply}\n")
+
+
+@voice_app.callback(invoke_without_command=True)
+def voice_callback(
+    ctx: typer.Context,
+    message: Optional[str] = typer.Option(None, "--message", "-m", help="Message for voice chat"),
+    model: Optional[str] = typer.Option(None, "--model", help="Model alias"),
+    plain: bool = typer.Option(False, "--plain", help="Plain text output"),
+    json_output: bool = typer.Option(False, "--json", help="JSON output"),
+) -> None:
+    """Interactive voice chat and speech tools."""
+    if ctx.invoked_subcommand is None:
+        voice_chat(prompt=message, model=model, plain=plain, json_output=json_output)
+
+
+# Tool shortcuts for voice
+@tools_app.command("transcribe")
+def tools_transcribe(
+    audio_file: str = typer.Argument(..., help="Path to audio file"),
+    plain: bool = typer.Option(False, "--plain"),
+    json_output: bool = typer.Option(False, "--json"),
+) -> None:
+    """Transcribe audio to text."""
+    voice_transcribe(audio_file=audio_file, plain=plain, json_output=json_output)
+
+
+@tools_app.command("speak")
+def tools_speak(
+    text: str = typer.Argument(..., help="Text to speak"),
+    plain: bool = typer.Option(False, "--plain"),
+    json_output: bool = typer.Option(False, "--json"),
+) -> None:
+    """Speak text using text-to-speech."""
+    voice_speak(text=text, plain=plain, json_output=json_output)
+
+
+@tools_app.command("voice")
+def tools_voice(
+    message: Optional[str] = typer.Option(None, "--message", "-m"),
+    plain: bool = typer.Option(False, "--plain"),
+    json_output: bool = typer.Option(False, "--json"),
+) -> None:
+    """Interactive voice conversation."""
+    voice_chat(prompt=message, plain=plain, json_output=json_output)
+
+
+@catalog_app.command("sources")
+def catalog_sources(
+    json_output: bool = typer.Option(False, "--json", help="Output raw JSON format"),
+) -> None:
+    """List all supported model sources and registries."""
+    from localpilot.data import get_initial_sources
+    sources = get_initial_sources()
+    if json_output:
+        console.print(json.dumps(sources, indent=2))
+        return
+
+    table = Table(title="Model Registries & Download Sources", border_style="cyan")
+    table.add_column("Source ID", style="bold cyan")
+    table.add_column("Name", style="bold")
+    table.add_column("Auth Type", style="yellow")
+    table.add_column("Formats Supported", style="green")
+    table.add_column("Description")
+    for s in sources:
+        formats = ", ".join(s.get("formats_supported", []))
+        table.add_row(
+            s.get("source_id", ""),
+            s.get("name", ""),
+            s.get("auth_type", "None"),
+            formats,
+            s.get("description", "")
+        )
+    console.print(table)
+
+
+@catalog_app.command("providers")
+def catalog_providers(
+    json_output: bool = typer.Option(False, "--json", help="Output raw JSON format"),
+) -> None:
+    """List foundational AI research laboratories and model providers."""
+    from localpilot.data import get_initial_providers
+    providers = get_initial_providers()
+    if json_output:
+        console.print(json.dumps(providers, indent=2))
+        return
+
+    table = Table(title="Foundational Model Providers & AI Labs", border_style="cyan")
+    table.add_column("Provider ID", style="bold cyan")
+    table.add_column("Name", style="bold")
+    table.add_column("Flagship Families", style="green")
+    table.add_column("License Type", style="yellow")
+    table.add_column("Website", style="blue")
+    for p in providers:
+        fams = ", ".join(p.get("flagship_families", []))
+        table.add_row(
+            p.get("provider_id", ""),
+            p.get("name", ""),
+            fams,
+            p.get("license_type", ""),
+            p.get("website", "")
+        )
+    console.print(table)
+
+
+@catalog_app.command("developers")
+def catalog_developers(
+    json_output: bool = typer.Option(False, "--json", help="Output raw JSON format"),
+) -> None:
+    """List key community quantizers, developers, and maintainers."""
+    from localpilot.data import get_initial_developers
+    devs = get_initial_developers()
+    if json_output:
+        console.print(json.dumps(devs, indent=2))
+        return
+
+    table = Table(title="Community Developers & Quantizers", border_style="cyan")
+    table.add_column("Developer ID", style="bold cyan")
+    table.add_column("Name", style="bold")
+    table.add_column("Role", style="green")
+    table.add_column("Specialties", style="yellow")
+    table.add_column("URL", style="blue")
+    for d in devs:
+        specs = ", ".join(d.get("specialties", []))
+        table.add_row(
+            d.get("developer_id", ""),
+            d.get("name", ""),
+            d.get("role", ""),
+            specs,
+            d.get("website", "") or d.get("huggingface_url", "")
+        )
+    console.print(table)
+
+
+@catalog_app.command("export")
+def catalog_export(
+    output_file: Path = typer.Option(Path("data/models.json"), "--output", "-o", help="Destination path for exported JSON"),
+) -> None:
+    """Export current cached models from local SQLite database to a JSON file."""
+    from datetime import datetime, timezone
+    db = get_db()
+    rows = db.get_connection().execute("SELECT payload_json FROM catalog_models").fetchall()
+    models = []
+    for r in rows:
+        try:
+            models.append(json.loads(r["payload_json"]))
+        except Exception:
+            pass
+
+    export_data = {
+        "$schema": "https://json-schema.org/draft/2020-12/schema",
+        "version": "1.0.0",
+        "database": "models",
+        "name": "LocalPilot Exported Models Database",
+        "description": "Models exported from local SQLite database.",
+        "exported_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
+        "total_count": len(models),
+        "models": models,
+    }
+    output_file.parent.mkdir(parents=True, exist_ok=True)
+    output_file.write_text(json.dumps(export_data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    console.print(f"[bold green]✓ Exported {len(models)} models to {output_file}[/bold green]")
+
+
+@catalog_app.command("reset")
+def catalog_reset(
+    confirm: bool = typer.Option(False, "--yes", "-y", help="Skip confirmation prompt"),
+) -> None:
+    """Reset local SQLite catalog cache back to initial bundled seed database."""
+    if not confirm and not typer.confirm("Are you sure you want to reset your local model catalog cache to initial bundled seeds?"):
+        console.print("[dim]Aborted.[/dim]")
+        return
+    db = get_db()
+    conn = db.get_connection()
+    with conn:
+        conn.execute("DELETE FROM catalog_models")
+        conn.execute("DELETE FROM catalog_sources")
+    # Re-seed
+    cat_svc = CatalogService(db)
+    cat_svc._ensure_seed_cached()
+    count = conn.execute("SELECT COUNT(*) as c FROM catalog_models").fetchone()["c"]
+    console.print(f"[bold green]✓ Reset complete: restored {count} initial models from bundled seed database.[/bold green]")
+
+
+@catalog_app.command("stats")
+def catalog_stats() -> None:
+    """Display statistics about catalog databases, sources, providers, and installed models."""
+    from localpilot.data import get_initial_sources, get_initial_providers, get_initial_developers, get_initial_models
+    db = get_db()
+    conn = db.get_connection()
+    cached_models = conn.execute("SELECT COUNT(*) as c FROM catalog_models").fetchone()["c"]
+    fav_count = conn.execute("SELECT COUNT(*) as c FROM model_favorites").fetchone()["c"]
+    installed_count = conn.execute("SELECT COUNT(*) as c FROM installations").fetchone()["c"]
+    sources_count = len(get_initial_sources())
+    providers_count = len(get_initial_providers())
+    devs_count = len(get_initial_developers())
+    bundled_models = len(get_initial_models())
+
+    table = Table(title="LocalPilot Catalog & Database Statistics", border_style="cyan")
+    table.add_column("Category", style="bold cyan")
+    table.add_column("Count", style="bold green")
+    table.add_column("Notes", style="dim")
+    table.add_row("Initial Bundled Models", str(bundled_models), "Packaged in localpilot/data/models.json")
+    table.add_row("Local Cached Models", str(cached_models), "Stored in local SQLite state.db")
+    table.add_row("Model Registries / Sources", str(sources_count), "Packaged in sources.json")
+    table.add_row("AI Labs / Providers", str(providers_count), "Packaged in providers.json")
+    table.add_row("Community Developers", str(devs_count), "Packaged in developers.json")
+    table.add_row("Favorited Models", str(fav_count), "User-selected favorites")
+    table.add_row("Installed Models", str(installed_count), "Installed on this computer")
+    console.print(table)
 
 
 if __name__ == "__main__":

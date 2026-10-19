@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Installation &amp; Setup Guide — LocalPilot</title>
+    <meta name="description" content="Step-by-step installation instructions for LocalPilot on macOS and Linux. Automated curl installer, pipx, pip, and clean uninstallation.">
+    
+    <!-- Open Graph / Social -->
+    <meta property="og:type" content="article">
+    <meta property="og:url" content="https://fakhr.me/LocalPilot/install.html">
+    <meta property="og:title" content="LocalPilot Installation &amp; Setup Guide">
+    <meta property="og:description" content="Learn how to install, update, and cleanly remove LocalPilot on your computer without headaches.">
+    <meta property="og:image" content="https://raw.githubusercontent.com/fakhruldeen/LocalPilot/main/img/banner-social.jpeg">
+
+    <link rel="icon" type="image/png" href="img/logo.png">
+    
+    <!-- Google Fonts & Tailwind CDN -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+                        mono: ['"JetBrains Mono"', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdfa',
+                            100: '#ccfbf1',
+                            400: '#2dd4bf',
+                            500: '#14b8a6',
+                            600: '#0d9488',
+                            DEFAULT: '#00D2B4',
+                        },
+                        dark: {
+                            950: '#070A0F',
+                            900: '#0B0F17',
+                            850: '#0E1420',
+                            800: '#111827',
+                            700: '#1F2937',
+                            600: '#374151',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .hero-bg {
+            background-image: linear-gradient(to bottom, rgba(11, 15, 23, 0.88), rgba(7, 10, 15, 0.98)), url('img/bg.jpeg');
+            background-size: cover;
+            background-position: center;
+        }
+    
+        :root, [data-theme="dark"] {
+            --bg-main: #070A0F;
+            --bg-card: #0B0F17;
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-main: #f8fafc;
+            --btn-utility-bg: rgba(255, 255, 255, 0.05);
+            --btn-utility-border: rgba(255, 255, 255, 0.1);
+            --hero-gradient: linear-gradient(to bottom, rgba(11, 15, 23, 0.85), rgba(7, 10, 15, 0.98));
+        }
+        [data-theme="light"] {
+            --bg-main: #f8fafc;
+            --bg-card: #ffffff;
+            --border-color: #e2e8f0;
+            --text-main: #0f172a;
+            --btn-utility-bg: #f1f5f9;
+            --btn-utility-border: #cbd5e1;
+            --hero-gradient: linear-gradient(to bottom, rgba(248, 250, 252, 0.88), rgba(241, 245, 249, 0.98));
+        }
+        [data-theme="light"] body { background-color: var(--bg-main) !important; color: var(--text-main) !important; }
+        [data-theme="light"] .bg-dark-950 { background-color: #f8fafc !important; }
+        [data-theme="light"] .bg-dark-900 { background-color: #ffffff !important; }
+        [data-theme="light"] .bg-dark-850 { background-color: #f1f5f9 !important; }
+        [data-theme="light"] .text-white { color: #0f172a !important; }
+        [data-theme="light"] .text-slate-100 { color: #0f172a !important; }
+        [data-theme="light"] .text-slate-200 { color: #1e293b !important; }
+        [data-theme="light"] .text-slate-300 { color: #334155 !important; }
+        [data-theme="light"] .text-slate-400 { color: #475569 !important; }
+        [data-theme="light"] .border-white\/5, [data-theme="light"] .border-white\/10 { border-color: #e2e8f0 !important; }
+        [data-theme="light"] .code-box, [data-theme="light"] .code-block { background-color: #ffffff !important; border-color: #e2e8f0 !important; box-shadow: 0 4px 20px rgba(0,0,0,0.05); }
+        [data-theme="light"] header { background-color: rgba(255, 255, 255, 0.92) !important; border-color: #e2e8f0 !important; }
+        [data-theme="light"] footer { background-color: #ffffff !important; border-color: #e2e8f0 !important; }
+        [data-theme="light"] .text-brand { color: #008775 !important; }
+
+        .btn-utility {
+            background: var(--btn-utility-bg);
+            color: inherit;
+            border: 1px solid var(--btn-utility-border);
+            padding: 0.45rem 0.65rem;
+            border-radius: 0.5rem;
+            font-size: 0.85rem;
+            font-weight: 500;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.35rem;
+            transition: all 0.2s ease;
+            line-height: 1;
+            text-decoration: none;
+        }
+        .btn-utility:hover {
+            border-color: #00D2B4;
+            color: #00D2B4;
+            text-decoration: none;
+        }
+        .header-author-link {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            text-decoration: none;
+            border-radius: 50%;
+            line-height: 1;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .header-author-link:hover {
+            transform: scale(1.08);
+            box-shadow: 0 0 0 2px #00D2B4;
+            text-decoration: none;
+        }
+        .header-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 2px solid var(--btn-utility-border);
+            object-fit: cover;
+            display: block;
+            transition: border-color 0.2s ease;
+        }
+        .header-author-link:hover .header-avatar {
+            border-color: #00D2B4;
+        }
+        [data-theme="light"] .hero-bg { background-image: var(--hero-gradient), url('img/bg.jpeg') !important; }
+
+    </style>
+    <script>
+        (function() {
+            const saved = localStorage.getItem('localpilot-theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'dark');
+            document.documentElement.setAttribute('data-theme', saved);
+        })();
+    </script>
+</head>
+<body class="bg-dark-950 text-slate-100 font-sans antialiased selection:bg-brand selection:text-dark-900 min-h-screen flex flex-col">
+
+    <!-- Header Navigation -->
+    <header class="sticky top-0 z-50 backdrop-blur-md bg-dark-900/85 border-b border-white/5">
+        <div class="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
+            <a href="index.html" class="flex items-center gap-3 group">
+                <img src="img/logo.png" alt="LocalPilot Logo" class="w-10 h-10 rounded-xl object-contain border border-white/10 group-hover:scale-105 transition-transform duration-300">
+                <span class="font-bold text-xl tracking-tight text-white flex items-center gap-2">
+                    LocalPilot
+                    <span class="text-xs bg-brand/10 text-brand px-2 py-0.5 rounded-full border border-brand/20 font-mono font-medium">v0.2.5</span>
+                </span>
+            </a>
+
+            <nav class="hidden md:flex items-center gap-7 text-sm font-medium text-slate-300">
+                <a href="index.html" class="hover:text-brand transition-colors">Home</a>
+                <a href="guide.html" class="hover:text-brand transition-colors">Beginner Guide</a>
+                <a href="install.html" class="text-brand font-semibold">Installation</a>
+                <a href="models.html" class="hover:text-brand transition-colors">Model Catalog</a>
+                <a href="faq.html" class="hover:text-brand transition-colors">FAQ</a>
+                <a href="architecture.html" class="hover:text-brand transition-colors">Technical</a>
+            </nav>
+
+                        <div class="nav-actions flex items-center gap-2.5">
+                <a href="ar/install.html" class="btn-utility" aria-label="Switch Language" title="تغيير اللغة إلى العربية">🌐 العربية</a>
+                <button id="theme-toggle" class="btn-utility" aria-label="Toggle Dark/Light Mode" title="Toggle Dark/Light Mode">🌓</button>
+                <a href="https://github.com/fakhruldeen/LocalPilot" target="_blank" rel="noopener" class="btn-utility" aria-label="GitHub Repository" title="GitHub Repository" style="display:inline-flex;align-items:center;justify-content:center;padding:0.45rem 0.6rem;">
+                    <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0c4.42 0 8 3.58 8 8a8.01 8.01 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27s-1.36.09-2 .27c-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9 1.48 1.35.39.24.96.2 1.44.15 0 .69.01 1.25.01 1.44 0 .21-.15.46-.55.38A8.01 8.01 0 0 1 0 8c0-4.42 3.58-8 8-8z"/></svg>
+                </a>
+                <a href="https://fakhr.me" target="_blank" rel="noopener" class="header-author-link" aria-label="Mohamed Fakhruldeen Website" title="Mohamed Fakhruldeen (fakhr.me)">
+                    <img src="https://avatars.githubusercontent.com/u/1162549?v=4" alt="Mohamed Fakhruldeen" class="header-avatar" loading="lazy">
+                </a>
+                <button onclick="toggleMobileMenu()" class="md:hidden p-2 text-slate-400 hover:text-white rounded-lg" aria-label="Toggle Navigation">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+            </div>
+        </div>
+        <div id="mobile-menu" class="hidden md:hidden px-6 pt-3 pb-6 border-t border-white/5 bg-dark-900/95 flex flex-col gap-3 text-sm font-medium text-slate-300">
+            <a href="index.html" class="hover:text-brand py-1">Home</a>
+            <a href="guide.html" class="hover:text-brand py-1">Beginner Guide</a>
+            <a href="install.html" class="text-brand font-semibold py-1">Installation</a>
+            <a href="models.html" class="hover:text-brand py-1">Model Catalog</a>
+            <a href="faq.html" class="hover:text-brand py-1">FAQ</a>
+            <a href="architecture.html" class="hover:text-brand py-1">Technical</a>
+            <a href="ar/install.html" class="text-brand font-semibold py-1">العربية 🇸🇦</a>
+        </div>
+    </header>
+
+    <!-- Install Hero with bg.jpeg texture -->
+    <section class="relative pt-16 pb-20 overflow-hidden hero-bg border-b border-white/5">
+        <div class="max-w-4xl mx-auto px-6 text-center relative z-10">
+            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-brand/10 border border-brand/20 text-brand text-xs font-semibold mb-6">
+                🚀 Setup &amp; Maintenance
+            </div>
+            <h1 class="text-3xl sm:text-5xl font-extrabold tracking-tight text-white mb-6 leading-tight">
+                Installation &amp; Setup Guide
+            </h1>
+            <p class="text-base sm:text-lg text-slate-300 max-w-2xl mx-auto leading-relaxed">
+                Simple, safe, and completely reversible. Choose the installation method that suits you best.
+            </p>
+        </div>
+    </section>
+
+    <!-- Main Content -->
+    <main class="py-16 max-w-4xl mx-auto px-6 space-y-16">
+
+        <!-- NEW: The 30-Second Terminal Primer for Complete Beginners -->
+        <article class="bg-gradient-to-br from-brand/10 via-dark-900 to-dark-900 p-8 sm:p-10 rounded-3xl border border-brand/20 space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="w-10 h-10 rounded-2xl bg-brand/20 text-brand flex items-center justify-center text-xl font-bold">✨</span>
+                <div>
+                    <h2 class="text-2xl font-bold text-white">Never Used a Terminal Before?</h2>
+                    <span class="text-xs text-brand font-mono">It's as easy as copy &amp; paste</span>
+                </div>
+            </div>
+
+            <p class="text-slate-300 leading-relaxed text-sm">
+                You do not need to be a developer to run LocalPilot. The "terminal" is just a text window built into every Mac and Linux computer. Here is how to open it in 5 seconds:
+            </p>
+
+            <div class="grid sm:grid-cols-2 gap-6 pt-2">
+                <!-- Mac Guide -->
+                <div class="p-5 rounded-2xl bg-dark-850/80 border border-white/10 space-y-3">
+                    <div class="flex items-center gap-2 text-white font-bold text-sm">
+                        <span>🍏</span> On macOS (Apple MacBooks, iMac, Mac Mini)
+                    </div>
+                    <ol class="text-xs text-slate-300 space-y-2 list-decimal pl-4 leading-relaxed">
+                        <li>Press <kbd class="px-2 py-0.5 rounded bg-white/10 border border-white/20 font-mono text-[11px] text-white">Cmd ⌘</kbd> + <kbd class="px-2 py-0.5 rounded bg-white/10 border border-white/20 font-mono text-[11px] text-white">Space</kbd> on your keyboard to open Spotlight Search.</li>
+                        <li>Type <strong class="text-white">Terminal</strong> and press <kbd class="px-2 py-0.5 rounded bg-white/10 border border-white/20 font-mono text-[11px] text-white">Enter ↵</kbd>.</li>
+                        <li>A friendly black-or-white text window will open. You're ready!</li>
+                    </ol>
+                </div>
+
+                <!-- Linux Guide -->
+                <div class="p-5 rounded-2xl bg-dark-850/80 border border-white/10 space-y-3">
+                    <div class="flex items-center gap-2 text-white font-bold text-sm">
+                        <span>💻</span> On Linux (Ubuntu, Debian, Fedora, Mint)
+                    </div>
+                    <ol class="text-xs text-slate-300 space-y-2 list-decimal pl-4 leading-relaxed">
+                        <li>Press <kbd class="px-2 py-0.5 rounded bg-white/10 border border-white/20 font-mono text-[11px] text-white">Ctrl</kbd> + <kbd class="px-2 py-0.5 rounded bg-white/10 border border-white/20 font-mono text-[11px] text-white">Alt</kbd> + <kbd class="px-2 py-0.5 rounded bg-white/10 border border-white/20 font-mono text-[11px] text-white">T</kbd> on your keyboard.</li>
+                        <li>Or press your <kbd class="px-2 py-0.5 rounded bg-white/10 border border-white/20 font-mono text-[11px] text-white">Super (Windows)</kbd> key, type <strong class="text-white">Terminal</strong>, and press <kbd class="px-2 py-0.5 rounded bg-white/10 border border-white/20 font-mono text-[11px] text-white">Enter ↵</kbd>.</li>
+                        <li>Your terminal shell will appear immediately.</li>
+                    </ol>
+                </div>
+            </div>
+        </article>
+
+        <!-- Method 1: The Automated curl installer -->
+        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-brand/30 shadow-xl space-y-6">
+            <div class="flex items-center justify-between flex-wrap gap-2">
+                <div class="flex items-center gap-3">
+                    <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">★</span>
+                    <h2 class="text-2xl font-bold text-white">Method 1: Automated Installer (Recommended)</h2>
+                </div>
+                <span class="text-xs bg-brand/20 text-brand px-3 py-1 rounded-full font-semibold border border-brand/30">Beginner Friendly</span>
+            </div>
+            
+            <p class="text-slate-300 leading-relaxed text-sm">
+                No need to create virtual environments, configure paths, or install complex libraries. Copy this command, paste it into your Terminal window, and hit <kbd class="px-2 py-0.5 rounded bg-white/10 border border-white/20 font-mono text-xs text-white">Enter ↵</kbd>:
+            </p>
+
+            <div class="p-4 rounded-2xl bg-dark-950 border border-white/10 font-mono text-xs sm:text-sm text-brand flex items-center justify-between gap-4 overflow-x-auto">
+                <code class="select-all">curl -fsSL https://raw.githubusercontent.com/fakhruldeen/LocalPilot/main/install-localpilot.sh | bash</code>
+                <button onclick="copyCmd('curl -fsSL https://raw.githubusercontent.com/fakhruldeen/LocalPilot/main/install-localpilot.sh | bash', this)" class="px-3 py-1.5 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-200 text-xs shrink-0 transition-colors">
+                    Copy
+                </button>
+            </div>
+
+            <!-- Plain English Explanation -->
+            <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-3 text-xs leading-relaxed text-slate-300">
+                <h4 class="font-bold text-white text-sm flex items-center gap-2">
+                    <span>🔍</span> What this command does behind the scenes (Plain English):
+                </h4>
+                <ul class="space-y-1.5 list-disc pl-5 text-slate-400">
+                    <li><strong class="text-slate-200">Verifies Python:</strong> Checks that Python 3.11+ is installed on your computer.</li>
+                    <li><strong class="text-slate-200">Creates an Isolated Sandbox:</strong> Sets up LocalPilot inside your private user folder (<code class="text-slate-300">~/.local/share/localpilot</code>) so your system files remain completely untouched.</li>
+                    <li><strong class="text-slate-200">Creates a Shortcut:</strong> Adds a launcher in <code class="text-slate-300">~/.local/bin</code> so you can simply type <code class="text-brand">localpilot</code> from anywhere.</li>
+                    <li><strong class="text-emerald-400 font-semibold">Zero Root Required:</strong> It will <em>never</em> ask for your administrator password (<code class="text-slate-300">sudo</code>) and will never modify system files.</li>
+                </ul>
+            </div>
+        </article>
+
+        <!-- NEW: Your First 60 Seconds Walkthrough -->
+        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">2</span>
+                <h2 class="text-2xl font-bold text-white">Your First 60 Seconds with LocalPilot</h2>
+            </div>
+            
+            <p class="text-slate-300 leading-relaxed text-sm">
+                Once the installer finishes (usually in 10-20 seconds), here is how to enjoy your new private AI:
+            </p>
+
+            <div class="grid sm:grid-cols-3 gap-6 font-mono text-xs">
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <span class="font-sans font-bold text-xs text-brand block uppercase">Step 1: Check Health</span>
+                    <div class="p-2.5 rounded bg-dark-950 text-white border border-white/10 select-all">localpilot doctor</div>
+                    <p class="font-sans text-[11px] text-slate-400 leading-relaxed pt-1">
+                        Audits your CPU, RAM, and graphics memory in 2 seconds and verifies exact compatibility.
+                    </p>
+                </div>
+
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <span class="font-sans font-bold text-xs text-brand block uppercase">Step 2: Open Dashboard</span>
+                    <div class="p-2.5 rounded bg-dark-950 text-white border border-white/10 select-all">localpilot</div>
+                    <p class="font-sans text-[11px] text-slate-400 leading-relaxed pt-1">
+                        Opens the colorful full-screen interactive terminal dashboard to browse models and inspect memory.
+                    </p>
+                </div>
+
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <span class="font-sans font-bold text-xs text-brand block uppercase">Step 3: Start Chatting</span>
+                    <div class="p-2.5 rounded bg-dark-950 text-white border border-white/10 select-all">localpilot chat llama3.2:3b</div>
+                    <p class="font-sans text-[11px] text-slate-400 leading-relaxed pt-1">
+                        Downloads the compact 3B model and launches an instant offline private conversation!
+                    </p>
+                </div>
+            </div>
+        </article>
+
+        <!-- Method 2 & 3: pipx and pip -->
+        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">3</span>
+                <h2 class="text-2xl font-bold text-white">Alternative Methods (pipx or pip)</h2>
+            </div>
+
+            <!-- Crucial Prerequisite Notice -->
+            <div class="p-5 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-xs text-amber-200/90 leading-relaxed space-y-2">
+                <div class="flex items-center gap-2 text-amber-100 font-bold text-sm">
+                    <span>⚠️</span> Prerequisite: Python &amp; Pip Must Be Installed Already
+                </div>
+                <p>
+                    Unlike the automated curl installer (which checks prerequisites), installing via <code class="text-white font-mono">pipx</code> or <code class="text-white font-mono">pip</code> requires that <strong class="text-white">Python (version 3.11 or newer)</strong> and <strong class="text-white">pip</strong> are already set up on your machine.
+                </p>
+                <div class="p-3 rounded-xl bg-dark-950 font-mono text-[11px] text-slate-300 border border-white/5 space-y-1">
+                    <div class="text-slate-400 font-sans font-semibold">Verify if you have them:</div>
+                    <div>$ python3 --version</div>
+                    <div>$ pip --version</div>
+                </div>
+                <div class="text-[11px] text-amber-200/80 pt-1">
+                    <strong>Need to install Python &amp; pip first?</strong><br>
+                    &bull; <strong class="text-white">Ubuntu / Debian:</strong> <code class="text-white font-mono">sudo apt update &amp;&amp; sudo apt install -y python3 python3-pip python3-venv pipx</code><br>
+                    &bull; <strong class="text-white">macOS:</strong> <code class="text-white font-mono">brew install python pipx</code> (requires Homebrew)
+                </div>
+            </div>
+            
+            <div class="grid sm:grid-cols-2 gap-6">
+                <!-- pipx -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <h3 class="font-bold text-white text-base flex items-center gap-2">
+                        📦 With pipx (Isolated App)
+                    </h3>
+                    <p class="text-slate-400 text-xs leading-relaxed">
+                        If you have <code class="text-brand">pipx</code> installed, this installs LocalPilot inside an isolated environment and links the CLI globally:
+                    </p>
+                    <div class="p-3 rounded-xl bg-dark-950 border border-white/10 font-mono text-xs text-brand">
+                        <code>pipx install localpilot</code>
+                    </div>
+                </div>
+
+                <!-- pip -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <h3 class="font-bold text-white text-base flex items-center gap-2">
+                        🐍 With standard pip
+                    </h3>
+                    <p class="text-slate-400 text-xs leading-relaxed">
+                        For developers working inside an existing active virtual environment:
+                    </p>
+                    <div class="p-3 rounded-xl bg-dark-950 border border-white/10 font-mono text-xs text-brand">
+                        <code>pip install localpilot</code>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- Detailed Step-by-Step Guide After Installation -->
+        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-8">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">4</span>
+                <h2 class="text-2xl font-bold text-white">Comprehensive Step-by-Step Guide After Installation</h2>
+            </div>
+            
+            <p class="text-slate-300 text-sm leading-relaxed">
+                Follow these 6 detailed steps to go from a fresh installation to running private, offline conversations with complete confidence:
+            </p>
+
+            <div class="space-y-6">
+                <!-- Step 1 -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold font-mono text-brand uppercase">Step 1 &bull; Hardware Diagnostics</span>
+                        <span class="text-[11px] text-slate-400">Duration: ~3 seconds</span>
+                    </div>
+                    <h3 class="text-base font-bold text-white">Audit Your Computer's Hardware</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Before downloading models, run the built-in diagnostic doctor. It checks your CPU cores, free RAM, GPU acceleration (Metal on Mac, CUDA on Linux), and ensures there are no conflicting background services.
+                    </p>
+                    <div class="p-3 rounded-xl bg-dark-950 font-mono text-xs text-brand border border-white/5">
+                        $ localpilot doctor
+                    </div>
+                </div>
+
+                <!-- Step 2 -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold font-mono text-brand uppercase">Step 2 &bull; Discovery &amp; Compatibility</span>
+                        <span class="text-[11px] text-slate-400">Duration: Instant</span>
+                    </div>
+                    <h3 class="text-base font-bold text-white">Find Which Models Fit Your RAM Safely</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Run discovery to see a ranked list of models specifically compatible with your machine. LocalPilot automatically excludes models that are too large to prevent your operating system from freezing.
+                    </p>
+                    <div class="p-3 rounded-xl bg-dark-950 font-mono text-xs text-brand border border-white/5">
+                        $ localpilot discover --task chat
+                    </div>
+                </div>
+
+                <!-- Step 3 -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold font-mono text-brand uppercase">Step 3 &bull; Guided Setup &amp; Verification</span>
+                        <span class="text-[11px] text-slate-400">Duration: 2 to 4 minutes</span>
+                    </div>
+                    <h3 class="text-base font-bold text-white">Download &amp; Verify Your First Model</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Download your chosen model. LocalPilot streams the real download progress, verifies the SHA-256 cryptographic fingerprint, configures execution parameters, and tests real prompt inference before marking it ready:
+                    </p>
+                    <div class="p-3 rounded-xl bg-dark-950 font-mono text-xs text-brand border border-white/5">
+                        $ localpilot setup llama3.2:3b
+                    </div>
+                </div>
+
+                <!-- Step 4 -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold font-mono text-brand uppercase">Step 4 &bull; Private Chatting</span>
+                        <span class="text-[11px] text-slate-400">100% Offline</span>
+                    </div>
+                    <h3 class="text-base font-bold text-white">Start Your Offline Conversation</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        You can converse directly via the CLI, or open the visual terminal dashboard:
+                    </p>
+                    <div class="p-3 rounded-xl bg-dark-950 font-mono text-xs text-slate-300 border border-white/5 space-y-1">
+                        <div>$ localpilot chat llama3.2:3b &nbsp;&nbsp;<span class="text-slate-400"># Direct interactive chat</span></div>
+                        <div>$ localpilot tui &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="text-slate-400"># Full graphical terminal dashboard</span></div>
+                    </div>
+                </div>
+
+                <!-- Step 5 -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold font-mono text-brand uppercase">Step 5 &bull; Navigation &amp; Exiting</span>
+                        <span class="text-[11px] text-slate-400">Clean Memory Release</span>
+                    </div>
+                    <h3 class="text-base font-bold text-white">In-Chat Commands &amp; Stopping Models</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        Inside the chat session, type <code class="text-brand font-mono">/help</code> to see shortcut options. When you want to leave chat, type <code class="text-brand font-mono">/exit</code> or press <kbd class="px-1.5 py-0.5 rounded bg-white/10 font-mono">Ctrl + C</kbd>. This returns you to your terminal prompt while leaving the model cached in background memory for instant future prompts. To stop the background model process and free its RAM, run:
+                    </p>
+                    <div class="p-3 rounded-xl bg-dark-950 font-mono text-xs text-brand border border-white/5">
+                        $ localpilot stop
+                    </div>
+                </div>
+
+                <!-- Step 6 -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-bold font-mono text-brand uppercase">Step 6 &bull; Storage Management</span>
+                        <span class="text-[11px] text-slate-400">Total User Control</span>
+                    </div>
+                    <h3 class="text-base font-bold text-white">Review &amp; Reclaim Disk Space</h3>
+                    <p class="text-xs text-slate-300 leading-relaxed">
+                        See what models you have downloaded and how much storage they occupy:
+                    </p>
+                    <div class="p-3 rounded-xl bg-dark-950 font-mono text-xs text-slate-300 border border-white/5 space-y-1">
+                        <div>$ localpilot storage &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<span class="text-slate-400"># Breakdown of storage usage</span></div>
+                        <div>$ localpilot remove llama3.2:3b --delete-files <span class="text-slate-400"># Cleanly delete model files</span></div>
+                    </div>
+                </div>
+            </div>
+        </article>
+
+        <!-- Updating Models & Catalogs Locally -->
+        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">5</span>
+                <h2 class="text-2xl font-bold text-white">Updating Models &amp; Catalogs Locally</h2>
+            </div>
+            
+            <p class="text-slate-300 text-sm leading-relaxed">
+                Can you update models and fetch newer revisions locally? <strong>Yes!</strong> Here is how model updates work:
+            </p>
+
+            <div class="grid sm:grid-cols-3 gap-4 text-xs">
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <span class="text-brand font-bold text-sm block">1. Refresh Catalog</span>
+                    <p class="text-slate-400 leading-relaxed">Running <code class="text-white font-mono">localpilot discover</code> contacts verified source registries (Ollama library and Hugging Face) and caches updated model metadata in your local SQLite store.</p>
+                </div>
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <span class="text-brand font-bold text-sm block">2. Pull Model Updates</span>
+                    <p class="text-slate-400 leading-relaxed">To pull a newer revision of an installed model, run <code class="text-white font-mono">localpilot setup &lt;model-id&gt;</code>. If using Ollama directly, you can also run <code class="text-white font-mono">ollama pull &lt;model-id&gt;</code>.</p>
+                </div>
+                <div class="p-5 rounded-2xl bg-dark-850 border border-white/5 space-y-2">
+                    <span class="text-brand font-bold text-sm block">3. Atomic Staging &amp; Rollback</span>
+                    <p class="text-slate-400 leading-relaxed">LocalPilot stages model updates in a temporary backup folder first. If the new file fails inference or has an invalid hash, your existing working model is kept intact with zero downtime.</p>
+                </div>
+            </div>
+        </article>
+
+        <!-- Application Updates & Clean Uninstallation -->
+        <article class="bg-dark-900 p-8 sm:p-10 rounded-3xl border border-white/5 space-y-6">
+            <div class="flex items-center gap-3">
+                <span class="w-8 h-8 rounded-xl bg-brand/10 text-brand flex items-center justify-center font-bold text-sm">6</span>
+                <h2 class="text-2xl font-bold text-white">Application Updates &amp; Clean Removal</h2>
+            </div>
+            
+            <div class="grid sm:grid-cols-2 gap-6">
+                <!-- Updating App -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-white/5 space-y-3">
+                    <h3 class="font-bold text-white text-base flex items-center gap-2">
+                        <span>🔄</span> Update LocalPilot Application
+                    </h3>
+                    <p class="text-slate-400 text-xs leading-relaxed">
+                        To check PyPI for new releases of LocalPilot and upgrade in place:
+                    </p>
+                    <div class="p-3 rounded-xl bg-dark-950 border border-white/10 font-mono text-xs text-brand">
+                        <code>localpilot self update</code>
+                    </div>
+                </div>
+
+                <!-- Clean Uninstall -->
+                <div class="p-6 rounded-2xl bg-dark-850 border border-rose-500/20 space-y-3">
+                    <h3 class="font-bold text-rose-300 text-base flex items-center gap-2">
+                        <span>🧹</span> Clean Removal Options
+                    </h3>
+                    <p class="text-slate-400 text-xs leading-relaxed">
+                        To remove LocalPilot while safely preserving your downloaded models:
+                    </p>
+                    <div class="p-3 rounded-xl bg-dark-950 border border-white/10 font-mono text-xs text-brand">
+                        <code>localpilot self uninstall</code>
+                    </div>
+                    <p class="text-slate-400 text-xs leading-relaxed pt-2">
+                        To remove LocalPilot and also delete all downloaded models:
+                    </p>
+                    <div class="p-3 rounded-xl bg-dark-950 border border-rose-500/20 font-mono text-xs text-rose-300">
+                        <code>localpilot self uninstall --purge-models</code>
+                    </div>
+                    <p class="text-[11px] text-slate-400 leading-relaxed pt-1">
+                        Alternatively, use the installer script: <code class="text-slate-300 font-mono">curl -fsSL https://raw.githubusercontent.com/fakhruldeen/LocalPilot/main/install-localpilot.sh | bash -s -- --uninstall</code>
+                    </p>
+                </div>
+            </div>
+        </article>
+
+    </main>
+
+    <!-- Prominent Disclaimer Banner -->
+    <aside class="py-12 bg-dark-950 border-t border-b border-white/5">
+        <div class="max-w-4xl mx-auto px-6">
+            <div class="rounded-2xl bg-amber-500/10 border border-amber-500/20 p-6 flex flex-col sm:flex-row items-start gap-4">
+                <span class="text-2xl">⚠️</span>
+                <div class="text-xs text-amber-200/90 leading-relaxed">
+                    <strong class="text-amber-100 font-semibold block mb-1">Disclaimer &amp; Important Notice:</strong>
+                    LocalPilot is intended for non-professional users, students, and hobbyists for personal use and testing purposes only. Local AI model inference is an edge technology that requires substantial hardware resources and domain knowledge. This project is provided "as is" without warranty of any kind. The creator and maintainers hold no liabilities or responsibilities for any misuse, data loss, performance degradation, or issues that may arise in production or improper usage.
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Footer -->
+        <!-- Footer -->
+    <footer class="mt-auto border-t border-white/5 py-10 bg-dark-900">
+        <div class="max-w-7xl mx-auto px-6 space-y-6">
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-300">
+                <div class="flex items-center gap-3">
+                    <img src="img/logo.png" alt="LocalPilot" class="w-6 h-6 rounded-md object-contain opacity-75">
+                    <span>&copy; 2026 LocalPilot &bull; Licensed under GNU GPLv3</span>
+                </div>
+                <div class="flex flex-wrap items-center gap-6">
+                    <a href="index.html" class="hover:text-brand transition-colors">Home</a>
+                    <a href="guide.html" class="hover:text-brand transition-colors">Guide</a>
+                    <a href="install.html" class="hover:text-brand transition-colors">Install</a>
+                    <a href="models.html" class="hover:text-brand transition-colors">Models</a>
+                    <a href="faq.html" class="hover:text-brand transition-colors">FAQ</a>
+                    <a href="architecture.html" class="hover:text-brand transition-colors">Technical</a>
+                    <a href="ar/install.html" class="hover:text-brand transition-colors font-medium text-brand">العربية 🇸🇦</a>
+                    <a href="https://github.com/fakhruldeen/LocalPilot" target="_blank" class="hover:text-brand transition-colors">GitHub</a>
+                </div>
+            </div>
+            <div class="pt-4 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-3 text-[11px] text-slate-400">
+                <div class="flex items-center gap-2">
+                    <span class="px-2 py-0.5 rounded bg-white/5 border border-white/10 font-mono text-[10px] text-brand">DOI</span>
+                    <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="hover:text-brand transition-colors underline font-mono text-slate-300">10.5281/zenodo.23424540</a>
+                </div>
+                <div class="text-center md:text-right leading-relaxed">
+                    Mohamed (Fouad) Fakhruldeen. (2026). <em class="text-slate-300">fakhruldeen/LocalPilot: v0.2.5</em> (Version v0.2.5) [Computer software]. Zenodo. <a href="https://doi.org/10.5281/zenodo.23424540" target="_blank" class="text-brand hover:underline font-mono">https://doi.org/10.5281/zenodo.23424540</a>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobile-menu');
+            menu.classList.toggle('hidden');
+        }
+
+        function copyCmd(cmd, btn) {
+            navigator.clipboard.writeText(cmd).then(() => {
+                const orig = btn.innerText;
+                btn.innerText = 'Copied!';
+                setTimeout(() => { btn.innerText = orig; }, 2000);
+            });
+        }
+    </script>
+    <script>
+        const themeToggle = document.getElementById('theme-toggle');
+        if (themeToggle) {
+            themeToggle.addEventListener('click', () => {
+                const current = document.documentElement.getAttribute('data-theme') || 'dark';
+                const next = current === 'dark' ? 'light' : 'dark';
+                document.documentElement.setAttribute('data-theme', next);
+                localStorage.setItem('localpilot-theme', next);
+            });
+        }
+    </script>
+
+</body>
+</html>

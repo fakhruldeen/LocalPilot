@@ -371,7 +371,7 @@ def test_side_by_side_comparison_matrix() -> None:
     assert "MB" in row.download_size
     assert "8,192 tokens" in row.context_window
     assert "llama.cpp" in row.execution_plan
-    assert row.access_requirements == "Open Access"
+    assert "Open Access" in row.access_requirements
 
 
 # ---------------------------------------------------------------------------

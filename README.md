@@ -8,7 +8,7 @@
 
 # LocalPilot
 
-**Local AI, Made Simple.**
+**Run AI on your own computer.**
 
 **[English](README.md)** • **[العربية (Arabic)](README.ar.md)**
 
@@ -19,293 +19,174 @@
 [![Platform](https://img.shields.io/badge/Platform-Linux%20%7C%20macOS-lightgrey.svg?style=flat-square)](https://fakhr.me/LocalPilot/)
 [![Documentation](https://img.shields.io/badge/Docs-GitHub%20Pages-success.svg?style=flat-square)](https://fakhr.me/LocalPilot/)
 
-*Find an AI that fits your computer, set it up safely, and help you use it.*
+*LocalPilot checks your computer, helps you choose a suitable AI model, and guides you through setup.*
 
-[Website](https://fakhr.me/LocalPilot/) • [Beginner Guide](https://fakhr.me/LocalPilot/guide.html) • [Model Catalog](https://fakhr.me/LocalPilot/models.html) • [FAQ](https://fakhr.me/LocalPilot/faq.html) • [Technical Architecture](https://fakhr.me/LocalPilot/architecture.html) • [التوثيق بالعربية](docs/ar/README.md) • [PyPI](https://pypi.org/project/localpilot/) • [DOI](https://doi.org/10.5281/zenodo.23424540)
+[Website](https://fakhr.me/LocalPilot/) • [Beginner Guide](https://fakhr.me/LocalPilot/guide.html) • [Installation](https://fakhr.me/LocalPilot/install.html) • [Model Catalog](https://fakhr.me/LocalPilot/models.html) • [FAQ](https://fakhr.me/LocalPilot/faq.html) • [التوثيق بالعربية](docs/ar/README.md) • [PyPI](https://pypi.org/project/localpilot/)
 
 </div>
 
 ---
 
-## 🌟 Why LocalPilot?
+## 💡 What Can LocalPilot Help You Do?
 
-Running local AI shouldn't require configuring build flags, figuring out CUDA or Metal layer offloading, calculating KV-cache bytes, or manually nursing broken environment variables.
+LocalPilot lets you download and run artificial intelligence models directly on your laptop or desktop computer.
 
-**LocalPilot** is a friendly, hardware-aware Python application that guides you from discovery to chat. It inspects your real hardware capabilities, scores models based on verified compatibility, sets up runtimes with safe defaults, and monitors resource usage in a calm, full-screen terminal dashboard or intuitive CLI.
-
----
-
-## ✨ Key Features
-
-- **🖥️ Live Hardware Specs Dashboard (v0.2.5)**: Dedicated specs card on the home screen showing operating system, CPU architecture, physical and logical cores, instruction sets (AVX2, FMA, SSE4.2), live RAM usage, safe model budget, GPU accelerators, and free storage.
-- **🎯 Default Safe Hardware Filtering (v0.2.5)**: "Find a Model" defaults strictly to models fitting your computer's safe RAM budget, with one-click `RAM: Fits Budget` / `RAM: All Models` toggle.
-- **📊 Dynamic Catalog Sorting & Official Priority (v0.2.5)**: Sort models on the fly by Score (with official lab priority on ties), Model Name, Context length, and Model Size.
-- **🚀 High-End Frontier Models & Expanded Registries (v0.2.5)**: Added large open-weights models (up to 70B, 72B, 123B) including Llama 3.3 70B, Qwen 2.5 72B, DeepSeek R1 70B, and Mistral Large 123B, alongside Alibaba ModelScope Hub and LM Studio Community Hub.
-- **📜 Scrollable Model Explanations (v0.2.5)**: Multi-line wrapped rationale and execution plans for selected models with keyboard shortcut hints.
-- **🏆 Official Research Lab Prioritization (v0.2.0)**: Verified models directly from Google DeepMind (Gemma 2), Meta (Llama 3.x), Alibaba Qwen (Qwen 2.5 & Qwen Coder), DeepSeek AI (R1 Distill), Mistral AI, Microsoft (Phi-3.5 / Phi-4), THUDM (GLM-4), and Moonshot AI (Moonlight) are pinned first at the top of discovery.
-- **⚡ Short & Intuitive Model Aliases (v0.2.0)**: Clean, human-friendly aliases like `gemma2:2b`, `deepseek-r1:1.5b`, `llama3.2:3b`, and `qwen2.5-coder:1.5b` make installing and chatting instant and painless.
-- **⭐ Model Favorites Management (v0.2.0)**: Star your go-to models (`localpilot favorite add <alias>`, press <kbd>F</kbd> in TUI), view favorites in a dedicated dashboard, and filter catalogs with `--favorites`.
-- **🖥️ Full-Screen Interactive TUI by Default (v0.2.0)**: Simply running `localpilot` opens the rich Textual dashboard with automatic online catalog seeding and a one-click "Update List" refresh button.
-- **🧙‍♂️ 6-Step Guided Setup Wizard**: Welcoming non-technical onboarding checking computer capabilities, setting practical goals (writing, questions, coding), recommending pre-verified models, and executing multi-stage setups with live progress.
-- **💬 Integrated In-TUI Chat**: Full-screen token-streaming terminal chat screen (`ChatScreen`) with styled message bubbles, auto-scrolling, and responsive cancellation directly within the terminal UI.
-- **🧠 Decision Quality & Shortlist Comparison**:
-  - **Strict Compatibility Gating**: Incompatible configurations exceeding RAM/VRAM budgets are strictly excluded—never illegally falling back.
-  - **Near-Duplicate Suppression**: Equivalence grouping ensures diverse model choices instead of multiple quants of the same model.
-  - **Shortlist Distinctions & Roles**: `★ Top Pick`, `Compact Choice`, `Extended Memory`, and `Lightweight Choice` with side-by-side comparison matrix modal (`c` key).
-  - **Launch Memory Recheck**: Truthful warnings before start if background applications reduce required RAM/VRAM.
-- **🛡️ Truthful Error Recovery System**: Structured `AppError` contract with 25 typed error codes answering what happened, current situation, file impact, next steps, and technical details, with safe default modal focus.
-- **🧭 3-Axis Execution Architecture**: Decouples model computation into three orthogonal dimensions:
-  - **Inference Backends**: `llama.cpp` (GGUF, Metal, CUDA), `vLLM` (advanced Linux+GPU).
-  - **Managed Execution Services**: `Ollama`, `LM Studio / llmster`, and `Docker Model Runner`.
-  - **Deployment Methods**: Direct isolated worker processes (`direct_worker`), local API services (`local_api_service`), and containers.
-- **🛡️ External Service & Data Protection**:
-  - Respects external daemons: unloads models from memory (`keep_alive=0` / `/v1/models/unload`) without killing shared background services.
-  - Reference-counted storage protects your model files and never deletes unowned files.
-- **📦 Multi-Scope Installation**: Choose between **Application-Isolated** (default, no root needed), **User-Space** (`~/.local/bin`), or **System-Wide** (`/usr/local/bin`).
-- **💻 Dual Interface**:
-  - **Interactive TUI**: A beautiful full-screen dashboard powered by [Textual](https://textual.textualize.io/).
-  - **Fast Scriptable CLI**: Clean, structured CLI commands powered by [Typer](https://typer.tiangolo.com/) and [Rich](https://rich.readthedocs.io/).
-- **📝 Comprehensive Observability & Decision Audits**: Structured event logs, audit checkpoints before destructive actions, immutable decision records in `audit_decisions`, and support bundle diagnostics.
+You can use it to:
+* **Draft and edit writing**: Write emails, outline essays, polish documents, and rephrase text.
+* **Ask everyday questions**: Summarize articles, explain concepts in simple terms, and brainstorm ideas.
+* **Get programming help**: Explain unfamiliar code, write helper functions, and troubleshoot errors.
+* **Keep conversations on your machine**: Chat through an offline terminal window where your words are processed locally on your computer rather than sent to cloud servers.
 
 ---
 
+## 👥 Who Is It For?
+
+* **Everyday users & beginners**: You do not need an engineering degree or prior AI experience. LocalPilot handles memory calculations and configuration for you.
+* **Privacy-conscious writers & researchers**: Keep your personal notes, drafts, and sensitive documents on your own computer.
+* **Developers & students**: Experiment with modern open-weights models (like Llama, Qwen, Gemma, and Mistral) with reliable local API access.
+
 ---
 
-## 🚀 Installation & Quick Start
+## 💻 What Do You Need?
 
-Choose the method that fits your computer:
+* **Operating System**: **Linux** (Ubuntu, Debian, Fedora, Arch, etc.) or **macOS** (Apple Silicon M1–M4 or Intel). Windows is supported through Windows Subsystem for Linux (WSL2).
+* **Terminal**: A standard command-line terminal window where you can paste commands.
+* **Internet Connection**: Needed to download LocalPilot, download your chosen model, and update model lists. (Once a model is downloaded, chat runs locally without internet).
+* **Memory & Storage**:
+  * **8 GB of RAM** and **10 GB of free disk space** for lightweight models (1.5B to 3B parameters).
+  * **16 GB of RAM** or more for standard models (7B to 8B parameters).
+* **Python**: Python 3.11 or higher is required and is checked automatically during installation.
 
-### Option 1: Automated Shell Installer (Recommended for Non-Technical Users)
-No need to configure Python virtual environments or paths manually:
+---
+
+## 🚀 Get Started
+
+### Recommended Installation (Automated Installer)
+
+Open your terminal window and paste this single command:
+
 ```bash
 curl -fsSL https://raw.githubusercontent.com/fakhruldeen/LocalPilot/main/install-localpilot.sh | bash
 ```
 
-### Option 2: With `pipx` (Recommended for Python CLI Users)
-```bash
-pipx install localpilot
-```
+**What this command does:**
+1. Checks that your operating system and Python version are compatible.
+2. Installs LocalPilot into an isolated application folder (`~/.local/share/localpilot` on Linux, `~/Library/Application Support/LocalPilot` on macOS).
+3. Leaves your existing system files untouched and never asks for administrator (`sudo` or root) passwords.
 
-### Option 3: With `pip` or `uv`
+---
+
+### Alternative Installation Methods (For Python Developers)
+
+If you manage Python command-line tools with `pipx`, `pip`, or `uv`:
+
 ```bash
+# Using pipx (recommended for Python CLI users)
+pipx install localpilot
+
+# Using pip in your active environment
 pip install localpilot
-# or
+
+# Using uv
 uv tool install localpilot
 ```
 
-👉 *For advanced flags, custom scopes, and uninstallation instructions, see the **[Installation Guide](docs/INSTALLATION.md)**.*
+👉 *For custom scopes, offline bundles, and uninstallation instructions, see the **[Installation Guide](docs/INSTALLATION.md)**.*
 
 ---
 
-## 🧠 New to Local AI? Read This First
+## 🖥️ What Happens After Launch?
 
-If terms like *inference backends*, *weights*, *VRAM*, *Ollama*, or *Docker* seem confusing, read our friendly **[Beginner's Guide to Local AI](docs/CONCEPTUAL_GUIDE.md)**.
+Start LocalPilot by typing:
 
-In short:
-- **Model Weights**: A large data file containing learned knowledge (like a book).
-- **Inference Backend** (e.g. `llama.cpp`, `vLLM`): The computational engine that does the math on your CPU or GPU (like the reader).
-- **Execution Service** (e.g. `Ollama`, `LM Studio`, `Docker`): Optional background daemons that manage models and local APIs.
-- **Why LocalPilot?**: You don't have to manually match engines, calculate memory bytes, or troubleshoot Docker. LocalPilot inspects your machine, selects the optimal plan automatically, and reuses any tools you already have installed!
-
-## 🎮 Usage Guide
-
-### Launch the Terminal Dashboard (TUI)
-Simply type:
 ```bash
 localpilot
 ```
-Use keyboard shortcuts to navigate:
-- <kbd>d</kbd> Find compatible models
-- <kbd>i</kbd> View installed models
-- <kbd>r</kbd> View running models & resource usage
-- <kbd>s</kbd> Inspect managed storage
-- <kbd>a</kbd> Activity and decision history
-- <kbd>q</kbd> Exit
+
+This opens a friendly, full-screen dashboard inside your terminal. If this is your first time, the guided setup wizard walks you through:
+
+1. **Computer Capability Check**: LocalPilot measures your processor, memory, and graphics hardware, reserving a safe buffer so your operating system and web browser stay smooth.
+2. **Choose What You Want Help With**: Pick what you want your model to do best—*Everyday questions and writing*, *Coding assistance*, or *Browse all compatible models*.
+3. **Recommended Models**: LocalPilot shows models that are tested to fit within your computer's safe memory budget.
+4. **Review & Approve**: You see the exact model name, download size in gigabytes, and storage location. Nothing downloads until you select **Set Up Model**.
+5. **Setup & Verification**: LocalPilot downloads the weights file, prepares the supporting software, and runs a quick test question to confirm that everything works properly.
+6. **Start Chatting**: Select **Start Chatting** to begin your first conversation immediately.
 
 ---
 
-### Command-Line Interface (CLI)
+## 💬 Everyday Actions
 
-#### 1. Inspect Your Computer's Hardware
-```bash
-localpilot doctor
-```
-Audits CPU cores, available RAM, memory safety thresholds, hardware acceleration (Metal on Mac, CUDA on Linux), and active background services.
+Once set up, you can manage your local AI using simple terminal commands:
 
-#### 2. Discover Compatible Models & Official Labs
-```bash
-# List all models (official lab models pinned first)
-localpilot discover
+| Action | Command | What it does |
+| :--- | :--- | :--- |
+| **Open Visual Dashboard** | `localpilot` | Launches the full-screen interactive terminal dashboard with dedicated tabs for models, tools, search, benchmarks, and health. |
+| **Start Chatting** | `localpilot chat` | Opens an interactive conversation with your installed model. Type `/exit` to leave. |
+| **Run Offline AI Tools** | `localpilot tools <task>` | Run 18 focused task tools: `summarize`, `rewrite`, `translate`, `explain-code`, `extract`, `classify`, `review-table`, `describe-image`, `read-image`, and more. |
+| **Search Local Documents** | `localpilot search ask "q"` | Offline RAG: Index local folders and get grounded answers with precise file and line citations. |
+| **Voice & Speech Chat** | `localpilot voice chat` | Conversational voice turn loop with offline speech-to-text transcription and text-to-speech reading. |
+| **Measure & Benchmark** | `localpilot bench run` | Test streaming performance (TTFT, tokens/sec) and compare models side-by-side with `bench compare`. |
+| **Health & Self-Repair** | `localpilot doctor --repair` | Inspect system health, detect misconfigurations, and apply safe, reviewed repairs. |
+| **Connect External Apps** | `localpilot connect` | Interactive wizard to configure VS Code (Continue), OpenCode, Cursor, and custom tools. Manage with `localpilot connections`. |
+| **Stop Model (Free RAM)** | `localpilot stop` | Unloads the model from memory so all RAM and graphics memory return to other apps. |
+| **View Installed Models** | `localpilot installed` | Lists all models currently downloaded on your computer. |
+| **Find Compatible Models** | `localpilot discover` | Scans the catalog for models that fit your memory budget. |
+| **Remove a Model** | `localpilot remove <name>` | Deletes model weight files from your hard drive to free disk space. |
+| **Star a Favorite** | `localpilot favorite add <alias>` | Adds a model to your favorites list for quick access. |
 
-# Filter by task, search query, or lab
-localpilot discover --task chat
-localpilot discover -q "gemma"
-localpilot discover -q "deepseek"
-
-# View only your starred favorite models
-localpilot discover --favorites
-```
-
-#### 3. Guided Model Install & Setup
-```bash
-# Install directly using clean short aliases
-localpilot install gemma2:2b
-localpilot install deepseek-r1:1.5b
-localpilot install qwen2.5:3b
-
-# Or perform full guided multi-stage verification
-localpilot setup gemma2:2b
-```
-
-#### 4. Instant Offline Chat
-```bash
-# Chat immediately using model alias
-localpilot chat gemma2:2b
-localpilot chat deepseek-r1:1.5b
-localpilot chat llama3.2:3b
-```
-
-#### 5. Model Favorites Management
-```bash
-# Star a model for quick access
-localpilot favorite add gemma2:2b
-localpilot favorite list
-localpilot favorite toggle gemma2:2b
-```
-
-#### 6. Inventory & Process Inspection
-```bash
-# View installed models on this computer
-localpilot installed
-
-# View active running models and memory consumption
-localpilot running
-```
-
-#### 7. Storage Inspection & Safe Removal
-```bash
-# View storage breakdown across weights and databases
-localpilot storage
-
-# Safely remove a model and reclaim disk space
-localpilot remove <installation-id> --delete-files
-```
-
-#### 8. Application Updates & Support
-```bash
-# Check PyPI and update LocalPilot application
-localpilot self update
-
-# Generate an anonymized diagnostic report for troubleshooting
-localpilot support
-
-# Cleanly uninstall LocalPilot and optionally purge stored models
-localpilot self uninstall --purge-models
-```
-
-#### 9. Version Management & Model Aliases
-```bash
-# List immutable installed model versions with quantization and pin status
-localpilot versions list
-
-# Pin a model version to prevent automatic cleanup or pruning
-localpilot versions pin <version-id> --reason "Production baseline"
-
-# Compare two versions side-by-side (context, size, quant, profiles)
-localpilot versions compare <version-a> <version-b>
-
-# Manage stable aliases and atomically switch or rollback targets
-localpilot alias list
-localpilot alias set coding <version-id>
-localpilot alias rollback coding
-```
-
-#### 10. Local OpenAI-Compatible Inference API Gateway
-```bash
-# Launch background inference gateway strictly on loopback (127.0.0.1:8080)
-localpilot gateway start --daemon
-
-# Check gateway running state, port, and PID
-localpilot gateway status
-
-# Stop the running gateway server
-localpilot gateway stop
-```
-
-#### 11. Local API Key Management, Accounting & App Integrations
-```bash
-# Issue an API key for OpenCode or VS Code
-localpilot keys create "OpenCode" --app opencode
-
-# List active keys, prefixes, and revocation state
-localpilot keys list
-
-# View real-time token counts, request throughput (TPS), and latency dashboards
-localpilot stats
-
-# Generate integration configurations for OpenCode, Continue, or Cursor
-localpilot connect opencode --write
-localpilot connect continue --write
-localpilot connect cursor
-```
+> [!TIP]
+> **Leaving Chat vs. Stopping a Model**:
+> * Typing `/exit` leaves the chat screen but keeps the model loaded in memory so you can return to it instantly.
+> * Running `localpilot stop` completely unloads the model from memory, freeing up your RAM for games, browsers, or heavy work.
 
 ---
 
-## 🌍 Arabic Documentation & Website (التوثيق والموقع باللغة العربية)
+## 🔒 Privacy, Internet Access & Limitations
 
-LocalPilot provides first-class documentation and a complete native website in Arabic for Arabic-speaking users and researchers:
-
-- 🌐 **[الموقع الإلكتروني بالعربية (Arabic Website)](https://fakhr.me/LocalPilot/ar/)**: استعراض النماذج، أداة فحص الرام التفاعلية، ودليل الأمان.
-- 📖 **[ملف القراءة بالعربية (Arabic README)](README.ar.md)**: نظرة شاملة على فلسفة المشروع ودليل الأوامر السريع.
-- 🚀 **[دليل البدء السريع (Quickstart)](docs/ar/QUICKSTART.md)**: خطوات التثبيت والتشغيل في أقل من دقيقتين.
-- 📦 **[دليل التثبيت الشامل (Installation)](docs/ar/INSTALLATION.md)**: خيارات التثبيت المعزول، الأوامر، والترقية.
-- 🧠 **[دليل المفاهيم الأساسية (Conceptual Guide)](docs/ar/CONCEPTUAL_GUIDE.md)**: شرح مبسط لمفاهيم الأوزان والذاكرة والتكميم.
-- 📋 **[مصفوفة المنصات المدعومة (Support Matrix)](docs/ar/SUPPORT_MATRIX.md)**: توافق المعالجات، كروت الشاشة، ومحركات التشغيل.
-- ❓ **[الأسئلة الشائعة (FAQ)](docs/ar/FAQ.md)**: إجابات مباشرة على أكثر من 20 سؤالاً تقنياً وعاماً.
-- 🏛️ **[المعمارية التقنية (Technical Architecture)](docs/ar/ARCHITECTURE.md)**: تفاصيل معمارية المحاور الثلاثة وحسابات الذاكرة.
-- 📚 **[فهرس التوثيق العربي الكامل (Arabic Docs Index)](docs/ar/README.md)**: الفهرس الرئيسي للأدلة والموارد العربية.
+* **Local Inference**: Supported conversations are processed entirely on your computer through a local loopback address (`127.0.0.1`). Your messages and files are not uploaded to cloud servers.
+* **Internet Requirements**: An internet connection is used during installation, when downloading a model for the first time, and when updating the model catalog. Once a model is saved locally, chat runs without an active internet connection.
+* **Accuracy Notice**: Like all artificial intelligence systems, local models can make mistakes, produce inaccurate answers, or provide flawed code. Always double-check important facts and test code before using it.
+* **Hardware Boundaries**: Local models share your computer's memory. Running models that exceed your available RAM can make your desktop sluggish. LocalPilot checks your memory first to recommend models that run smoothly.
 
 ---
 
-## 📐 Architecture Overview
+## 🔌 Optional: Connect Other Applications
 
-```text
-Application Services (CLI / TUI / Setup / Chat)
-                    │
-                    ▼
-          ┌───────────────────┐
-          │   ExecutionPlan   │
-          └─────────┬─────────┘
-                    │
-   ┌────────────────┼────────────────┐
-   ▼                ▼                ▼
-Backend          Service         Deployment
-llama.cpp        Ollama          direct_worker
-vLLM             LM Studio       local_api_service
-                 Docker Runner   container
-```
+LocalPilot provides a standard, local OpenAI-compatible API endpoint (`http://127.0.0.1:8080/v1`).
 
-For full details on platform compatibility and supported backend/service combinations, see the **[Support Matrix](docs/SUPPORT_MATRIX.md)** and the **[Technical Architecture Manual](https://fakhr.me/LocalPilot/architecture.html)**.
+You can connect popular coding assistants and tools:
+* **VS Code (Continue extension)**: Connect your local model to chat with your codebase.
+* **OpenCode**: Automated configuration generator for local coding tasks.
+* **Cursor & Custom Tools**: Point any OpenAI-compatible client to your local endpoint.
+
+Run `localpilot connect` to view guided instructions for each application.  
+*(Note: Connected third-party applications have their own privacy settings and terms).*
 
 ---
 
-## 📖 Documentation & Quality Assurance
+## 🛠️ Help & Troubleshooting
 
-Comprehensive documentation, specifications, and assurance reports are organized across the following directories:
+* **Download was interrupted**: Run `localpilot` again. The installer checks what was already downloaded and resumes safely.
+* **Computer is running slowly**: Run `localpilot stop` to unload the model from memory, or choose a smaller model with `localpilot discover`.
+* **Command not found (`localpilot: command not found`)**: Make sure `~/.local/bin` is in your terminal's search path. Add `export PATH="$PATH:$HOME/.local/bin"` to your `~/.bashrc` or `~/.zshrc`.
+* **Access key requested**: Most models are open and need no accounts. A few models (such as official Llama or Gemma weights on Hugging Face) require a free read-only personal access token to confirm the publisher's terms.
+* **Need diagnostic help**: Run `localpilot support` to generate a safe, redacted diagnostic report you can review and share when asking for help.
 
-* **[Documentation Hub (`docs/`)](docs/README.md)**:
-  * [Conceptual Architecture & Memory Model](docs/CONCEPTUAL_GUIDE.md)
-  * [Installation Guide](docs/INSTALLATION.md)
-  * [Hardware Support Matrix](docs/SUPPORT_MATRIX.md)
-  * [Verified Support Matrix & Platform Tiers](docs/VERIFIED_SUPPORT_MATRIX.md)
-  * [Known Limitations & Workarounds](docs/KNOWN_LIMITATIONS.md)
-  * [OpenAPI 3.1 Specification](docs/openapi.json)
-  * [Arabic Documentation Hub (التوثيق بالعربية)](docs/ar/README.md)
-* **[Audit & Assurance Trail (`audit/`)](audit/README.md)**:
-  * [Phase 7 Release Hardening & Verification](audit/phase7-release-hardening/)
-  * [Architecture & Requirements Conformance](audit/20261017T113751Z-279df15/)
-  * [Beginner Readiness & Usability Evaluation](audit/beginner-readiness-20261017T123300Z-279df15/)
-  * [Security & Vulnerability Audit](audit/security-20261017T120429Z-279df15/)
+---
+
+## 📖 Documentation & Guides
+
+Detailed guides and technical references are available across the repository:
+
+* **[Your First Conversation with LocalPilot](docs/FIRST_CONVERSATION.md)**: A step-by-step walkthrough for complete beginners.
+* **[Documentation Hub (`docs/`)](docs/README.md)**: Master index of all guides, specifications, and architecture manuals.
+* **[Conceptual Guide](docs/CONCEPTUAL_GUIDE.md)**: How local models, memory limits, and inference engines work.
+* **[Installation Guide](docs/INSTALLATION.md)**: Detailed platform steps, custom scopes, and uninstallation.
+* **[Hardware Support Matrix](docs/SUPPORT_MATRIX.md)**: Supported operating systems, CPUs, and GPUs.
+* **[Verified Support Matrix](docs/VERIFIED_SUPPORT_MATRIX.md)**: Release verification tiers and tested configurations.
+* **[Known Limitations](docs/KNOWN_LIMITATIONS.md)**: Explicit boundaries, memory considerations, and workarounds.
+* **[التوثيق باللغة العربية](docs/ar/README.md)**: الدليل الكامل ومترجم بالكامل للعربية.
+* **[Audit & Assurance Trail (`audit/`)](audit/README.md)**: Independent testing logs, security scans, and release readiness audits.
 
 ---
 
@@ -324,9 +205,9 @@ Comprehensive documentation, specifications, and assurance reports are organized
 ## ⚠️ Disclaimer
 
 > [!WARNING]
-> **Personal Use & Testing Only**: LocalPilot is intended for non-professional and hobbyist exploration. Local model execution involves fast-moving, cutting-edge technologies that typically require specialized knowledge and ongoing training to configure and operate reliably.
+> **Personal Use & Testing**: LocalPilot is designed for personal evaluation, learning, and hobbyist exploration. Running local artificial intelligence models uses significant computer memory and processor resources.
 >
-> This project is provided strictly on an **"AS-IS"** basis for personal evaluation, experimentation, and research purposes. It is **NOT** designed, validated, or certified for production environments, mission-critical infrastructure, or commercial deployments. The creator and maintainer assume **no liabilities, warranties, or legal responsibilities** whatsoever for any data loss, system instability, hardware stress, service disruptions, or issues arising from the use or misuse of this software in production or any other context.
+> This software is provided strictly on an **"AS-IS"** basis. It is **not** certified for safety-critical systems, commercial infrastructure, or emergency services. The author assumes no liability for system instability, data loss, or issues resulting from running local models. Always back up important files and review model responses.
 
 ---
 
@@ -346,9 +227,6 @@ If you use LocalPilot in your research, academic study, or open-source projects,
   url          = {https://doi.org/10.5281/zenodo.23424540}
 }
 ```
-
-**Text / APA Citation:**
-> Mohamed (Fouad) Fakhruldeen. (2026). fakhruldeen/LocalPilot: v0.2.5 (Version v0.2.5) [Computer software]. Zenodo. https://doi.org/10.5281/zenodo.23424540
 
 ---
 
