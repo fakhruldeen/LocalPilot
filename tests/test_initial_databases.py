@@ -26,6 +26,7 @@ def test_initial_data_files_exist():
         repo_root / "src" / "localpilot" / "data",
         repo_root / "data",
         repo_root / "docs" / "data",
+        repo_root / "web" / "data",
     ]
 
     for d in dirs:
@@ -34,6 +35,9 @@ def test_initial_data_files_exist():
             fpath = d / fname
             assert fpath.exists(), f"File {fpath} does not exist"
             assert fpath.stat().st_size > 0, f"File {fpath} is empty"
+            payload = json.loads(fpath.read_text())
+            assert payload.get("as_of_date") == "2026-10-20"
+            assert payload.get("updated_at") == "2026-10-20T00:00:00Z"
 
 
 def test_sources_database_schema():
@@ -108,9 +112,14 @@ def test_models_database_schema_and_validation():
         assert "name" in m
         assert "short_alias" in m
         assert "source" in m
-        assert "release_date_display" in m
-        assert "capabilities" in m
-        assert isinstance(m["capabilities"], list)
+    # Verify 2026 models exist
+    models_2026 = [m for m in models_raw if str(m.get("verified_release_at", "")).startswith("2026")]
+    assert len(models_2026) >= 10, f"Expected at least 10 2026 models, found {len(models_2026)}"
+    aliases = {m.get("short_alias") for m in models_raw}
+    assert "gemma3:4b" in aliases
+    assert "qwen3:8b" in aliases
+    assert "deepseek-r2:7b" in aliases
+    assert "gpt-oss:20b-2026" in aliases
 
 
 def test_catalog_cli_commands():

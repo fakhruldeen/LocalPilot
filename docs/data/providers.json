@@ -3,11 +3,12 @@
   "version": "1.1.0",
   "database": "providers",
   "name": "LocalPilot Initial Providers Database",
-  "description": "Authoritative registry of foundational AI research laboratories, institutes, and organizations creating open model weights.",
-  "updated_at": "2026-10-19T21:36:04.390043Z",
+  "description": "Authoritative registry of foundational AI research laboratories, institutes, and organizations creating open model weights as of October 20, 2026.",
+  "as_of_date": "2026-10-20",
+  "updated_at": "2026-10-20T00:00:00Z",
   "homepage": "https://fakhruldeen.github.io/LocalPilot/",
   "license": "GPL-3.0-only",
-  "total_count": 55,
+  "total_count": 61,
   "providers": [
     {
       "provider_id": "google",
@@ -873,6 +874,99 @@
       "license_type": "Apache 2.0",
       "requires_community_agreement": false,
       "country": "Israel"
+    },
+    {
+      "provider_id": "anthropic",
+      "name": "Anthropic",
+      "legal_name": "Anthropic PBC",
+      "website": "https://www.anthropic.com",
+      "huggingface_org": "anthropic",
+      "description": "AI safety and research laboratory creating Claude, Constitutional AI, and open alignment evaluation suites.",
+      "flagship_families": [
+        "Claude",
+        "Constitutional AI",
+        "Anthropic Tokenizers"
+      ],
+      "license_type": "Proprietary / Open Research Evals",
+      "requires_community_agreement": false,
+      "country": "United States"
+    },
+    {
+      "provider_id": "black-forest-labs",
+      "name": "Black Forest Labs",
+      "legal_name": "Black Forest Labs Inc.",
+      "website": "https://blackforestlabs.ai",
+      "huggingface_org": "black-forest-labs",
+      "description": "Visual AI research team founded by the creators of Stable Diffusion, producing the cutting-edge FLUX.1 generative image suite.",
+      "flagship_families": [
+        "FLUX.1 Schnell",
+        "FLUX.1 Dev"
+      ],
+      "license_type": "Apache 2.0 / FLUX Non-Commercial",
+      "requires_community_agreement": false,
+      "country": "Germany"
+    },
+    {
+      "provider_id": "kuaishou",
+      "name": "Kuaishou / Kling",
+      "legal_name": "Kuaishou Technology",
+      "website": "https://klingai.com",
+      "huggingface_org": "Kwai-Kolors",
+      "description": "Pioneers in high-fidelity video generation, Kolors text-to-image, and multimodal foundation models.",
+      "flagship_families": [
+        "Kling AI",
+        "Kolors"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "China"
+    },
+    {
+      "provider_id": "cohere-for-ai",
+      "name": "Cohere For AI",
+      "legal_name": "Cohere For AI Research Community",
+      "website": "https://cohere.com/research",
+      "huggingface_org": "CohereForAI",
+      "description": "Open science non-profit research community dedicated to groundbreaking multilingual foundation models including Aya.",
+      "flagship_families": [
+        "Aya 23",
+        "Aya Expanse",
+        "C4AI Command"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "Canada"
+    },
+    {
+      "provider_id": "nomic-ai",
+      "name": "Nomic AI",
+      "legal_name": "Nomic AI Inc.",
+      "website": "https://nomic.ai",
+      "huggingface_org": "nomic-ai",
+      "description": "Creators of GPT4All and fully auditable, open-weight, long-context embedding and multimodal models.",
+      "flagship_families": [
+        "Nomic Embed",
+        "Nomic Vision",
+        "GPT4All"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "United States"
+    },
+    {
+      "provider_id": "adept-ai",
+      "name": "Adept AI",
+      "legal_name": "Adept AI Labs Inc.",
+      "website": "https://www.adept.ai",
+      "huggingface_org": "adept",
+      "description": "Pioneering developers of Action Transformers (ACT-1) and Fuyu multimodal foundation architectures designed to operate software.",
+      "flagship_families": [
+        "Fuyu",
+        "ACT-1"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "United States"
     }
   ]
 }

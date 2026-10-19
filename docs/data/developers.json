@@ -3,11 +3,12 @@
   "version": "1.1.0",
   "database": "developers",
   "name": "LocalPilot Initial Developers Database",
-  "description": "Authoritative registry of key developers, quantizers, runtime authors, and community maintainers enabling local desktop AI.",
-  "updated_at": "2026-10-19T21:36:04.390043Z",
+  "description": "Authoritative registry of key developers, quantizers, runtime authors, and community maintainers enabling local desktop AI as of October 20, 2026.",
+  "as_of_date": "2026-10-20",
+  "updated_at": "2026-10-20T00:00:00Z",
   "homepage": "https://fakhruldeen.github.io/LocalPilot/",
   "license": "GPL-3.0-only",
-  "total_count": 39,
+  "total_count": 45,
   "developers": [
     {
       "developer_id": "bartowski",
@@ -519,6 +520,88 @@
         "Korean/English instruction tuning"
       ],
       "description": "Consortium specializing in Korean linguistic adaptation and Asian multilingual foundations."
+    },
+    {
+      "developer_id": "city96",
+      "name": "city96",
+      "role": "ComfyUI-GGUF Creator & Diffusion Quantization Lead",
+      "huggingface_url": "https://huggingface.co/city96",
+      "website": "https://github.com/city96",
+      "specialties": [
+        "ComfyUI-GGUF",
+        "FLUX.1 GGUF",
+        "SDXL GGUF",
+        "Stable Diffusion quants"
+      ],
+      "description": "Author of the official ComfyUI-GGUF node suite enabling image and diffusion model quantization on consumer GPUs."
+    },
+    {
+      "developer_id": "oobabooga",
+      "name": "oobabooga",
+      "role": "Local LLM Web Interface Creator & Open Backend Pioneer",
+      "huggingface_url": "https://huggingface.co/oobabooga",
+      "website": "https://github.com/oobabooga/text-generation-webui",
+      "specialties": [
+        "text-generation-webui",
+        "ExLlama integration",
+        "llama.cpp frontend",
+        "multi-loader"
+      ],
+      "description": "Creator of the premier open-source desktop WebUI unifying multiple model execution backends and extensions."
+    },
+    {
+      "developer_id": "panqiwei",
+      "name": "PanQiWei",
+      "role": "AutoGPTQ Engine Creator & GPU Kernel Engineer",
+      "huggingface_url": "https://huggingface.co/PanQiWei",
+      "website": "https://github.com/PanQiWei/AutoGPTQ",
+      "specialties": [
+        "AutoGPTQ",
+        "Triton kernels",
+        "CUDA W4A16 inference",
+        "Marlin integration"
+      ],
+      "description": "Pioneered fast 4-bit GPU inference kernels adopted across major inference runtimes and Hugging Face transformers."
+    },
+    {
+      "developer_id": "second-state",
+      "name": "Second State",
+      "role": "WasmEdge & High-Performance GGUF Infrastructure Maintainer",
+      "huggingface_url": "https://huggingface.co/second-state",
+      "website": "https://www.secondstate.io",
+      "specialties": [
+        "WasmEdge",
+        "MiniLM GGUF",
+        "Whisper GGUF",
+        "cross-platform inference"
+      ],
+      "description": "Distributes lightweight cross-platform WebAssembly runtimes and verified GGUF weights for embeddings and speech."
+    },
+    {
+      "developer_id": "richarderkhov",
+      "name": "Richard Erkhov",
+      "role": "Large-Scale Hugging Face GGUF Conversion Maintainer",
+      "huggingface_url": "https://huggingface.co/RichardErkhov",
+      "website": "https://huggingface.co/RichardErkhov",
+      "specialties": [
+        "Automated GGUF conversion",
+        "multi-quant coverage",
+        "community porting"
+      ],
+      "description": "Automated thousands of GGUF quantizations for newly released models, ensuring immediate local availability."
+    },
+    {
+      "developer_id": "abacaj",
+      "name": "abacaj",
+      "role": "Local AI Benchmarking & Throughput Evaluation Specialist",
+      "huggingface_url": "https://huggingface.co/abacaj",
+      "website": "https://github.com/abacaj",
+      "specialties": [
+        "vLLM vs llama.cpp benchmarks",
+        "Tokens/s profiling",
+        "Consumer GPU optimization"
+      ],
+      "description": "Author of widely cited local LLM performance benchmarks and comparative latency audits on consumer hardware."
     }
   ]
 }
