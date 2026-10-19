@@ -8,7 +8,7 @@
   "updated_at": "2026-10-20T00:00:00Z",
   "homepage": "https://fakhruldeen.github.io/LocalPilot/",
   "license": "GPL-3.0-only",
-  "total_count": 45,
+  "total_count": 48,
   "developers": [
     {
       "developer_id": "bartowski",
@@ -602,6 +602,46 @@
         "Consumer GPU optimization"
       ],
       "description": "Author of widely cited local LLM performance benchmarks and comparative latency audits on consumer hardware."
+    },
+    {
+      "developer_id": "mlx-community",
+      "name": "MLX Community",
+      "role": "Apple Silicon MLX Weights & Conversions Maintainer",
+      "huggingface_url": "https://huggingface.co/mlx-community",
+      "website": "https://github.com/ml-explore/mlx",
+      "specialties": [
+        "MLX format",
+        "Apple Silicon optimization",
+        "4-bit/8-bit MLX weights"
+      ],
+      "description": "Publishes optimized, open-source model weights designed for Apple Silicon Unified Memory architectures using Apple's MLX framework."
+    },
+    {
+      "developer_id": "lmstudio-community",
+      "name": "LM Studio Community",
+      "role": "Desktop LLM Quantization & Distribution Community",
+      "huggingface_url": "https://huggingface.co/lmstudio-community",
+      "website": "https://lmstudio.ai",
+      "specialties": [
+        "GGUF quantizations",
+        "Desktop inference",
+        "Community curation"
+      ],
+      "description": "Active community publishing verified GGUF quantizations and configs for consumer desktop runtimes."
+    },
+    {
+      "developer_id": "ggml-org",
+      "name": "ggml organization",
+      "role": "Official ggml Runtimes & Inference Ecosystem Maintainers",
+      "huggingface_url": "https://huggingface.co/ggml-org",
+      "website": "https://ggml.ai",
+      "specialties": [
+        "ggml core",
+        "llama.cpp",
+        "whisper.cpp",
+        "Reference quantizations"
+      ],
+      "description": "Official organization behind ggml tensor library and foundational local inference projects."
     }
   ]
 }

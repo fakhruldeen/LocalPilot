@@ -8,7 +8,7 @@
   "updated_at": "2026-10-20T00:00:00Z",
   "homepage": "https://fakhruldeen.github.io/LocalPilot/",
   "license": "GPL-3.0-only",
-  "total_count": 61,
+  "total_count": 71,
   "providers": [
     {
       "provider_id": "google",
@@ -305,7 +305,9 @@
     {
       "provider_id": "kimi",
       "name": "Kimi",
-      "legal_name": "Moonshot AI (Kimi)",
+      "canonical_provider_id": "moonshot-ai",
+      "is_alias": true,
+      "legal_name": "Moonshot AI (Kimi Family)",
       "website": "https://kimi.moonshot.cn",
       "huggingface_org": "moonshotai",
       "description": "Leading long-context language model team developing the Kimi conversational assistant and Moonlight MoE models.",
@@ -337,7 +339,9 @@
     {
       "provider_id": "glm",
       "name": "GLM",
-      "legal_name": "Zhipu AI / Tsinghua University (THUDM)",
+      "canonical_provider_id": "zhipu-ai",
+      "is_alias": true,
+      "legal_name": "Zhipu AI (GLM Family)",
       "website": "https://zhipuai.cn",
       "huggingface_org": "THUDM",
       "description": "General Language Model (GLM) series and CogVLM vision models created by Zhipu AI and Tsinghua University KEG lab.",
@@ -373,29 +377,33 @@
       "legal_name": "OpenAI, LLC",
       "website": "https://openai.com",
       "huggingface_org": "openai",
-      "description": "Pioneers of generative AI whose Whisper model series powers offline, private speech recognition in LocalPilot.",
+      "description": "Pioneers of generative AI whose Whisper model series and official GPT-OSS open-weights models power offline, private AI in LocalPilot.",
       "flagship_families": [
+        "GPT-OSS 20B",
+        "GPT-OSS 120B",
         "Whisper Large v3",
         "Whisper Medium",
         "Whisper Small"
       ],
-      "license_type": "MIT",
+      "license_type": "Apache-2.0 / MIT",
       "requires_community_agreement": false,
       "country": "United States"
     },
     {
       "provider_id": "gpt-oss",
       "name": "GPT-OSS",
-      "legal_name": "Open-Source GPT Foundation / Community OSS",
-      "website": "https://github.com/openai",
+      "canonical_provider_id": "openai",
+      "is_alias": true,
+      "legal_name": "OpenAI (GPT-OSS Open-Weights Family)",
+      "website": "https://huggingface.co/openai/gpt-oss-20b",
       "huggingface_org": "openai",
-      "description": "Open-weights GPT architectures and community open-source foundation models.",
+      "description": "Official open-weights GPT foundation models released by OpenAI under Apache-2.0, with community GGUF artifacts.",
       "flagship_families": [
         "GPT-OSS 20B",
-        "GPT-OSS 7B",
-        "Whisper Large v3 Turbo"
+        "GPT-OSS 120B",
+        "GPT-OSS 7B"
       ],
-      "license_type": "Apache 2.0 / MIT",
+      "license_type": "Apache-2.0",
       "requires_community_agreement": false,
       "country": "United States"
     },
@@ -967,6 +975,153 @@
       "license_type": "Apache 2.0",
       "requires_community_agreement": false,
       "country": "United States"
+    },
+    {
+      "provider_id": "reflection",
+      "name": "Reflection AI",
+      "legal_name": "Reflection AI (Beam Series)",
+      "website": "https://huggingface.co/blog/reflection-beam",
+      "huggingface_org": "reflection",
+      "description": "Creators of the Reflection Beam 501B MoE architecture and open foundation reasoning systems.",
+      "flagship_families": [
+        "Beam 1.0"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "United States"
+    },
+    {
+      "provider_id": "xiaomi-mimo",
+      "name": "Xiaomi MiMo",
+      "legal_name": "Xiaomi Corporation AI Lab",
+      "website": "https://www.mi.com",
+      "huggingface_org": "XiaomiMiMo",
+      "description": "Xiaomi's AI laboratory developing efficient mobile, device, and RL-optimized reasoning foundation models.",
+      "flagship_families": [
+        "MiMo-V2.6"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "China"
+    },
+    {
+      "provider_id": "tencent",
+      "name": "Tencent AI Lab",
+      "legal_name": "Tencent Holdings Ltd.",
+      "website": "https://ai.tencent.com",
+      "huggingface_org": "tencent",
+      "description": "Developer of Hunyuan foundation models and open multimodal AI systems.",
+      "flagship_families": [
+        "Hunyuan",
+        "Hy3",
+        "Hy4"
+      ],
+      "license_type": "Tencent Hunyuan Community License",
+      "requires_community_agreement": false,
+      "country": "China"
+    },
+    {
+      "provider_id": "mixedbread",
+      "name": "Mixedbread AI",
+      "legal_name": "Mixedbread AI Inc.",
+      "website": "https://www.mixedbread.ai",
+      "huggingface_org": "mixedbread-ai",
+      "description": "Specialists in open-weights vector embeddings, cross-encoders, and high-precision neural reranking models.",
+      "flagship_families": [
+        "mxbai-embed",
+        "mxbai-rerank"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "Germany"
+    },
+    {
+      "provider_id": "jina-ai",
+      "name": "Jina AI",
+      "legal_name": "Jina AI GmbH",
+      "website": "https://jina.ai",
+      "huggingface_org": "jinaai",
+      "description": "Leading developer of open multimodal search foundation models, long-context embeddings, and segmenters.",
+      "flagship_families": [
+        "jina-embeddings-v3",
+        "jina-colbert"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "Germany"
+    },
+    {
+      "provider_id": "intfloat",
+      "name": "intfloat",
+      "legal_name": "intfloat Community & Microsoft Research",
+      "website": "https://huggingface.co/intfloat",
+      "huggingface_org": "intfloat",
+      "description": "Authors of the widely adopted E5 and multilingual E5 embedding model series for dense retrieval.",
+      "flagship_families": [
+        "multilingual-e5",
+        "e5-mistral"
+      ],
+      "license_type": "MIT",
+      "requires_community_agreement": false,
+      "country": "International"
+    },
+    {
+      "provider_id": "allam-ai",
+      "name": "ALLaM AI",
+      "legal_name": "Saudi Data and Artificial Intelligence Authority (SDAIA)",
+      "website": "https://sdaia.gov.sa",
+      "huggingface_org": "ALLaM-AI",
+      "description": "National foundation model initiative in Saudi Arabia, building high-performance Arabic bilingual models.",
+      "flagship_families": [
+        "ALLaM-7B"
+      ],
+      "license_type": "Open Arabic Model License",
+      "requires_community_agreement": false,
+      "country": "Saudi Arabia"
+    },
+    {
+      "provider_id": "inception",
+      "name": "Inception AI (Jais)",
+      "legal_name": "Inception Institute of Artificial Intelligence (IIAI) / Core42",
+      "website": "https://huggingface.co/inceptionai",
+      "huggingface_org": "inceptionai",
+      "description": "Research collective and pioneers of Jais Arabic-English bilingual foundational models (identity subject to ongoing community review).",
+      "flagship_families": [
+        "Jais 13B",
+        "Jais 30B"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "United Arab Emirates"
+    },
+    {
+      "provider_id": "silma-ai",
+      "name": "Silma AI",
+      "legal_name": "Silma AI Research",
+      "website": "https://huggingface.co/silma-ai",
+      "huggingface_org": "silma-ai",
+      "description": "Arabic AI research lab specializing in open-weights bilingual Arabic instruction and reasoning models.",
+      "flagship_families": [
+        "SILMA-9B",
+        "SILMA-Kashif"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "United Arab Emirates"
+    },
+    {
+      "provider_id": "mbzuai-paris",
+      "name": "MBZUAI-Paris",
+      "legal_name": "Mohamed bin Zayed University of Artificial Intelligence (Paris Lab)",
+      "website": "https://mbzuai.ac.ae",
+      "huggingface_org": "MBZUAI-Paris",
+      "description": "Academic research lab producing open Arabic-multilingual models including Nile-Chat.",
+      "flagship_families": [
+        "Nile-Chat-12B"
+      ],
+      "license_type": "Apache 2.0",
+      "requires_community_agreement": false,
+      "country": "France / UAE"
     }
   ]
 }

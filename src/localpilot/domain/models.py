@@ -124,6 +124,18 @@ class NormalizedCandidate(BaseModel):
     is_official: bool = False
     official_resource_url: Optional[str] = None
 
+    # Attribution & Provenance Separation (Base Author vs Artifact Publisher)
+    base_model_provider_id: Optional[str] = None
+    base_model_id: Optional[str] = None
+    artifact_publisher_id: Optional[str] = None
+    artifact_repository: Optional[str] = None
+    artifact_is_official: Optional[bool] = None
+    enabled_for_install: bool = True
+    evidence_url: Optional[str] = None
+    evidence_level: Optional[str] = None
+    artifact_verification: Optional[str] = None
+    localpilot_compatibility: Optional[str] = None
+
     @property
     def parameter_count_approx_b(self) -> float:
         """Parses parameter_count (e.g. '1.5B', '7B') to float billions, default 7.0."""
@@ -268,6 +280,14 @@ class NormalizedCandidate(BaseModel):
     @property
     def publisher_display(self) -> str:
         """Name of the model provider or creator lab (e.g. Meta, Google, NVIDIA, DeepSeek, etc.)."""
+        # If separated attribution is explicitly provided
+        if self.base_model_provider_id and self.artifact_publisher_id:
+            base = self.base_model_provider_id.title()
+            pub = self.artifact_publisher_id
+            if base.lower() != pub.lower():
+                return f"{base} (via {pub})"
+            return base
+
         pub = self.provenance.get("publisher") if self.provenance else None
         if not pub:
             if "/" in self.model_id:
@@ -294,12 +314,12 @@ class NormalizedCandidate(BaseModel):
                     "minimax": "MiniMax",
                     "minimaxi": "MiniMax",
                     "openai": "OpenAI",
-                    "gpt-oss": "GPT-OSS",
-                    "moonshotai": "Kimi",
-                    "moonshot-ai": "Kimi",
+                    "gpt-oss": "OpenAI (GPT-OSS)",
+                    "moonshotai": "Moonshot AI (Kimi)",
+                    "moonshot-ai": "Moonshot AI (Kimi)",
                     "groq": "Groq",
-                    "thudm": "GLM",
-                    "kt-ai": "KLM",
+                    "thudm": "Zhipu AI (GLM)",
+                    "kt-ai": "KT (KLM)",
                     "sentence-transformers": "Sentence Transformers",
                 }
                 pub = prefix_map.get(prefix, self.model_id.split("/")[0])

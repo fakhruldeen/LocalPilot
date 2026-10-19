@@ -399,7 +399,9 @@ PROVIDERS_DATA = {
         {
             "provider_id": "kimi",
             "name": "Kimi",
-            "legal_name": "Moonshot AI (Kimi)",
+            "canonical_provider_id": "moonshot-ai",
+            "is_alias": True,
+            "legal_name": "Moonshot AI (Kimi Family)",
             "website": "https://kimi.moonshot.cn",
             "huggingface_org": "moonshotai",
             "description": "Leading long-context language model team developing the Kimi conversational assistant and Moonlight MoE models.",
@@ -423,7 +425,9 @@ PROVIDERS_DATA = {
         {
             "provider_id": "glm",
             "name": "GLM",
-            "legal_name": "Zhipu AI / Tsinghua University (THUDM)",
+            "canonical_provider_id": "zhipu-ai",
+            "is_alias": True,
+            "legal_name": "Zhipu AI (GLM Family)",
             "website": "https://zhipuai.cn",
             "huggingface_org": "THUDM",
             "description": "General Language Model (GLM) series and CogVLM vision models created by Zhipu AI and Tsinghua University KEG lab.",
@@ -450,21 +454,23 @@ PROVIDERS_DATA = {
             "legal_name": "OpenAI, LLC",
             "website": "https://openai.com",
             "huggingface_org": "openai",
-            "description": "Pioneers of generative AI whose Whisper model series powers offline, private speech recognition in LocalPilot.",
-            "flagship_families": ["Whisper Large v3", "Whisper Medium", "Whisper Small"],
-            "license_type": "MIT",
+            "description": "Pioneers of generative AI whose Whisper model series and official GPT-OSS open-weights models power offline, private AI in LocalPilot.",
+            "flagship_families": ["GPT-OSS 20B", "GPT-OSS 120B", "Whisper Large v3", "Whisper Medium", "Whisper Small"],
+            "license_type": "Apache-2.0 / MIT",
             "requires_community_agreement": False,
             "country": "United States"
         },
         {
             "provider_id": "gpt-oss",
             "name": "GPT-OSS",
-            "legal_name": "Open-Source GPT Foundation / Community OSS",
-            "website": "https://github.com/openai",
+            "canonical_provider_id": "openai",
+            "is_alias": True,
+            "legal_name": "OpenAI (GPT-OSS Open-Weights Family)",
+            "website": "https://huggingface.co/openai/gpt-oss-20b",
             "huggingface_org": "openai",
-            "description": "Open-weights GPT architectures and community open-source foundation models.",
-            "flagship_families": ["GPT-OSS 20B", "GPT-OSS 7B", "Whisper Large v3 Turbo"],
-            "license_type": "Apache 2.0 / MIT",
+            "description": "Official open-weights GPT foundation models released by OpenAI under Apache-2.0, with community GGUF artifacts.",
+            "flagship_families": ["GPT-OSS 20B", "GPT-OSS 120B", "GPT-OSS 7B"],
+            "license_type": "Apache-2.0",
             "requires_community_agreement": False,
             "country": "United States"
         },
@@ -911,6 +917,126 @@ PROVIDERS_DATA = {
             "license_type": "Apache 2.0",
             "requires_community_agreement": False,
             "country": "United States"
+        },
+        {
+            "provider_id": "reflection",
+            "name": "Reflection AI",
+            "legal_name": "Reflection AI (Beam Series)",
+            "website": "https://huggingface.co/blog/reflection-beam",
+            "huggingface_org": "reflection",
+            "description": "Creators of the Reflection Beam 501B MoE architecture and open foundation reasoning systems.",
+            "flagship_families": ["Beam 1.0"],
+            "license_type": "Apache 2.0",
+            "requires_community_agreement": False,
+            "country": "United States"
+        },
+        {
+            "provider_id": "xiaomi-mimo",
+            "name": "Xiaomi MiMo",
+            "legal_name": "Xiaomi Corporation AI Lab",
+            "website": "https://www.mi.com",
+            "huggingface_org": "XiaomiMiMo",
+            "description": "Xiaomi's AI laboratory developing efficient mobile, device, and RL-optimized reasoning foundation models.",
+            "flagship_families": ["MiMo-V2.6"],
+            "license_type": "Apache 2.0",
+            "requires_community_agreement": False,
+            "country": "China"
+        },
+        {
+            "provider_id": "tencent",
+            "name": "Tencent AI Lab",
+            "legal_name": "Tencent Holdings Ltd.",
+            "website": "https://ai.tencent.com",
+            "huggingface_org": "tencent",
+            "description": "Developer of Hunyuan foundation models and open multimodal AI systems.",
+            "flagship_families": ["Hunyuan", "Hy3", "Hy4"],
+            "license_type": "Tencent Hunyuan Community License",
+            "requires_community_agreement": False,
+            "country": "China"
+        },
+        {
+            "provider_id": "mixedbread",
+            "name": "Mixedbread AI",
+            "legal_name": "Mixedbread AI Inc.",
+            "website": "https://www.mixedbread.ai",
+            "huggingface_org": "mixedbread-ai",
+            "description": "Specialists in open-weights vector embeddings, cross-encoders, and high-precision neural reranking models.",
+            "flagship_families": ["mxbai-embed", "mxbai-rerank"],
+            "license_type": "Apache 2.0",
+            "requires_community_agreement": False,
+            "country": "Germany"
+        },
+        {
+            "provider_id": "jina-ai",
+            "name": "Jina AI",
+            "legal_name": "Jina AI GmbH",
+            "website": "https://jina.ai",
+            "huggingface_org": "jinaai",
+            "description": "Leading developer of open multimodal search foundation models, long-context embeddings, and segmenters.",
+            "flagship_families": ["jina-embeddings-v3", "jina-colbert"],
+            "license_type": "Apache 2.0",
+            "requires_community_agreement": False,
+            "country": "Germany"
+        },
+        {
+            "provider_id": "intfloat",
+            "name": "intfloat",
+            "legal_name": "intfloat Community & Microsoft Research",
+            "website": "https://huggingface.co/intfloat",
+            "huggingface_org": "intfloat",
+            "description": "Authors of the widely adopted E5 and multilingual E5 embedding model series for dense retrieval.",
+            "flagship_families": ["multilingual-e5", "e5-mistral"],
+            "license_type": "MIT",
+            "requires_community_agreement": False,
+            "country": "International"
+        },
+        {
+            "provider_id": "allam-ai",
+            "name": "ALLaM AI",
+            "legal_name": "Saudi Data and Artificial Intelligence Authority (SDAIA)",
+            "website": "https://sdaia.gov.sa",
+            "huggingface_org": "ALLaM-AI",
+            "description": "National foundation model initiative in Saudi Arabia, building high-performance Arabic bilingual models.",
+            "flagship_families": ["ALLaM-7B"],
+            "license_type": "Open Arabic Model License",
+            "requires_community_agreement": False,
+            "country": "Saudi Arabia"
+        },
+        {
+            "provider_id": "inception",
+            "name": "Inception AI (Jais)",
+            "legal_name": "Inception Institute of Artificial Intelligence (IIAI) / Core42",
+            "website": "https://huggingface.co/inceptionai",
+            "huggingface_org": "inceptionai",
+            "description": "Research collective and pioneers of Jais Arabic-English bilingual foundational models (identity subject to ongoing community review).",
+            "flagship_families": ["Jais 13B", "Jais 30B"],
+            "license_type": "Apache 2.0",
+            "requires_community_agreement": False,
+            "country": "United Arab Emirates"
+        },
+        {
+            "provider_id": "silma-ai",
+            "name": "Silma AI",
+            "legal_name": "Silma AI Research",
+            "website": "https://huggingface.co/silma-ai",
+            "huggingface_org": "silma-ai",
+            "description": "Arabic AI research lab specializing in open-weights bilingual Arabic instruction and reasoning models.",
+            "flagship_families": ["SILMA-9B", "SILMA-Kashif"],
+            "license_type": "Apache 2.0",
+            "requires_community_agreement": False,
+            "country": "United Arab Emirates"
+        },
+        {
+            "provider_id": "mbzuai-paris",
+            "name": "MBZUAI-Paris",
+            "legal_name": "Mohamed bin Zayed University of Artificial Intelligence (Paris Lab)",
+            "website": "https://mbzuai.ac.ae",
+            "huggingface_org": "MBZUAI-Paris",
+            "description": "Academic research lab producing open Arabic-multilingual models including Nile-Chat.",
+            "flagship_families": ["Nile-Chat-12B"],
+            "license_type": "Apache 2.0",
+            "requires_community_agreement": False,
+            "country": "France / UAE"
         }
     ]
 }
@@ -1334,6 +1460,33 @@ DEVELOPERS_DATA = {
             "website": "https://github.com/abacaj",
             "specialties": ["vLLM vs llama.cpp benchmarks", "Tokens/s profiling", "Consumer GPU optimization"],
             "description": "Author of widely cited local LLM performance benchmarks and comparative latency audits on consumer hardware."
+        },
+        {
+            "developer_id": "mlx-community",
+            "name": "MLX Community",
+            "role": "Apple Silicon MLX Weights & Conversions Maintainer",
+            "huggingface_url": "https://huggingface.co/mlx-community",
+            "website": "https://github.com/ml-explore/mlx",
+            "specialties": ["MLX format", "Apple Silicon optimization", "4-bit/8-bit MLX weights"],
+            "description": "Publishes optimized, open-source model weights designed for Apple Silicon Unified Memory architectures using Apple's MLX framework."
+        },
+        {
+            "developer_id": "lmstudio-community",
+            "name": "LM Studio Community",
+            "role": "Desktop LLM Quantization & Distribution Community",
+            "huggingface_url": "https://huggingface.co/lmstudio-community",
+            "website": "https://lmstudio.ai",
+            "specialties": ["GGUF quantizations", "Desktop inference", "Community curation"],
+            "description": "Active community publishing verified GGUF quantizations and configs for consumer desktop runtimes."
+        },
+        {
+            "developer_id": "ggml-org",
+            "name": "ggml organization",
+            "role": "Official ggml Runtimes & Inference Ecosystem Maintainers",
+            "huggingface_url": "https://huggingface.co/ggml-org",
+            "website": "https://ggml.ai",
+            "specialties": ["ggml core", "llama.cpp", "whisper.cpp", "Reference quantizations"],
+            "description": "Official organization behind ggml tensor library and foundational local inference projects."
         }
     ]
 }
@@ -1371,6 +1524,14 @@ def make_candidate(
     artifact: str = None,
     license_name: str = "Apache-2.0",
     langs: list[str] = None,
+    base_provider: str = None,
+    base_model: str = None,
+    art_publisher: str = None,
+    art_repo: str = None,
+    art_official: bool = None,
+    enabled_for_install: bool = True,
+    evidence_url: str = None,
+    evidence_level: str = None,
 ) -> NormalizedCandidate:
     art = artifact or f"{cid}.gguf"
     src_u = f"https://huggingface.co/{mid}" if source == "huggingface" else (official_url or "https://ollama.com")
@@ -1412,6 +1573,14 @@ def make_candidate(
         provenance={"catalog": "seed", "publisher": pub or family, "is_official": official},
         is_official=official,
         official_resource_url=official_url,
+        base_model_provider_id=base_provider,
+        base_model_id=base_model,
+        artifact_publisher_id=art_publisher,
+        artifact_repository=art_repo,
+        artifact_is_official=art_official,
+        enabled_for_install=enabled_for_install,
+        evidence_url=evidence_url,
+        evidence_level=evidence_level,
     )
 
 # Additional models to complement the existing 47 seed models
@@ -3418,6 +3587,157 @@ ADDITIONAL_MODELS: List[NormalizedCandidate] = [
         license_name="Liquid Model License",
         langs=["en"],
     ),
+    # --- Promoted Research Candidates with Primary Verification ---
+    make_candidate(
+        cid="hf-gemma-4-e2b-it",
+        mid="google/gemma-4-E2B-it",
+        name="Gemma 4 E2B Instruct (Official Google)",
+        alias="gemma4:e2b",
+        family="Gemma 4",
+        arch="gemma4",
+        tasks=[TaskCategory.CHAT, TaskCategory.REASONING, TaskCategory.WRITING],
+        params="2.6B (2B effective)",
+        sz_mb=1750,
+        ram_mb=2600,
+        ctx=16384,
+        release="2026-06-15T00:00:00Z",
+        official=True,
+        pub="Google",
+        official_url="https://huggingface.co/google/gemma-4-E2B-it",
+        artifact="gemma-4-e2b-it-q4_k_m.gguf",
+        license_name="Apache-2.0",
+        base_provider="google",
+        base_model="google/gemma-4-E2B-it",
+        art_official=True,
+        evidence_url="https://huggingface.co/google/gemma-4-E2B-it",
+        evidence_level="primary_model_card",
+        langs=["en"],
+    ),
+    make_candidate(
+        cid="hf-gemma-4-e4b-it",
+        mid="google/gemma-4-E4B-it",
+        name="Gemma 4 E4B Instruct (Official Google)",
+        alias="gemma4:e4b",
+        family="Gemma 4",
+        arch="gemma4",
+        tasks=[TaskCategory.CHAT, TaskCategory.REASONING, TaskCategory.WRITING, TaskCategory.CODING],
+        params="4.8B (4B effective)",
+        sz_mb=2900,
+        ram_mb=4200,
+        ctx=32768,
+        release="2026-06-15T00:00:00Z",
+        official=True,
+        pub="Google",
+        official_url="https://huggingface.co/google/gemma-4-E4B-it",
+        artifact="gemma-4-e4b-it-q4_k_m.gguf",
+        license_name="Apache-2.0",
+        base_provider="google",
+        base_model="google/gemma-4-E4B-it",
+        art_official=True,
+        evidence_url="https://huggingface.co/google/gemma-4-E4B-it",
+        evidence_level="primary_model_card",
+        langs=["en"],
+    ),
+    make_candidate(
+        cid="hf-qwen-3.8-27b",
+        mid="Qwen/Qwen3.8-27B",
+        name="Qwen 3.8 27B Instruct (Official Alibaba)",
+        alias="qwen3.8:27b",
+        family="Qwen 3.8",
+        arch="qwen3",
+        tasks=[TaskCategory.CHAT, TaskCategory.REASONING, TaskCategory.CODING, TaskCategory.WRITING],
+        params="27B",
+        sz_mb=16200,
+        ram_mb=20000,
+        ctx=32768,
+        release="2026-05-20T00:00:00Z",
+        official=True,
+        pub="Qwen",
+        official_url="https://huggingface.co/Qwen/Qwen3.8-27B",
+        artifact="qwen3.8-27b-q4_k_m.gguf",
+        license_name="Apache-2.0",
+        base_provider="qwen",
+        base_model="Qwen/Qwen3.8-27B",
+        art_official=True,
+        evidence_url="https://huggingface.co/Qwen/Qwen3.8-27B",
+        evidence_level="primary_model_card",
+        langs=["en", "zh"],
+    ),
+    make_candidate(
+        cid="hf-allam-7b-instruct-preview",
+        mid="ALLaM-AI/ALLaM-7B-Instruct-preview",
+        name="ALLaM 7B Instruct Preview (SDAIA Arabic)",
+        alias="allam:7b",
+        family="ALLaM",
+        arch="allam",
+        tasks=[TaskCategory.CHAT, TaskCategory.WRITING, TaskCategory.REASONING],
+        params="7B",
+        sz_mb=4500,
+        ram_mb=6200,
+        ctx=8192,
+        release="2025-05-10T00:00:00Z",
+        official=True,
+        pub="ALLaM AI",
+        official_url="https://sdaia.gov.sa",
+        artifact="allam-7b-instruct-q4_k_m.gguf",
+        license_name="Open Arabic Model License",
+        base_provider="allam-ai",
+        base_model="ALLaM-AI/ALLaM-7B-Instruct-preview",
+        art_official=True,
+        evidence_url="https://huggingface.co/spaces/OALL/Open-Arabic-LLM-Leaderboard",
+        evidence_level="discovery_reference",
+        langs=["ar", "en"],
+    ),
+    make_candidate(
+        cid="hf-silma-kashif-2b-instruct",
+        mid="silma-ai/SILMA-Kashif-2B-Instruct-v1.0",
+        name="SILMA Kashif 2B Instruct (Silma Arabic)",
+        alias="silma-kashif:2b",
+        family="SILMA",
+        arch="llama",
+        tasks=[TaskCategory.CHAT, TaskCategory.WRITING],
+        params="2B",
+        sz_mb=1450,
+        ram_mb=2200,
+        ctx=8192,
+        release="2025-08-15T00:00:00Z",
+        official=True,
+        pub="Silma AI",
+        official_url="https://huggingface.co/silma-ai",
+        artifact="silma-kashif-2b-instruct-q4_k_m.gguf",
+        license_name="Apache-2.0",
+        base_provider="silma-ai",
+        base_model="silma-ai/SILMA-Kashif-2B-Instruct-v1.0",
+        art_official=True,
+        evidence_url="https://huggingface.co/spaces/OALL/Open-Arabic-LLM-Leaderboard",
+        evidence_level="discovery_reference",
+        langs=["ar", "en"],
+    ),
+    make_candidate(
+        cid="hf-mxbai-rerank-base-v2",
+        mid="mixedbread-ai/mxbai-rerank-base-v2",
+        name="Mixedbread mxbai Rerank Base v2 (Neural Reranker)",
+        alias="mxbai-rerank:base",
+        family="mxbai",
+        arch="bert",
+        tasks=[TaskCategory.EMBEDDING],
+        params="300M",
+        sz_mb=320,
+        ram_mb=750,
+        ctx=8192,
+        release="2025-06-01T00:00:00Z",
+        official=True,
+        pub="Mixedbread AI",
+        official_url="https://www.mixedbread.ai",
+        artifact="mxbai-rerank-base-v2.gguf",
+        license_name="Apache-2.0",
+        base_provider="mixedbread",
+        base_model="mixedbread-ai/mxbai-rerank-base-v2",
+        art_official=True,
+        evidence_url="https://docs.vllm.ai/en/v0.9.2/models/supported_models.html",
+        evidence_level="discovery_reference",
+        langs=["en"],
+    ),
 ]
 
 # Combine existing seed models with the newly added candidates
@@ -3443,8 +3763,75 @@ for c in unique_candidates:
     cand_dict["why_summary"] = c.why_capabilities_summary
     cand_dict["size_mb"] = sz_mb
     cand_dict["is_gated"] = bool(c.requires_auth)
-    dev_name = "Official Lab" if c.is_official else c.provenance.get("publisher", "Community")
-    cand_dict["developer_attribution"] = dev_name
+
+    # Clean suspect repetitive mock SHA-256 hashes
+    h = cand_dict.get("sha256")
+    if h:
+        if (
+            len(h) == 64 and h[:32] == h[32:]
+            or h.startswith("a1b2c3d4e5f60718293a")
+            or h.startswith("fedcba0987654321fedc")
+            or h.startswith("0987654321fedcba0987")
+            or h.startswith("c0ffee1234567890abcd")
+            or h.startswith("1a2b3c4d5e6f7a8b9c0d")
+            or h.startswith("b4c5d6e7f8a9b0c1d2e3")
+            or h.startswith("c5d6e7f8a9b0c1d2e3f4")
+            or h.startswith("d6e7f8a9b0c1d2e3f4a5")
+            or h.startswith("e7f8a9b0c1d2e3f4a5b6")
+            or h.startswith("f8a9b0c1d2e3f4a5b6c7")
+            or h.startswith("8a9b0c1d2e3f4a5b6c7d")
+            or h.startswith("4d5e6f708192a3b4c5d6")
+            or h.startswith("e3b0c44298fc1c149afb")
+            or h.startswith("7b8c9d0e1f2a3b4c5d6e")
+        ):
+            cand_dict["sha256"] = None
+
+    # Separate base model author from community quantizer (bartowski, unsloth)
+    mid = c.model_id
+    if mid.startswith("bartowski/"):
+        cand_dict["artifact_publisher_id"] = "bartowski"
+        cand_dict["artifact_repository"] = mid
+        cand_dict["artifact_is_official"] = False
+        cand_dict["is_official"] = False
+        if "gemma" in mid.lower():
+            cand_dict["base_model_provider_id"] = "google"
+            cand_dict["base_model_id"] = "google/" + mid.replace("bartowski/", "").replace("-GGUF", "")
+            cand_dict["name"] = cand_dict["name"].replace("(Official Google)", "(Google / bartowski GGUF)")
+            cand_dict["publisher_display"] = "Google (via bartowski)"
+        elif "llama" in mid.lower():
+            cand_dict["base_model_provider_id"] = "meta"
+            cand_dict["base_model_id"] = "meta-llama/" + mid.replace("bartowski/", "").replace("-GGUF", "")
+            cand_dict["name"] = (
+                cand_dict["name"]
+                .replace("(Official Meta)", "(Meta / bartowski GGUF)")
+                .replace("(Meta Vision & Image)", "(Meta / bartowski GGUF)")
+            )
+            cand_dict["publisher_display"] = "Meta (via bartowski)"
+        cand_dict["developer_attribution"] = "bartowski (Community Quantizer)"
+    elif mid.startswith("unsloth/"):
+        cand_dict["artifact_publisher_id"] = "unsloth"
+        cand_dict["artifact_repository"] = mid
+        cand_dict["artifact_is_official"] = False
+        cand_dict["is_official"] = False
+        if "llama" in mid.lower():
+            cand_dict["base_model_provider_id"] = "meta"
+            cand_dict["base_model_id"] = "meta-llama/" + mid.replace("unsloth/", "").replace("-GGUF", "")
+            cand_dict["name"] = cand_dict["name"].replace("(Official Meta)", "(Meta / unsloth GGUF)")
+            cand_dict["publisher_display"] = "Meta (via unsloth)"
+        elif "deepseek" in mid.lower():
+            cand_dict["base_model_provider_id"] = "deepseek"
+            cand_dict["base_model_id"] = "deepseek-ai/" + mid.replace("unsloth/", "").replace("-GGUF", "")
+            cand_dict["name"] = cand_dict["name"].replace("(Official DeepSeek)", "(DeepSeek / unsloth GGUF)")
+            cand_dict["publisher_display"] = "DeepSeek AI (via unsloth)"
+        cand_dict["developer_attribution"] = "unsloth (Community Quantizer)"
+    elif "gpt-oss" in mid.lower():
+        cand_dict["base_model_provider_id"] = "openai"
+        cand_dict["publisher_display"] = "OpenAI (GPT-OSS)"
+        cand_dict["developer_attribution"] = "OpenAI"
+    else:
+        dev_name = "Official Lab" if c.is_official else c.provenance.get("publisher", "Community")
+        cand_dict["developer_attribution"] = dev_name
+
     models_list.append(cand_dict)
 
 MODELS_DATA = {

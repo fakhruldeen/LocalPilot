@@ -88,6 +88,9 @@ def test_developers_database_schema():
     assert "thebloke" in dev_ids
     assert "unsloth" in dev_ids
     assert "ggerganov" in dev_ids
+    assert "mlx-community" in dev_ids
+    assert "lmstudio-community" in dev_ids
+    assert "ggml-org" in dev_ids
 
     for d in devs:
         assert "developer_id" in d
@@ -112,6 +115,21 @@ def test_models_database_schema_and_validation():
         assert "name" in m
         assert "short_alias" in m
         assert "source" in m
+
+        # Check that no suspect repetitive mock hashes remain
+        h = m.get("sha256")
+        if h:
+            assert not (len(h) == 64 and h[:32] == h[32:]), f"Repetitive hash found in {m['model_id']}"
+
+        # Check attribution separation for bartowski and unsloth community quants
+        if "bartowski" in m["model_id"] or "unsloth" in m["model_id"]:
+            assert m.get("is_official") is False
+            assert "via" in m.get("publisher_display", "") or m.get("publisher_display") in ("bartowski", "unsloth")
+
+        # Check gpt-oss family is associated with OpenAI
+        if "gpt-oss" in m["model_id"]:
+            assert m.get("base_model_provider_id") == "openai" or "OpenAI" in m.get("publisher_display", "")
+
     # Verify 2026 models exist
     models_2026 = [m for m in models_raw if str(m.get("verified_release_at", "")).startswith("2026")]
     assert len(models_2026) >= 10, f"Expected at least 10 2026 models, found {len(models_2026)}"
@@ -120,6 +138,49 @@ def test_models_database_schema_and_validation():
     assert "qwen3:8b" in aliases
     assert "deepseek-r2:7b" in aliases
     assert "gpt-oss:20b-2026" in aliases
+    assert "gemma4:e2b" in aliases
+
+
+def test_staging_package_deliverables():
+    """Verify that the staging package files and ZIP bundle exist and are valid."""
+    repo_root = Path(__file__).resolve().parent.parent
+    staging_dir = repo_root / "data" / "staging"
+    assert staging_dir.exists() and staging_dir.is_dir()
+
+    # 1. candidates_models.json
+    models_file = staging_dir / "candidates_models.json"
+    assert models_file.exists()
+    models_data = json.loads(models_file.read_text())
+    assert models_data["total_count"] == 82
+    assert len(models_data["records"]) == 82
+
+    # 2. candidates_models.csv
+    csv_file = staging_dir / "candidates_models.csv"
+    assert csv_file.exists()
+    lines = [line.strip() for line in csv_file.read_text().splitlines() if line.strip()]
+    assert len(lines) == 83  # 1 header + 82 records
+
+    # 3. candidates_providers.json
+    prov_file = staging_dir / "candidates_providers.json"
+    assert prov_file.exists()
+    prov_data = json.loads(prov_file.read_text())
+    assert prov_data["total_count"] == 13
+
+    # 4. candidates_developers.json
+    dev_file = staging_dir / "candidates_developers.json"
+    assert dev_file.exists()
+    dev_data = json.loads(dev_file.read_text())
+    assert dev_data["total_count"] == 3
+
+    # 5. README.md
+    readme_file = staging_dir / "README.md"
+    assert readme_file.exists()
+    assert "Promotion Safeguards" in readme_file.read_text()
+
+    # 6. ZIP archive
+    zip_file = staging_dir / "localpilot_staging_package_20261020.zip"
+    assert zip_file.exists()
+    assert zip_file.stat().st_size > 1000
 
 
 def test_catalog_cli_commands():
@@ -134,10 +195,12 @@ def test_catalog_cli_commands():
     assert res.exit_code == 0
     assert "Google" in res.output
     assert "Meta" in res.output
+    assert "Reflection" in res.output or "OpenAI" in res.output
 
     res = runner.invoke(app, ["catalog", "developers"])
     assert res.exit_code == 0
     assert "bartowski" in res.output
+    assert "MLX Community" in res.output
 
     res = runner.invoke(app, ["catalog", "stats"])
     assert res.exit_code == 0

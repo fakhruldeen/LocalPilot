@@ -1,0 +1,49 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "snapshot_requested": "2026-10-20",
+  "package_type": "staging_candidates_not_production_catalog",
+  "exhaustive": false,
+  "full_existing_catalog_deduplication_completed": false,
+  "total_count": 3,
+  "records": [
+    {
+      "developer_id": "mlx-community",
+      "name": "MLX Community",
+      "role": "MLX model conversion and publishing",
+      "huggingface_url": "https://huggingface.co/mlx-community",
+      "verification": "primary_profile",
+      "evidence_url": "https://huggingface.co/mlx-community",
+      "specialties": [
+        "MLX format",
+        "Apple Silicon optimization",
+        "Quantized MLX weights"
+      ]
+    },
+    {
+      "developer_id": "lmstudio-community",
+      "name": "LM Studio Community",
+      "role": "Community quantization and publishing",
+      "huggingface_url": "https://huggingface.co/lmstudio-community",
+      "verification": "primary_profile",
+      "evidence_url": "https://huggingface.co/lmstudio-community",
+      "specialties": [
+        "GGUF quantizations",
+        "LM Studio compatibility",
+        "Desktop LLMs"
+      ]
+    },
+    {
+      "developer_id": "ggml-org",
+      "name": "ggml organization",
+      "role": "Inference tools and related model artifacts",
+      "huggingface_url": "https://huggingface.co/ggml-org",
+      "verification": "primary_profile",
+      "evidence_url": "https://huggingface.co/ggml-org",
+      "specialties": [
+        "ggml core",
+        "llama.cpp ecosystem",
+        "Official reference artifacts"
+      ]
+    }
+  ]
+}

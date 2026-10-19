@@ -1,0 +1,114 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "snapshot_requested": "2026-10-20",
+  "package_type": "staging_candidates_not_production_catalog",
+  "exhaustive": false,
+  "full_existing_catalog_deduplication_completed": false,
+  "total_count": 13,
+  "records": [
+    {
+      "provider_id": "reflection",
+      "huggingface_namespace": "reflection",
+      "role": "model_author",
+      "verification": "candidate_namespace_requires_review",
+      "evidence_url": "https://huggingface.co/blog/reflection-beam",
+      "existing_catalog_membership": "not_in_catalog"
+    },
+    {
+      "provider_id": "stepfun",
+      "huggingface_namespace": "stepfun-ai",
+      "role": "model_author",
+      "verification": "candidate_namespace_requires_review",
+      "evidence_url": "https://www.developersdigest.tech/local-models",
+      "existing_catalog_membership": "present_in_catalog"
+    },
+    {
+      "provider_id": "xiaomi-mimo",
+      "huggingface_namespace": "XiaomiMiMo",
+      "role": "model_author",
+      "verification": "candidate_namespace_requires_review",
+      "evidence_url": "https://www.developersdigest.tech/local-models",
+      "existing_catalog_membership": "not_in_catalog"
+    },
+    {
+      "provider_id": "tencent",
+      "huggingface_namespace": "tencent",
+      "role": "model_author",
+      "verification": "candidate_namespace_requires_review",
+      "evidence_url": "https://www.developersdigest.tech/local-models",
+      "existing_catalog_membership": "not_in_catalog"
+    },
+    {
+      "provider_id": "minimax",
+      "huggingface_namespace": "MiniMaxAI",
+      "role": "model_author",
+      "verification": "candidate_namespace_requires_review",
+      "evidence_url": "https://www.developersdigest.tech/local-models",
+      "existing_catalog_membership": "present_in_catalog"
+    },
+    {
+      "provider_id": "nomic-ai",
+      "huggingface_namespace": "nomic-ai",
+      "role": "embedding_author",
+      "verification": "candidate_namespace_requires_review",
+      "evidence_url": "https://docs.vllm.ai/en/v0.9.2/models/supported_models.html",
+      "existing_catalog_membership": "present_in_catalog"
+    },
+    {
+      "provider_id": "mixedbread",
+      "huggingface_namespace": "mixedbread-ai",
+      "role": "embedding_and_reranking_author",
+      "verification": "candidate_namespace_requires_review",
+      "evidence_url": "https://docs.vllm.ai/en/v0.9.2/models/supported_models.html",
+      "existing_catalog_membership": "not_in_catalog"
+    },
+    {
+      "provider_id": "jina-ai",
+      "huggingface_namespace": "jinaai",
+      "role": "embedding_author",
+      "verification": "candidate_namespace_requires_review",
+      "evidence_url": "https://docs.vllm.ai/en/v0.9.2/models/supported_models.html",
+      "existing_catalog_membership": "not_in_catalog"
+    },
+    {
+      "provider_id": "intfloat",
+      "huggingface_namespace": "intfloat",
+      "role": "embedding_publisher",
+      "verification": "candidate_namespace_requires_review",
+      "evidence_url": "https://docs.vllm.ai/en/v0.9.2/models/supported_models.html",
+      "existing_catalog_membership": "not_in_catalog"
+    },
+    {
+      "provider_id": "allam-ai",
+      "huggingface_namespace": "ALLaM-AI",
+      "role": "arabic_model_publisher",
+      "verification": "candidate_namespace_requires_review",
+      "evidence_url": "https://huggingface.co/spaces/OALL/Open-Arabic-LLM-Leaderboard",
+      "existing_catalog_membership": "not_in_catalog"
+    },
+    {
+      "provider_id": "inception",
+      "huggingface_namespace": "inceptionai",
+      "role": "arabic_model_publisher_identity_review_required",
+      "verification": "candidate_namespace_requires_review",
+      "evidence_url": "https://huggingface.co/spaces/OALL/Open-Arabic-LLM-Leaderboard",
+      "existing_catalog_membership": "not_in_catalog"
+    },
+    {
+      "provider_id": "silma-ai",
+      "huggingface_namespace": "silma-ai",
+      "role": "arabic_model_publisher",
+      "verification": "candidate_namespace_requires_review",
+      "evidence_url": "https://huggingface.co/spaces/OALL/Open-Arabic-LLM-Leaderboard",
+      "existing_catalog_membership": "not_in_catalog"
+    },
+    {
+      "provider_id": "mbzuai-paris",
+      "huggingface_namespace": "MBZUAI-Paris",
+      "role": "arabic_model_publisher",
+      "verification": "candidate_namespace_requires_review",
+      "evidence_url": "https://huggingface.co/spaces/OALL/Open-Arabic-LLM-Leaderboard",
+      "existing_catalog_membership": "not_in_catalog"
+    }
+  ]
+}
