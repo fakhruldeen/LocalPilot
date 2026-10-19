@@ -100,8 +100,8 @@ class LinuxPlatformAdapter(PlatformAdapter):
         app_dir = self.get_app_dir()
         disk_usage = shutil.disk_usage(app_dir)
 
-        # Planning budget: reserve 20% or min 1.5GB for OS/Desktop
-        os_reserve = max(int(mem.total * 0.20), 1536 * 1024 * 1024)
+        # Planning budget: reserve 15% of available RAM (min 768MB, max 1.5GB) for OS/Desktop headroom
+        os_reserve = min(max(int(mem.available * 0.15), 768 * 1024 * 1024), 1536 * 1024 * 1024)
         safe_ram_budget = max(0, mem.available - os_reserve)
 
         # For VRAM on Linux: sum available VRAM

@@ -86,6 +86,24 @@ class CatalogService:
                 VALUES ('ollama_library', 'Ollama Library', NULL, 'ready', '{}')
                 """
             )
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO catalog_sources (source_id, name, last_refreshed_at, status, details_json)
+                VALUES ('modelscope', 'Alibaba ModelScope Hub', NULL, 'ready', '{"description": "Open weights & regional models"}')
+                """
+            )
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO catalog_sources (source_id, name, last_refreshed_at, status, details_json)
+                VALUES ('lmstudio', 'LM Studio Community Hub', NULL, 'ready', '{"description": "Desktop-optimized quantization library"}')
+                """
+            )
+            conn.execute(
+                """
+                INSERT OR IGNORE INTO catalog_sources (source_id, name, last_refreshed_at, status, details_json)
+                VALUES ('local_dir', 'Local GGUF Models Directory', NULL, 'ready', '{"description": "Manually downloaded local weights"}')
+                """
+            )
 
     def is_first_run(self) -> bool:
         """Returns True if the catalog has never been refreshed from online sources."""
@@ -426,7 +444,7 @@ class CatalogService:
 
         for c in filtered:
             comp = self.compatibility_policy.evaluate(c, hw)
-            if only_compatible and not comp.is_compatible:
+            if only_compatible and not only_favorites and not comp.is_compatible:
                 continue
 
             # Generate plans across backend/service/deployment axes

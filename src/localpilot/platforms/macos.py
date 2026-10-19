@@ -66,7 +66,7 @@ class MacOSPlatformAdapter(PlatformAdapter):
                 )
             )
             # In unified memory, VRAM shares the same pool as RAM
-            os_reserve = max(int(mem.total * 0.20), 2048 * 1024 * 1024)
+            os_reserve = min(max(int(mem.available * 0.15), 1024 * 1024 * 1024), 2048 * 1024 * 1024)
             safe_budget = max(0, mem.available - os_reserve)
             safe_ram_budget = safe_budget
             safe_vram_budget = safe_budget
@@ -81,7 +81,7 @@ class MacOSPlatformAdapter(PlatformAdapter):
                     acceleration_type="cpu",
                 )
             )
-            os_reserve = max(int(mem.total * 0.20), 1536 * 1024 * 1024)
+            os_reserve = min(max(int(mem.available * 0.15), 768 * 1024 * 1024), 1536 * 1024 * 1024)
             safe_ram_budget = max(0, mem.available - os_reserve)
             safe_vram_budget = 0
 

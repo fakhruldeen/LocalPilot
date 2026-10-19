@@ -15,6 +15,7 @@ from textual import work
 from textual.app import App, ComposeResult
 from textual.containers import Container, Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen, Screen
+from textual.binding import Binding
 from textual.timer import Timer
 from textual.widgets import (
     Button,
@@ -1365,13 +1366,32 @@ class LocalPilotTUI(App):
     .table-actions-bar Button {
         margin-right: 1;
     }
+    #discover-filter-bar {
+        height: 3;
+        width: 100%;
+        margin-bottom: 1;
+        align: left middle;
+    }
+    #discover-filter-bar #search-input {
+        width: 1fr;
+        min-width: 25;
+        height: 3;
+    }
+    #discover-filter-bar Button {
+        margin-left: 1;
+        height: 3;
+    }
     #explanation-box {
         border: solid #555555;
         padding: 0 1;
         min-height: 5;
-        height: auto;
-        max-height: 8;
+        height: 7;
+        max-height: 10;
         margin-top: 1;
+        overflow-y: auto;
+    }
+    #explanation-text {
+        width: 100%;
     }
     #home-shortcuts-bar {
         height: 1;
@@ -1412,7 +1432,8 @@ class LocalPilotTUI(App):
         margin: 1 0;
     }
     #home-live-bar {
-        height: 3;
+        height: auto;
+        min-height: 2;
         align: left middle;
         margin-bottom: 1;
         background: #181818;
@@ -1420,6 +1441,13 @@ class LocalPilotTUI(App):
         border: solid #333333;
     }
     #home-live-bar Label {
+        margin-right: 2;
+    }
+    #home-primary-actions {
+        height: 3;
+        margin-top: 1;
+    }
+    #home-primary-actions Button {
         margin-right: 2;
     }
     #home-badges-bar {
@@ -1611,32 +1639,33 @@ class LocalPilotTUI(App):
     """
 
     BINDINGS = [
-        ("q", "quit", "Exit"),
-        ("d", "switch_to_discover", "Discover"),
-        ("i", "switch_to_installed", "Installed"),
-        ("r", "switch_to_running", "Running"),
-        ("s", "switch_to_storage", "Storage"),
-        ("a", "switch_to_activity", "Activity"),
-        ("c", "action_chat_selected", "Chat"),
-        ("v", "action_details_selected", "Details"),
-        ("enter", "select_action", "Action / Chat"),
-        ("x", "stop_action", "Stop"),
-        ("delete", "remove_action", "Remove"),
-        ("u", "refresh_catalog_action", "Update List"),
-        ("f", "toggle_favorite_action", "Favorite"),
-        ("f1", "show_help", "Help & Guide"),
-        ("?", "show_help", "Help"),
-        ("h", "show_help", "Guide"),
-        ("p", "toggle_pause_live", "Pause / Resume"),
-        ("1", "switch_to_home", "Home"),
-        ("2", "switch_to_discover", "Discover"),
-        ("3", "switch_to_installed", "Installed"),
-        ("4", "switch_to_running", "Running"),
-        ("5", "switch_to_storage", "Storage"),
-        ("6", "switch_to_activity", "Activity"),
-        ("7", "switch_to_gateway", "Gateway & API"),
-        ("8", "switch_to_usage", "Usage & Metrics"),
-        ("9", "switch_to_jobs", "Jobs & Recovery"),
+        Binding("q", "quit", "Exit", priority=True),
+        Binding("d", "switch_to_discover", "Find Model"),
+        Binding("i", "switch_to_installed", "Installed"),
+        Binding("c", "action_chat_selected", "Chat"),
+        Binding("f", "toggle_favorite_action", "Favorite"),
+        Binding("u", "refresh_catalog_action", "Update List"),
+        Binding("f1", "show_help", "Help"),
+        # Secondary shortcuts active but hidden from bottom footer so it never clips or overflows
+        Binding("r", "switch_to_running", "Running", show=False),
+        Binding("s", "switch_to_storage", "Storage", show=False),
+        Binding("a", "switch_to_activity", "Activity", show=False),
+        Binding("v", "action_details_selected", "Details", show=False),
+        Binding("enter", "select_action", "Action", show=False),
+        Binding("x", "stop_action", "Stop", show=False),
+        Binding("delete", "remove_action", "Remove", show=False),
+        Binding("?", "show_help", "Help", show=False),
+        Binding("h", "show_help", "Guide", show=False),
+        Binding("p", "toggle_pause_live", "Pause / Resume", show=False),
+        Binding("1", "switch_to_home", "Home", show=False),
+        Binding("2", "switch_to_discover", "Discover", show=False),
+        Binding("3", "switch_to_installed", "Installed", show=False),
+        Binding("4", "switch_to_running", "Running", show=False),
+        Binding("5", "switch_to_storage", "Storage", show=False),
+        Binding("6", "switch_to_activity", "Activity", show=False),
+        Binding("7", "switch_to_gateway", "Gateway", show=False),
+        Binding("8", "switch_to_usage", "Usage", show=False),
+        Binding("9", "switch_to_jobs", "Jobs", show=False),
     ]
 
     def __init__(self, start_wizard: bool = False) -> None:
@@ -1659,6 +1688,9 @@ class LocalPilotTUI(App):
         self._live_paused: bool = False
         self._selected_time_window: str = "24h"
         self._last_refresh_timestamp: float = time.time()
+        self._discover_only_favorites: bool = False
+        self._discover_show_all: bool = False
+        self._discover_sort_mode: str = "score"
 
     def compose(self) -> ComposeResult:
         yield Header(show_clock=True)
@@ -1670,8 +1702,7 @@ class LocalPilotTUI(App):
                     # Live status & telemetry bar
                     with Horizontal(id="home-live-bar"):
                         yield Label("[dim]○ Local API Gateway: Inactive (Optional)[/dim]", id="home-gateway-status")
-                        yield Label("Live Dashboard: Active", id="home-freshness-pill", classes="freshness-pill")
-                        yield Button("Pause (P)", variant="default", id="btn-pause-live", tooltip="Pause or resume live dashboard telemetry updates (P)")
+                        yield Label("[dim]● Live Telemetry: Active (every 5s) • Press 'P' to pause[/dim]", id="home-freshness-pill", classes="freshness-pill")
 
                     # Badges summary row
                     with Horizontal(id="home-badges-bar"):
@@ -1696,26 +1727,25 @@ class LocalPilotTUI(App):
                             yield Button("Clean Up Partial Files", variant="default", id="btn-cleanup-interrupted", tooltip="Safely delete temporary download files")
 
                     with Container(id="welcome-box"):
-                        yield Label("LOCAL AI, MADE SIMPLE", id="home-heading")
+                        yield Label("✨ LOCAL AI, MADE SIMPLE", id="home-heading")
                         yield Label(
-                            "Run AI on this computer.\nWe will find a suitable model and help you set it up.",
+                            "Run 100% private, offline language models directly on your hardware.\n"
+                            "We test your machine, recommend models that fit safely, and help you start chatting.",
                             id="home-tagline",
                         )
-                        yield Label("", id="home-recommendation-note")
+                        yield Label("[dim]Ready: Automatic hardware safety detection is active.[/dim]", id="home-recommendation-note")
 
-                    with Horizontal(id="home-primary-actions"):
-                        yield Button("Help me get started", variant="primary", id="btn-get-started", tooltip="Start 4-step guided wizard to find and run an AI model (Enter)")
-                        yield Button("Continue with AI", variant="primary", id="btn-continue-chat", classes="hidden", tooltip="Open chat session with your most recent model")
+                        with Horizontal(id="home-primary-actions"):
+                            yield Button("▶ Help me get started (Enter)", variant="primary", id="btn-get-started", tooltip="Start guided wizard to test your computer and select a model")
+                            yield Button("Chat with AI (Enter)", variant="primary", id="btn-continue-chat", classes="hidden", tooltip="Open chat session with your most recent model")
+                            yield Button("Browse Model Catalog (2)", variant="default", id="btn-home-discover", tooltip="Explore all models in the catalog")
+                            yield Button("My Models (3)", variant="default", id="btn-home-installed", classes="hidden", tooltip="View your installed model library")
+                            yield Button("Find Another Model", variant="default", id="btn-home-find-another", classes="hidden", tooltip="Browse catalog to add another model")
+                            yield Button("Active Models (4)", variant="default", id="btn-home-running", classes="hidden", tooltip="View and manage running model instances")
+                            yield Button("Help & Documentation (F1)", variant="default", id="btn-home-help", tooltip="Open documentation manual and FAQ")
 
                     with Horizontal(id="home-shortcuts-bar"):
-                        yield Label("⌨  [bold cyan]Enter[/bold cyan] Get Started  •  [bold cyan]Tab[/bold cyan] Navigate  •  [bold cyan]2[/bold cyan] Find a Model  •  [bold cyan]7[/bold cyan] API Gateway  •  [bold cyan]F1[/bold cyan] Help  •  [bold cyan]q[/bold cyan] Exit", id="home-shortcuts-label")
-
-                    with Horizontal(id="home-secondary-actions"):
-                        yield Button("Browse models", variant="default", id="btn-home-discover", tooltip="Explore all models tested to fit this computer")
-                        yield Button("My models", variant="default", id="btn-home-installed", classes="hidden", tooltip="View your installed model library")
-                        yield Button("Find another model", variant="default", id="btn-home-find-another", classes="hidden", tooltip="Search for an additional model")
-                        yield Button("Running now", variant="default", id="btn-home-running", classes="hidden", tooltip="View active models currently consuming RAM")
-                        yield Button("Help and settings", variant="default", id="btn-home-help", tooltip="Open documentation manual and FAQ (F1 / ?)")
+                        yield Label("⌨  [bold cyan]Enter[/bold cyan] Get Started  •  [bold cyan]2[/bold cyan] Find a Model  •  [bold cyan]3[/bold cyan] Installed  •  [bold cyan]7[/bold cyan] API Gateway  •  [bold cyan]F1[/bold cyan] Help  •  [bold cyan]q[/bold cyan] Exit", id="home-shortcuts-label")
 
                     with Horizontal(id="home-panels"):
                         with Vertical(classes="panel"):
@@ -1730,10 +1760,13 @@ class LocalPilotTUI(App):
 
             with TabPane("Find a Model", id="discover-tab"):
                 with Vertical():
-                    with Horizontal():
-                        yield Input(placeholder="Search models (e.g. gemma, deepseek, qwen, kimi, coding)...", id="search-input", tooltip="Filter models by name, family, language, or publisher (Type to search)")
+                    with Horizontal(id="discover-filter-bar"):
+                        yield Input(placeholder="Search models (e.g. gemma, deepseek, qwen, kimi, coding)...", id="search-input", tooltip="Filter models by name, alias, lab, or family (Type to search)")
+                        yield Button("★ Favorites Only", id="btn-discover-fav-filter", variant="default", tooltip="Show only favorited models")
+                        yield Button("Sort: Score ▼", id="btn-discover-sort", variant="default", tooltip="Cycle sort order (Score, Name, Size, Context)")
+                        yield Button("Filter: All Models", id="btn-discover-compat-toggle", variant="default", tooltip="Toggle between all catalog models (including high-end) and hardware-compatible models")
                     yield DataTable(id="discover-table")
-                    with Vertical(id="explanation-box"):
+                    with VerticalScroll(id="explanation-box"):
                         yield Label("[bold]Why this model?[/bold]")
                         yield Label("Select a model above to see why it matches your computer. Press Enter to Setup.", id="explanation-text")
                         yield Label("", id="setup-progress-text")
@@ -1896,9 +1929,13 @@ class LocalPilotTUI(App):
     def _setup_discover_table(self) -> None:
         table = self.query_one("#discover-table", DataTable)
         table.cursor_type = "row"
-        table.add_columns("Score", "Model Name", "Short Alias", "Resource", "Source", "Size", "Context (tokens)", "Fit Status")
+        table.add_columns("Score", "Short Alias", "Model Name", "Resource", "Source", "Size", "Context (tokens)")
         try:
-            initial_results = self.cat_svc.discover(query="")
+            initial_results = self.cat_svc.discover(
+                query="",
+                only_favorites=getattr(self, "_discover_only_favorites", False),
+                only_compatible=not getattr(self, "_discover_show_all", False),
+            )
             self._update_discover_table(initial_results, self._search_seq)
         except Exception:
             pass
@@ -1909,7 +1946,23 @@ class LocalPilotTUI(App):
 
     @work(exclusive=True, thread=True)
     def _run_discover_worker(self, query: str, seq: int) -> None:
-        results = self.cat_svc.discover(query=query)
+        only_favs = getattr(self, "_discover_only_favorites", False)
+        only_compat = not getattr(self, "_discover_show_all", False)
+        sort_mode = getattr(self, "_discover_sort_mode", "score")
+
+        results = self.cat_svc.discover(
+            query=query,
+            only_favorites=only_favs,
+            only_compatible=only_compat,
+        )
+
+        if sort_mode == "name":
+            results = sorted(results, key=lambda r: r.candidate.name.lower())
+        elif sort_mode == "context":
+            results = sorted(results, key=lambda r: -r.candidate.usable_context)
+        elif sort_mode == "size":
+            results = sorted(results, key=lambda r: -r.candidate.total_bytes)
+
         self.call_from_thread(self._update_discover_table, results, seq)
 
     @work(exclusive=True, thread=True)
@@ -1963,15 +2016,18 @@ class LocalPilotTUI(App):
         if not results:
             table.add_row(
                 "-",
-                "No compatible models in memory budget",
                 "-",
+                "No models match current filters",
                 "-",
                 "Catalog",
                 "0 MB",
                 "0",
-                "Close background apps or check compact models",
                 key="empty_discover",
             )
+            try:
+                self.query_one("#explanation-text", Label).update("[dim]No models match current search/filter criteria. Try toggling 'RAM: All Models' or clearing filters.[/dim]")
+            except Exception:
+                pass
             return
         for r in results:
             cand = r.candidate
@@ -1981,17 +2037,20 @@ class LocalPilotTUI(App):
             resource_display = f"✓ Official ({cand.provenance.get('publisher', cand.source.title())})" if cand.is_official else f"Community ({cand.provenance.get('publisher', 'Contrib')})"
             table.add_row(
                 f"{r.score.total_score:.0f}",
-                name_display,
                 alias_display,
+                name_display,
                 resource_display,
                 cand.source.title(),
                 f"{sz_mb:.0f} MB",
                 str(cand.usable_context),
-                r.compatibility.friendly_explanation,
                 key=cand.candidate_id,
             )
         if results:
             self._update_explanation(0)
+            try:
+                table.move_cursor(row=0, animate=False)
+            except Exception:
+                pass
 
     def _update_explanation(self, row_idx: int) -> None:
         if not hasattr(self, "_ranked_candidates") or not self._ranked_candidates:
@@ -2005,24 +2064,27 @@ class LocalPilotTUI(App):
             plan_info = ""
             if item.recommended_plan:
                 rec = item.recommended_plan
-                plan_info = f" • Recommended: {rec.inference_backend.value} ({rec.deployment_method.value})"
+                plan_info = f"{rec.inference_backend.value} ({rec.deployment_method.value})"
                 if item.alternative_plans:
-                    plan_info += f" • {len(item.alternative_plans)} other option(s) supported"
-            context_info = f" • Context: {item.candidate.usable_context:,} tokens"
+                    plan_info += f" • +{len(item.alternative_plans)} other option(s)"
+            context_info = f"{item.candidate.usable_context:,} tokens"
             sz_mb = item.candidate.total_bytes / (1024 * 1024)
-            compat_info = f" • Fit: {item.compatibility.friendly_explanation}"
             fav_prefix = "★ [bold yellow]Favorited[/bold yellow] • " if item.is_favorite else ""
             alias_str = item.candidate.short_alias or item.candidate.display_alias
             official_badge = ""
             if item.candidate.is_official:
                 pub = item.candidate.provenance.get("publisher", "Official")
-                url_part = f" • [underline cyan]{item.candidate.official_resource_url}[/underline cyan]" if item.candidate.official_resource_url else ""
-                official_badge = f"\n[bold green]✓ Official Resource ({pub})[/bold green]{url_part}"
-            expl_label.update(
-                f"{fav_prefix}[bold cyan]{item.candidate.name}[/bold cyan] [bold yellow](Alias: {alias_str})[/bold yellow] ({item.candidate.source.title()} • {sz_mb:.0f} MB • Score: [bold green]{item.score.total_score:.0f}/100[/bold green]){compat_info}{official_badge}\n"
-                f"{item.score.explanation}{plan_info}\n"
-                f"[dim]Recommendation confidence: {item.candidate.confidence.value}{context_info} • Press Enter to Setup • Press F to Favorite[/dim]"
-            )
+                url_part = f" ([underline cyan]{item.candidate.official_resource_url}[/underline cyan])" if item.candidate.official_resource_url else ""
+                official_badge = f" • [bold green]✓ Official ({pub})[/bold green]{url_part}"
+
+            line1 = f"{fav_prefix}[bold cyan]{item.candidate.name}[/bold cyan] [bold yellow](Alias: {alias_str})[/bold yellow] • {item.candidate.source.title()} • {sz_mb:.0f} MB • Score: [bold green]{item.score.total_score:.0f}/100[/bold green]{official_badge}"
+            line2 = f"[bold]Fit & Capacity:[/bold] {item.compatibility.friendly_explanation} • Usable Context: {context_info}"
+            line3 = f"[bold]Recommendation Rationale:[/bold] {item.score.explanation}"
+            line4 = f"[bold]Engine Plan:[/bold] {plan_info}" if plan_info else ""
+            line5 = f"[dim]Confidence: {item.candidate.confidence.value} • Press Enter to Setup • Press F to Favorite • Press A to Add/Switch Alias[/dim]"
+
+            lines = [l for l in [line1, line2, line3, line4, line5] if l]
+            expl_label.update("\n".join(lines))
 
     def on_data_table_row_highlighted(self, event: DataTable.RowHighlighted) -> None:
         if event.data_table.id == "discover-table":
@@ -2262,17 +2324,12 @@ class LocalPilotTUI(App):
     def _update_freshness_pill(self) -> None:
         try:
             pill = self.query_one("#home-freshness-pill", Label)
-            btn_pause = self.query_one("#btn-pause-live", Button)
             if self._live_paused:
-                pill.update("[bold yellow]PAUSED[/bold yellow]")
-                btn_pause.label = "Resume (P)"
-                btn_pause.variant = "success"
+                pill.update("[bold yellow]● Live Telemetry: PAUSED • Press 'P' to resume[/bold yellow]")
             else:
                 diff = int(time.time() - self._last_refresh_timestamp)
                 txt = "just now" if diff < 3 else f"{diff}s ago"
-                pill.update(f"Updated: {txt}")
-                btn_pause.label = "Pause (P)"
-                btn_pause.variant = "default"
+                pill.update(f"[dim]● Live Telemetry: Active (updated {txt}) • Press 'P' to pause[/dim]")
         except Exception:
             pass
 
@@ -2851,6 +2908,39 @@ class LocalPilotTUI(App):
             self.action_toggle_favorite_action()
         elif btn_id == "btn-discover-refresh":
             self.action_refresh_catalog_action()
+        elif btn_id == "btn-discover-fav-filter":
+            self._discover_only_favorites = not getattr(self, "_discover_only_favorites", False)
+            btn = self.query_one("#btn-discover-fav-filter", Button)
+            if self._discover_only_favorites:
+                btn.label = "★ Favorites Only"
+                btn.variant = "warning"
+            else:
+                btn.label = "★ All Models"
+                btn.variant = "default"
+            self._refresh_discover_table(getattr(self, "_pending_query", ""))
+        elif btn_id == "btn-discover-sort":
+            current_mode = getattr(self, "_discover_sort_mode", "score")
+            modes = ["score", "name", "context", "size"]
+            labels = {
+                "score": "Sort: Score ▼",
+                "name": "Sort: Name ▲",
+                "context": "Sort: Context ▼",
+                "size": "Sort: Size ▼",
+            }
+            next_idx = (modes.index(current_mode) + 1) % len(modes)
+            self._discover_sort_mode = modes[next_idx]
+            self.query_one("#btn-discover-sort", Button).label = labels[self._discover_sort_mode]
+            self._refresh_discover_table(getattr(self, "_pending_query", ""))
+        elif btn_id == "btn-discover-compat-toggle":
+            self._discover_show_all = not getattr(self, "_discover_show_all", False)
+            btn = self.query_one("#btn-discover-compat-toggle", Button)
+            if self._discover_show_all:
+                btn.label = "RAM: All Models"
+                btn.variant = "warning"
+            else:
+                btn.label = "RAM: Fits Budget"
+                btn.variant = "default"
+            self._refresh_discover_table(getattr(self, "_pending_query", ""))
         elif btn_id == "btn-installed-chat":
             self.action_chat_selected()
         elif btn_id == "btn-installed-favorite":

@@ -110,14 +110,15 @@ def test_official_models_prioritized_sorting():
         assert cand.official_resource_url is not None
         assert cand.official_resource_url.startswith("http")
 
-    # Verify sorting: all official candidates must appear before non-official candidates
-    saw_nonofficial = False
-    for m in cands:
-        is_off = getattr(m.candidate, "is_official", False)
-        if not is_off:
-            saw_nonofficial = True
-        else:
-            assert not saw_nonofficial, f"Official candidate {m.candidate.short_alias or m.candidate.name} appeared after a non-official candidate!"
+    # Verify sorting: sorted by score desc, and when scores are equal, official models appear first
+    for i in range(len(cands) - 1):
+        score_curr = cands[i].score.total_score
+        score_next = cands[i + 1].score.total_score
+        assert score_curr >= score_next, f"Score ordering violated: {score_curr} < {score_next}"
+        if score_curr == score_next:
+            is_off_curr = 1 if getattr(cands[i].candidate, "is_official", False) else 0
+            is_off_next = 1 if getattr(cands[i + 1].candidate, "is_official", False) else 0
+            assert is_off_curr >= is_off_next, f"Official tie-breaking violated for equal score {score_curr}"
 
 
 
