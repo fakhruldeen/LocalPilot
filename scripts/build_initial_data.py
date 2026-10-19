@@ -14,9 +14,8 @@ SRC_DATA_DIR = PROJECT_ROOT / "src" / "localpilot" / "data"
 ROOT_DATA_DIR = PROJECT_ROOT / "data"
 DOCS_DATA_DIR = PROJECT_ROOT / "docs" / "data"
 WEB_DATA_DIR = PROJECT_ROOT / "web" / "data"
-SRC_WEB_DATA_DIR = PROJECT_ROOT / "src" / "localpilot" / "web" / "data"
 
-for d in (SRC_DATA_DIR, ROOT_DATA_DIR, DOCS_DATA_DIR, WEB_DATA_DIR, SRC_WEB_DATA_DIR):
+for d in (SRC_DATA_DIR, ROOT_DATA_DIR, DOCS_DATA_DIR, WEB_DATA_DIR):
     d.mkdir(parents=True, exist_ok=True)
 
 NOW_ISO = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -2962,7 +2961,7 @@ datasets = [
 
 for filename, data in datasets:
     formatted_json = json.dumps(data, indent=2, ensure_ascii=False) + "\n"
-    for dest_dir in (SRC_DATA_DIR, ROOT_DATA_DIR, DOCS_DATA_DIR, WEB_DATA_DIR, SRC_WEB_DATA_DIR):
+    for dest_dir in (SRC_DATA_DIR, ROOT_DATA_DIR, DOCS_DATA_DIR, WEB_DATA_DIR):
         file_path = dest_dir / filename
         file_path.write_text(formatted_json, encoding="utf-8")
         print(f"✓ Wrote {filename} ({len(formatted_json.encode('utf-8')):,} bytes) -> {file_path}")

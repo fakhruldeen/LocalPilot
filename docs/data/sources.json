@@ -4,7 +4,7 @@
   "database": "sources",
   "name": "LocalPilot Initial Sources Database",
   "description": "Authoritative registry of supported model sources, registries, and download backends.",
-  "updated_at": "2026-10-19T21:18:53.433169Z",
+  "updated_at": "2026-10-19T20:58:54.763391Z",
   "homepage": "https://fakhruldeen.github.io/LocalPilot/",
   "license": "GPL-3.0-only",
   "total_count": 9,

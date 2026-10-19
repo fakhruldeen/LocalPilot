@@ -50,7 +50,6 @@ from localpilot.application.hook_service import LifecycleHookService
 from localpilot.application.version_service import ModelVersionService
 from localpilot.domain.api_contract import HookEvent
 from localpilot.gateway.server import GatewayServer
-from localpilot.application.web_service import WebServer, get_web_dir
 from localpilot.storage.db import get_db, get_default_data_dir, get_default_log_dir
 from localpilot.storage.inventory import StorageManager
 
@@ -110,9 +109,6 @@ app.add_typer(voice_app, name="voice")
 catalog_app = typer.Typer(help="Manage and inspect initial model databases, sources, providers, and developers.")
 app.add_typer(catalog_app, name="catalog")
 app.add_typer(catalog_app, name="db")
-
-web_app = typer.Typer(help="Serve, open, and inspect the LocalPilot documentation and showcase website from /web.")
-app.add_typer(web_app, name="web")
 
 
 
@@ -4279,67 +4275,6 @@ def catalog_stats() -> None:
     table.add_row("Favorited Models", str(fav_count), "User-selected favorites")
     table.add_row("Installed Models", str(installed_count), "Installed on this computer")
     console.print(table)
-
-
-# =====================================================================
-# Web Commands (Serving the website from /web directory)
-# =====================================================================
-
-@web_app.command("serve")
-@app.command("serve-web")
-def web_serve(
-    port: int = typer.Option(8000, "--port", "-p", help="Port to bind website server to (e.g. 8000)"),
-    host: str = typer.Option("127.0.0.1", "--host", "-h", help="Host interface to bind to"),
-    open_browser: bool = typer.Option(True, "--open/--no-open", help="Automatically open browser on start"),
-) -> None:
-    """Serve the documentation, guides, and model showcase website from the /web directory."""
-    port_val = int(_val(port, 8000))
-    host_val = str(_val(host, "127.0.0.1"))
-    open_val = bool(_val(open_browser, True))
-
-    web_dir = get_web_dir()
-    if not web_dir.exists() or not (web_dir / "index.html").exists():
-        render_error_box("Website Missing", f"Could not locate the /web directory at {web_dir}.")
-        raise typer.Exit(code=1)
-
-    url = f"http://{host_val}:{port_val}/"
-    console.print(f"\n[bold cyan]LocalPilot Website Server[/bold cyan]")
-    console.print(f"  • Source Directory: [dim]{web_dir}[/dim]")
-    console.print(f"  • Local URL:        [bold green]{url}[/bold green]")
-    console.print(f"  • Press [bold yellow]Ctrl+C[/bold yellow] to stop the server.\n")
-
-    server = WebServer(host=host_val, port=port_val, web_dir=web_dir)
-    try:
-        server.start(blocking=True, open_browser=open_val)
-    except KeyboardInterrupt:
-        console.print("\n[dim]Web server stopped.[/dim]")
-    except Exception as exc:
-        render_error_box("Server Error", str(exc))
-        raise typer.Exit(code=1)
-
-
-@web_app.command("open")
-def web_open(
-    port: int = typer.Option(8000, "--port", "-p", help="Port of running local website server"),
-    online: bool = typer.Option(False, "--online", help="Open official GitHub Pages website instead of localhost"),
-) -> None:
-    """Open the LocalPilot website in the default system web browser."""
-    import webbrowser
-    port_val = int(_val(port, 8000))
-    online_val = bool(_val(online, False))
-    if online_val:
-        url = "https://fakhruldeen.github.io/LocalPilot/"
-    else:
-        url = f"http://127.0.0.1:{port_val}/"
-    console.print(f"Opening [cyan]{url}[/cyan] in browser...")
-    webbrowser.open(url)
-
-
-@web_app.command("path")
-def web_path() -> None:
-    """Print the absolute filesystem path of the /web directory."""
-    web_dir = get_web_dir()
-    print(str(web_dir))
 
 
 if __name__ == "__main__":
