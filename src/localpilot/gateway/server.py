@@ -4,6 +4,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import mimetypes
 import os
 import time
 import uuid
@@ -18,6 +19,7 @@ from localpilot.application.api_key_service import ApiKeyService
 from localpilot.application.chat_service import ChatService
 from localpilot.application.runtime_service import RuntimeLifecycleService
 from localpilot.application.version_service import ModelVersionService
+from localpilot.application.web_service import get_web_dir
 from localpilot.domain.api_contract import (
     ApiErrorEnvelope,
     ApiKeyRecord,
@@ -187,6 +189,26 @@ class GatewayRequestHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(payload)
 
+    def _serve_static_file(self, file_path: Path) -> None:
+        """Serves a static file from the /web directory with proper MIME type and CORS headers."""
+        try:
+            content = file_path.read_bytes()
+            mime_type, _ = mimetypes.guess_type(str(file_path))
+            mime_type = mime_type or "application/octet-stream"
+            if mime_type.startswith("text/") or mime_type in ("application/json", "application/javascript"):
+                mime_type = f"{mime_type}; charset=utf-8"
+
+            self.send_response(200)
+            self._apply_cors_headers()
+            self.send_header("Content-Type", mime_type)
+            self.send_header("Content-Length", str(len(content)))
+            self.send_header("Cache-Control", "no-cache, must-revalidate")
+            self.end_headers()
+            self.wfile.write(content)
+        except Exception as exc:
+            logger.error("Failed to serve static file %s: %s", file_path, exc)
+            self._send_error(500, f"Error reading static file: {exc}", code="static_file_error")
+
     def _send_error(self, status_code: int, message: str, error_type: str = "invalid_request_error", code: Optional[str] = None) -> None:
         """Sends structured error envelope matching OpenAI schema."""
         envelope = ApiErrorEnvelope.create(message=message, type_name=error_type, code=code)
@@ -221,7 +243,24 @@ class GatewayRequestHandler(BaseHTTPRequestHandler):
         if not path:
             path = "/"
 
-        if path in ("/health", "/v1/health", "/"):
+        if path in ("/health", "/v1/health"):
+            self._send_json(200, {
+                "status": "ok",
+                "service": "localpilot-gateway",
+                "version": GATEWAY_VERSION,
+                "loopback_only": True,
+            })
+            return
+
+        if path == "/":
+            accept_header = self.headers.get("Accept", "")
+            if "text/html" in accept_header or "ui" in self.path:
+                web_dir = get_web_dir()
+                index_file = web_dir / "index.html"
+                if index_file.is_file():
+                    self._serve_static_file(index_file)
+                    return
+
             self._send_json(200, {
                 "status": "ok",
                 "service": "localpilot-gateway",
@@ -331,6 +370,20 @@ class GatewayRequestHandler(BaseHTTPRequestHandler):
                 "root": alias.logical_model_id,
             })
             return
+
+        # Check static file serving from /web directory
+        try:
+            web_dir = get_web_dir()
+            clean_path = path.lstrip("/")
+            if clean_path.startswith("web/"):
+                clean_path = clean_path[4:]
+            if clean_path:
+                candidate_file = (web_dir / clean_path).resolve()
+                if candidate_file.is_file() and candidate_file.is_relative_to(web_dir):
+                    self._serve_static_file(candidate_file)
+                    return
+        except Exception:
+            pass
 
         self._send_error(404, f"Route not found: {self.path}", code="route_not_found")
 
