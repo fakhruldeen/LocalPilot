@@ -289,6 +289,26 @@ For full details on platform compatibility and supported backend/service combina
 
 ---
 
+## 📖 Documentation & Quality Assurance
+
+Comprehensive documentation, specifications, and assurance reports are organized across the following directories:
+
+* **[Documentation Hub (`docs/`)](docs/README.md)**:
+  * [Conceptual Architecture & Memory Model](docs/CONCEPTUAL_GUIDE.md)
+  * [Installation Guide](docs/INSTALLATION.md)
+  * [Hardware Support Matrix](docs/SUPPORT_MATRIX.md)
+  * [Verified Support Matrix & Platform Tiers](docs/VERIFIED_SUPPORT_MATRIX.md)
+  * [Known Limitations & Workarounds](docs/KNOWN_LIMITATIONS.md)
+  * [OpenAPI 3.1 Specification](docs/openapi.json)
+  * [Arabic Documentation Hub (التوثيق بالعربية)](docs/ar/README.md)
+* **[Audit & Assurance Trail (`audit/`)](audit/README.md)**:
+  * [Phase 7 Release Hardening & Verification](audit/phase7-release-hardening/)
+  * [Architecture & Requirements Conformance](audit/20261017T113751Z-279df15/)
+  * [Beginner Readiness & Usability Evaluation](audit/beginner-readiness-20261017T123300Z-279df15/)
+  * [Security & Vulnerability Audit](audit/security-20261017T120429Z-279df15/)
+
+---
+
 ## 👤 Author & Maintainer
 
 **Mohamed Fouad Fakhruldeen**  

@@ -243,6 +243,26 @@ vLLM             LM Studio       local_api_service
 
 ---
 
+## 📖 التوثيق وسجل ضمان الجودة (Documentation & Audit Trail)
+
+تم تنظيم كافة الأدلة والوثائق الفنية وسجلات ضمان الجودة عبر الأدلة التالية:
+
+* **[مركز التوثيق الرئيسي (`docs/`)](docs/README.md)**:
+  * [دليل التوثيق باللغة العربية](docs/ar/README.md)
+  * [الدليل المفاهيمي وإدارة الذاكرة](docs/CONCEPTUAL_GUIDE.md)
+  * [دليل التثبيت](docs/INSTALLATION.md)
+  * [مصفوفة دعم العتاد](docs/SUPPORT_MATRIX.md)
+  * [مصفوفة الدعم الموثقة ومستويات التوافق](docs/VERIFIED_SUPPORT_MATRIX.md)
+  * [القيود والحلول البديلة المعروفة](docs/KNOWN_LIMITATIONS.md)
+  * [مواصفات واجهة البرمجة (OpenAPI 3.1)](docs/openapi.json)
+* **[سجل ضمان الجودة والتدقيق (`audit/`)](audit/README.md)**:
+  * [تدقيق واختبارات الجاهزية للإطلاق (المرحلة 7)](audit/phase7-release-hardening/)
+  * [تدقيق ومطابقة المعمارية والمتطلبات](audit/20261017T113751Z-279df15/)
+  * [تقييم تجربة المبتدئين وسهولة الاستخدام](audit/beginner-readiness-20261017T123300Z-279df15/)
+  * [تدقيق الأمان والخصوصية وحزم الاعتماديات](audit/security-20261017T120429Z-279df15/)
+
+---
+
 ## 👤 المطور والمسؤول عن المشروع
 
 **محمد فؤاد فخر الدين (Mohamed Fouad Fakhruldeen)**  
