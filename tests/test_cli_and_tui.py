@@ -89,12 +89,19 @@ def test_cli_help_descriptions() -> None:
 async def test_tui_app_smoke() -> None:
     tui = LocalPilotTUI()
     async with tui.run_test() as pilot:
-        # Check initial tab is home-tab
+        # Check initial tab is home-tab and hardware specs table is present
         assert tui.query_one("#main-tabs").active == "home-tab"
+        hw_table = tui.query_one("#home-hw-table")
+        assert hw_table is not None
+        assert hw_table.row_count >= 5
 
         # Switch to discover tab via keybinding
         await pilot.press("d")
         assert tui.query_one("#main-tabs").active == "discover-tab"
+
+        # Check default filter button is RAM: Fits Budget
+        compat_btn = tui.query_one("#btn-discover-compat-toggle")
+        assert "RAM: Fits Budget" in str(compat_btn.label)
 
         # Check table loaded rows
         table = tui.query_one("#discover-table")

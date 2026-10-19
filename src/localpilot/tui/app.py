@@ -1309,11 +1309,34 @@ class LocalPilotTUI(App):
         text-align: center;
         margin-bottom: 1;
     }
+    #home-hero-row {
+        height: auto;
+        width: 100%;
+        margin-bottom: 1;
+    }
     #welcome-box {
+        width: 1fr;
         border: solid #00e5ff;
         padding: 1 2;
-        margin-bottom: 1;
         background: #181818;
+        margin-right: 1;
+        height: auto;
+    }
+    #home-hw-card {
+        width: 1fr;
+        border: solid #00e5ff;
+        padding: 1 2;
+        background: #181818;
+        height: auto;
+    }
+    #home-hw-title {
+        color: #00e5ff;
+        text-style: bold;
+        margin-bottom: 0;
+    }
+    #home-hw-table {
+        height: 7;
+        margin: 0;
     }
     #home-heading {
         color: #00e5ff;
@@ -1726,23 +1749,28 @@ class LocalPilotTUI(App):
                             yield Button("Resume Setup", variant="primary", id="btn-resume-interrupted", tooltip="Continue setup from where it was interrupted")
                             yield Button("Clean Up Partial Files", variant="default", id="btn-cleanup-interrupted", tooltip="Safely delete temporary download files")
 
-                    with Container(id="welcome-box"):
-                        yield Label("✨ LOCAL AI, MADE SIMPLE", id="home-heading")
-                        yield Label(
-                            "Run 100% private, offline language models directly on your hardware.\n"
-                            "We test your machine, recommend models that fit safely, and help you start chatting.",
-                            id="home-tagline",
-                        )
-                        yield Label("[dim]Ready: Automatic hardware safety detection is active.[/dim]", id="home-recommendation-note")
+                    with Horizontal(id="home-hero-row"):
+                        with Container(id="welcome-box"):
+                            yield Label("✨ LOCAL AI, MADE SIMPLE", id="home-heading")
+                            yield Label(
+                                "Run 100% private, offline language models directly on your hardware.\n"
+                                "We test your machine, recommend models that fit safely, and help you start chatting.",
+                                id="home-tagline",
+                            )
+                            yield Label("[dim]Ready: Automatic hardware safety detection is active.[/dim]", id="home-recommendation-note")
 
-                        with Horizontal(id="home-primary-actions"):
-                            yield Button("▶ Help me get started (Enter)", variant="primary", id="btn-get-started", tooltip="Start guided wizard to test your computer and select a model")
-                            yield Button("Chat with AI (Enter)", variant="primary", id="btn-continue-chat", classes="hidden", tooltip="Open chat session with your most recent model")
-                            yield Button("Browse Model Catalog (2)", variant="default", id="btn-home-discover", tooltip="Explore all models in the catalog")
-                            yield Button("My Models (3)", variant="default", id="btn-home-installed", classes="hidden", tooltip="View your installed model library")
-                            yield Button("Find Another Model", variant="default", id="btn-home-find-another", classes="hidden", tooltip="Browse catalog to add another model")
-                            yield Button("Active Models (4)", variant="default", id="btn-home-running", classes="hidden", tooltip="View and manage running model instances")
-                            yield Button("Help & Documentation (F1)", variant="default", id="btn-home-help", tooltip="Open documentation manual and FAQ")
+                            with Horizontal(id="home-primary-actions"):
+                                yield Button("▶ Help me get started (Enter)", variant="primary", id="btn-get-started", tooltip="Start guided wizard to test your computer and select a model")
+                                yield Button("Chat with AI (Enter)", variant="primary", id="btn-continue-chat", classes="hidden", tooltip="Open chat session with your most recent model")
+                                yield Button("Browse Model Catalog (2)", variant="default", id="btn-home-discover", tooltip="Explore all models in the catalog")
+                                yield Button("My Models (3)", variant="default", id="btn-home-installed", classes="hidden", tooltip="View your installed model library")
+                                yield Button("Find Another Model", variant="default", id="btn-home-find-another", classes="hidden", tooltip="Browse catalog to add another model")
+                                yield Button("Active Models (4)", variant="default", id="btn-home-running", classes="hidden", tooltip="View and manage running model instances")
+                                yield Button("Help & Documentation (F1)", variant="default", id="btn-home-help", tooltip="Open documentation manual and FAQ")
+
+                        with Container(id="home-hw-card"):
+                            yield Label("🖥️ CURRENT HARDWARE SPECS", id="home-hw-title")
+                            yield DataTable(id="home-hw-table")
 
                     with Horizontal(id="home-shortcuts-bar"):
                         yield Label("⌨  [bold cyan]Enter[/bold cyan] Get Started  •  [bold cyan]2[/bold cyan] Find a Model  •  [bold cyan]3[/bold cyan] Installed  •  [bold cyan]7[/bold cyan] API Gateway  •  [bold cyan]F1[/bold cyan] Help  •  [bold cyan]q[/bold cyan] Exit", id="home-shortcuts-label")
@@ -1764,7 +1792,7 @@ class LocalPilotTUI(App):
                         yield Input(placeholder="Search models (e.g. gemma, deepseek, qwen, kimi, coding)...", id="search-input", tooltip="Filter models by name, alias, lab, or family (Type to search)")
                         yield Button("★ Favorites Only", id="btn-discover-fav-filter", variant="default", tooltip="Show only favorited models")
                         yield Button("Sort: Score ▼", id="btn-discover-sort", variant="default", tooltip="Cycle sort order (Score, Name, Size, Context)")
-                        yield Button("Filter: All Models", id="btn-discover-compat-toggle", variant="default", tooltip="Toggle between all catalog models (including high-end) and hardware-compatible models")
+                        yield Button("RAM: Fits Budget", id="btn-discover-compat-toggle", variant="default", tooltip="Currently showing models that fit your memory budget. Click to show all models.")
                     yield DataTable(id="discover-table")
                     with VerticalScroll(id="explanation-box"):
                         yield Label("[bold]Why this model?[/bold]")
@@ -1877,6 +1905,7 @@ class LocalPilotTUI(App):
         yield Footer()
 
     def on_mount(self) -> None:
+        self._setup_home_hw_table()
         self._setup_discover_table()
         self._setup_installed_table()
         self._setup_running_table()
@@ -1893,6 +1922,22 @@ class LocalPilotTUI(App):
 
         if self._start_wizard_on_mount:
             self.action_start_guided_setup()
+
+    def _setup_home_hw_table(self) -> None:
+        try:
+            hw_table = self.query_one("#home-hw-table", DataTable)
+            hw_table.cursor_type = "row"
+            hw_table.show_header = False
+            hw_table.add_columns("Component", "Specification")
+            hw_table.add_row("Operating System", "Probing system specs...")
+            hw_table.add_row("Processor (CPU)", "Probing cores & features...")
+            hw_table.add_row("CPU Extensions", "Checking AVX/SSE...")
+            hw_table.add_row("System Memory", "Checking RAM...")
+            hw_table.add_row("Safe Model RAM", "Calculating safe budget...")
+            hw_table.add_row("Graphics (GPU)", "Checking accelerators...")
+            hw_table.add_row("Available Disk", "Checking storage...")
+        except Exception:
+            pass
 
     def _check_for_interrupted_work(self) -> None:
         """Section 12: Detects interrupted setup operations on startup."""
@@ -1918,13 +1963,45 @@ class LocalPilotTUI(App):
         avail_gb = hw.ram_available_bytes / (1024**3)
         safe_gb = hw.safe_ram_budget_bytes / (1024**3)
         text = f"{hw.os_name} • {avail_gb:.1f}GB RAM free (Safe: {safe_gb:.1f}GB)"
-        self.call_from_thread(self._update_home_health, text)
+        self.call_from_thread(self._update_home_health, text, hw)
 
-    def _update_home_health(self, text: str) -> None:
+    def _update_home_health(self, text: str, hw: Optional[HardwareSnapshot] = None) -> None:
         try:
             self.query_one("#home-hw-status", Label).update(text)
         except Exception:
             pass
+        if hw:
+            try:
+                hw_table = self.query_one("#home-hw-table", DataTable)
+                hw_table.clear()
+                total_ram_gb = hw.ram_total_bytes / (1024**3)
+                avail_ram_gb = hw.ram_available_bytes / (1024**3)
+                safe_ram_gb = hw.safe_ram_budget_bytes / (1024**3)
+                disk_avail_gb = hw.disk_available_bytes / (1024**3)
+                disk_total_gb = hw.disk_total_bytes / (1024**3)
+
+                cores_str = f"{hw.cpu_cores_physical or '?'} phys / {hw.cpu_cores_logical or '?'} logical"
+                features = [f.upper() for f in hw.cpu_features if f.lower() in ("avx2", "avx", "fma", "sse4_2", "neon", "amx")]
+                features_str = ", ".join(features) if features else (", ".join(hw.cpu_features[:4]) if hw.cpu_features else "Standard")
+
+                gpus_str = "None (CPU only)"
+                if hw.gpu_devices:
+                    g = hw.gpu_devices[0]
+                    vram_gb = (g.vram_total_bytes / (1024**3)) if g.vram_total_bytes else None
+                    if vram_gb:
+                        gpus_str = f"{g.name} ({vram_gb:.1f}GB VRAM)"
+                    else:
+                        gpus_str = f"{g.name} ({g.acceleration_type.upper()})"
+
+                hw_table.add_row("Operating System", f"{hw.os_name} {hw.os_version[:16] if hw.os_version else ''}")
+                hw_table.add_row("Processor (CPU)", f"{hw.cpu_arch} • {cores_str}")
+                hw_table.add_row("Instruction Sets", features_str)
+                hw_table.add_row("System Memory", f"{avail_ram_gb:.1f}GB free / {total_ram_gb:.1f}GB total")
+                hw_table.add_row("Safe Model RAM", f"[bold green]{safe_ram_gb:.1f}GB safe budget[/bold green]")
+                hw_table.add_row("GPU Accelerator", gpus_str)
+                hw_table.add_row("Available Disk", f"{disk_avail_gb:.1f}GB free of {disk_total_gb:.0f}GB")
+            except Exception:
+                pass
 
     def _setup_discover_table(self) -> None:
         table = self.query_one("#discover-table", DataTable)
