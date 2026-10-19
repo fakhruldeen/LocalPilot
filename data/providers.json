@@ -4,7 +4,7 @@
   "database": "providers",
   "name": "LocalPilot Initial Providers Database",
   "description": "Authoritative registry of foundational AI research laboratories, institutes, and organizations creating open model weights.",
-  "updated_at": "2026-10-19T20:58:54.763391Z",
+  "updated_at": "2026-10-19T21:36:04.390043Z",
   "homepage": "https://fakhruldeen.github.io/LocalPilot/",
   "license": "GPL-3.0-only",
   "total_count": 55,
